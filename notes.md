@@ -1,4 +1,7 @@
 Notes 
+05/19
+- Parser for subdue output works. 
+- Need to feed it to the Julia / Matlab code
 
 05/17
 - Find motifs using SUBDUE using the occurrences and find conductance of the motifs using Benson
