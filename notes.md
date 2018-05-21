@@ -1,4 +1,8 @@
 Notes 
+05/21 
+- SUBDUE (C) does not report all instances of subgraph. Recursive, overlap flags didn't help.
+- Trying out the Python version... Writing a wrapper for generating edgelists as a JSON. 
+
 05/19
 - Parser for subdue output works. 
 - Need to feed it to the Julia / Matlab code
