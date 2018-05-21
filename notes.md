@@ -11,5 +11,5 @@ Notes
 - Find motifs using SUBDUE using the occurrences and find conductance of the motifs using Benson
 - Check if they match  
 - Check if greedy does get you the optimum clusters 
-- Nature of conductance plot - is it convex?
+- Nature of conductance sweep plot - is it convex? *NO* http://snap.stanford.edu/higher-order/high_order-netsci-may16a.pdf slide #29. 
 - best substructure, top-k substructures - does that make a difference? 
