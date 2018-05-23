@@ -1,6 +1,8 @@
 Notes
 
 05/23 
+- Top-k substructures, finite number of iterations of subdue, ...
+- Print the bags of nodes in SUB_x and OVERLAP_y.
 - Update on reporting all instances of a substructure. Overlap works only if there are multiple iterations. Set flag ```-iterations 0```. 
 - Test SUBDUE and Motif Cluster on medium to large graphs.  
 
