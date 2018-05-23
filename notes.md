@@ -1,6 +1,7 @@
-Notes 
+Notes
+
 05/23 
-- Update on reporting all instances of a substructure. Overlap works only if there are multiple iterations. Set ```-iterations 0```. 
+- Update on reporting all instances of a substructure. Overlap works only if there are multiple iterations. Set flag ```-iterations 0```. 
 - Test SUBDUE and Motif Cluster on medium to large graphs.  
 
 05/21 
