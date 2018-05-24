@@ -1,5 +1,8 @@
 Notes
 
+05/24
+- SUBDUE does not scale at all. Try MPI. Ask Tim to install MPI Daemon on dsg2
+
 05/23 
 - Top-k substructures, finite number of iterations of subdue, ...
 - Print the bags of nodes in SUB_x and OVERLAP_y.
