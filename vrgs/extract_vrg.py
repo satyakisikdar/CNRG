@@ -1,24 +1,103 @@
 import networkx as nx
 import random as r
+import node2vec
+from gensim.models import Word2Vec
+import pandas as pd
+from scipy.cluster.hierarchy import linkage, to_tree, cophenet
+from scipy.spatial.distance import pdist
 
-g = nx.MultiDiGraph()
-g.add_edge(1,3)
-g.add_edge(2,1)
-g.add_edge(2,5)
-g.add_edge(3,4)
-g.add_edge(4,5)
-g.add_edge(4,2)
-g.add_edge(4,9)
-g.add_edge(5,1)
-g.add_edge(5,3)
+def get_graph(filename=None):
+    if filename is not None:
+        g = nx.read_edgelist(filename, nodetype=int, create_using=nx.MultiDiGraph())
+    else:
+        g = nx.MultiDiGraph()
+        g.add_edge(1, 3)
+        g.add_edge(2, 1)
+        g.add_edge(2, 5)
+        g.add_edge(3, 4)
+        g.add_edge(4, 5)
+        g.add_edge(4, 2)
+        g.add_edge(4, 9)
+        g.add_edge(5, 1)
+        g.add_edge(5, 3)
 
-g.add_edge(6,2)
-g.add_edge(6,7)
-g.add_edge(6,8)
-g.add_edge(6,9)
-g.add_edge(7,8)
-g.add_edge(9,8)
-g.add_edge(9,6)
+        g.add_edge(6, 2)
+        g.add_edge(6, 7)
+        g.add_edge(6, 8)
+        g.add_edge(6, 9)
+        g.add_edge(7, 8)
+        g.add_edge(9, 8)
+        g.add_edge(9, 6)
+    return g
+
+
+def learn_embeddings(walks, filename='./tmp/temp.emb'):
+    '''
+    Learn embeddings by optimizing the Skipgram objective using SGD.
+    '''
+    walks = [map(str, walk) for walk in walks]
+    model = Word2Vec(walks, size=128, window=10, min_count=0, sg=1, workers=8, iter=1)
+    model.wv.save_word2vec_format(filename) ## TODO: keep in memory, dont write to file...
+
+
+def get_embeddings(g, emb_filename='./tmp/temp.emb'):
+    '''
+    g is undirected for the time being
+    '''
+    nx_G = nx.Graph(g)
+    nx.set_edge_attributes(nx_G, 'weight', 1)
+    G = node2vec.Graph(nx_G, is_directed=False, p=1, q=1)
+    G.preprocess_transition_probs()
+    walks = G.simulate_walks(num_walks=10, walk_length=80)
+    learn_embeddings(walks)
+
+    df = pd.read_csv(emb_filename, skiprows=1, sep=' ', header=None)  ## maybe switch to Numpy read file functions
+    return df.as_matrix()
+
+
+def get_dendrogram(embeddings, method='best', metric='euclidean'):
+    methods = ('single', 'complete', 'average', 'weighted', 'centroid', 'median', 'ward')
+    metrics = ('euclidean', 'cityblock', 'cosine', 'correlation', 'jaccard')
+    # centroid, median, ward only work with Euclidean
+
+    if method not in methods and method != 'best':
+        print('Invalid method {}. Choosing an alternative model instead.')
+        method = 'best'
+
+    if method == 'best':
+        best_method = None
+        best_score = None
+
+        for method in methods:
+            Z = linkage(embeddings[:, 1:], method)
+            c, coph_dist = cophenet(Z, pdist(embeddings[:, 1:], metric))
+            print(method, metric, c)
+            if c > best_score:
+                best_score = c
+                best_method = method
+        print('Using "{}, {}" for clustering'.format(best_method, metric))
+        Z = linkage(embeddings[:, 1:], best_method)
+    else:
+        Z = linkage(embeddings[:, 1:], method)
+
+    root = to_tree(Z)
+    labels = list(map(int, embeddings[:, 0]))
+
+    def print_tree(node):
+        if node.is_leaf():  # single leaf
+            return [labels[node.id]]
+
+        if node.left.is_leaf() and node.right.is_leaf():  # combine two leaves into one
+            return [labels[node.left.id], labels[node.right.id]]
+
+        left_list = print_tree(node.left)
+        right_list = print_tree(node.right)
+        return [left_list, right_list]
+
+    dendro = print_tree(root)
+    l = list()  # this is for the outer [ ]
+    l.append(dendro)
+    return l
 
 
 def find_boundary_edges(sg, g):
@@ -170,16 +249,26 @@ def stochastic_vrg(vrg):
     return new_g
 
 
-tree = [[[[1,2], [[3,4], 5]], [[9,8], [6,7]]]]
-vrg = extract_vrg(g, tree)
+def main():
+    g = get_graph()
+    embeddings = get_embeddings(g)
+    tree = get_dendrogram(embeddings)
+    print(tree)
 
-vrg_dict = {}
-# we need to turn the list into a dict for efficient access to the LHSs
-for lhs, rhs in vrg:
-    if lhs not in vrg_dict:
-        vrg_dict[lhs] = [rhs]
-    else:
-        vrg_dict[lhs].append(rhs)
 
-new_g = stochastic_vrg(vrg_dict)
-print(len(new_g.edges()))
+    # tree = [[[[1,2], [[3,4], 5]], [[9,8], [6,7]]]]
+    vrg = extract_vrg(g, tree)
+
+    vrg_dict = {}
+    # we need to turn the list into a dict for efficient access to the LHSs
+    for lhs, rhs in vrg:
+        if lhs not in vrg_dict:
+            vrg_dict[lhs] = [rhs]
+        else:
+            vrg_dict[lhs].append(rhs)
+
+    new_g = stochastic_vrg(vrg_dict)
+    print(len(new_g.edges()))
+
+if __name__ == '__main__':
+    main()
