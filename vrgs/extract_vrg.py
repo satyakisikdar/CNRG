@@ -45,7 +45,7 @@ def extract_vrg(g, tree):
     vrg = list()
     if not isinstance(tree, list):
         # if we are at a leaf, then we need to backup one level
-        return []
+        return vrg
     for index, subtree in enumerate(tree):
         # build the grammar from a left-to-right bottom-up tree ordering (in order traversal)
         vrg += extract_vrg(g, subtree)
@@ -87,7 +87,9 @@ def extract_vrg(g, tree):
         vrg += [(lhs, rhs)]
     return vrg
 
+def stochastic_vrg(vrg):
+    return nx.MultiDiGraph()
 
-tree = [[[1,2], [[3,4], 5]], [[9,8], [6,7]]]
-
-extract_vrg(g, tree)
+tree = [[[[1,2], [[3,4], 5]], [[9,8], [6,7]]]]
+vrg = extract_vrg(g, tree)
+g = stochastic_vrg(vrg)
