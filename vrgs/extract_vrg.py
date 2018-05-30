@@ -20,6 +20,8 @@ g.add_edge(7,8)
 g.add_edge(9,8)
 g.add_edge(9,6)
 
+input_g = g.copy()
+
 
 def find_boundary_edges(sg, g):
     # collect all of the boundary edges (i.e., the edges
@@ -171,6 +173,7 @@ def stochastic_vrg(vrg):
 
 
 tree = [[[[1,2], [[3,4], 5]], [[9,8], [6,7]]]]
+
 vrg = extract_vrg(g, tree)
 
 vrg_dict = {}
@@ -182,4 +185,5 @@ for lhs, rhs in vrg:
         vrg_dict[lhs].append(rhs)
 
 new_g = stochastic_vrg(vrg_dict)
-print(len(new_g.edges()))
+print('input graph degree distribution', nx.degree_histogram(input_g))
+print('output graph degree distribution', nx.degree_histogram(new_g))
