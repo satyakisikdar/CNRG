@@ -1,5 +1,7 @@
 ### VRG updates
 05/31
+- Possible experiments
+  - Planting cliques and other well known structures and adding variable noise to test recoverability 
 - Stretch out current method with graphs - real and with planted partitions 
 - Read Danai Koutra's and related works to figure out experiments to do 
 - Run METIS, and wrap it in the code. 
