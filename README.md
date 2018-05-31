@@ -1,6 +1,14 @@
 ### VRG updates
 05/31
-- Possible experiments
+- **Relevant papers**
+  - <a href="http://citeseerx.ist.psu.edu/viewdoc/download?doi=10.1.1.220.2503&rep=rep1&type=pdf"> OPAvion: Mining and Visualization in Large Graphs </a>
+  - <a href="http://eda.mmci.uni-saarland.de/pubs/2015/vog-koutra,kang,vreeken,faloutsos-2015-sam.pdf">VOG: Summarizing and Understanding Large Graphs</a>
+  - Reducing large graphs to small supergraphs: a unified approach
+  - <a href="https://people.csail.mit.edu/jshun/6886-s18/papers/Liu2018.pdf">Graph Summarization: A Survey</a>
+  - <a href="http://reports-archive.adm.cs.cmu.edu/anon/anon/usr/ftp/2015/CMU-CS-15-126.pdf">Exploring and Making Sense of Large Graphs</a>
+  - Perseus: an interactive large-scale graph mining and visualization tool
+  - <a href="http://www.vldb.org/pvldb/vol8/p1924-koutra.pdf">Optimizing hierarchical visualizations with the minimum description length principle</a>
+- **Possible experiments**
   - Planting cliques and other well known structures and adding variable noise to test recoverability 
 - Stretch out current method with graphs - real and with planted partitions 
 - Read Danai Koutra's and related works to figure out experiments to do 
