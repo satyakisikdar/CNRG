@@ -1,14 +1,13 @@
 import random as r
 
 import networkx as nx
-from numpy import linalg
 import numpy
 import pandas as pd
 from gensim.models import Word2Vec
 from scipy.cluster.hierarchy import linkage, to_tree, cophenet
 from scipy.spatial.distance import pdist
 
-import node2vec #as node2vec
+import vrgs.node2vec as node2vec
 
 
 def get_graph(filename=None):
@@ -290,6 +289,13 @@ def stochastic_vrg(vrg):
 
 
 def approx_min_conductance_partitioning(g, max_k=2):
+    """
+    Approximate minimum conductance partinioning. I'm using the median method as referenced here:
+    http://www.ieor.berkeley.edu/~goldberg/pubs/krishnan-recsys-final2.pdf
+    :param g: graph to recursively partition
+    :param max_k:
+    :return: a dendrogram
+    """
     lvl = list()
     node_list = g.nodes()
     if len(node_list) <= max_k:
@@ -304,9 +310,10 @@ def approx_min_conductance_partitioning(g, max_k=2):
             p1.append(node_list[idx])
         else:
             p2.append(node_list[idx])
-    lvl.append(approx_min_conductance_partitioning(nx.subgraph(g, p1)))
-    lvl.append(approx_min_conductance_partitioning(nx.subgraph(g, p2)))
+    lvl.append(approx_min_conductance_partitioning(nx.subgraph(g, p1), max_k))
+    lvl.append(approx_min_conductance_partitioning(nx.subgraph(g, p2), max_k))
     return [lvl]
+
 
 def main():
     """
@@ -314,14 +321,14 @@ def main():
     :return:
     """
     g = get_graph('./tmp/dummy.txt')
-    # embeddings = n2v_runner(g.copy())
-    # tree = get_dendrogram(embeddings)
-    # # print(tree)
-
-    tree = approx_min_conductance_partitioning(g)
+    embeddings = n2v_runner(g.copy())
+    tree = get_dendrogram(embeddings)
     print(tree)
 
-    #tree = [[[[1,2], [[3,4], 5]], [[9,8], [6,7]]]]
+    #tree = approx_min_conductance_partitioning(g, 4)
+    #print(tree)
+
+    # tree = [[[[1,2], [[3,4], 5]], [[9,8], [6,7]]]]
     vrg = extract_vrg(g, tree)
 
     vrg_dict = {}
@@ -332,9 +339,10 @@ def main():
         else:
             vrg_dict[lhs].append(rhs)
 
-    new_g = stochastic_vrg(vrg_dict)
-    print('input graph degree distribution', nx.degree_histogram(get_graph()))
-    print('output graph degree distribution', nx.degree_histogram(new_g))
+    for n in range(1, 25):
+        new_g = stochastic_vrg(vrg_dict)
+        print('input graph degree distribution', nx.degree_histogram(get_graph()))
+        print('output graph degree distribution', nx.degree_histogram(new_g))
 
 
 if __name__ == '__main__':
