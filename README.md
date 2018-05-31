@@ -1,5 +1,11 @@
 Notes
 
+### VRG updates
+05/31
+- Stretch out current method with graphs - real and with planted partitions 
+- Read Danai Koutra's and related works to figure out experiments to do 
+- Run METIS, and wrap it in the code. 
+-------
 05/24
 - SUBDUE does not scale at all. Try MPI. Ask Tim to install MPI Daemon on dsg2
 
