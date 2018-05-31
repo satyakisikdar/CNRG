@@ -1,5 +1,3 @@
-Notes
-
 ### VRG updates
 05/31
 - Stretch out current method with graphs - real and with planted partitions 
