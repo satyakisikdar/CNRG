@@ -8,13 +8,14 @@ from gensim.models import Word2Vec
 from scipy.cluster.hierarchy import linkage, to_tree, cophenet
 from scipy.spatial.distance import pdist
 
-import vrgs.node2vec as node2vec
+import node2vec #as node2vec
 
 
 def get_graph(filename=None):
     if filename is not None:
         g = nx.read_edgelist(filename, nodetype=int, create_using=nx.MultiDiGraph())
     else:
+        # g seems to be different than the dummy graph
         g = nx.MultiDiGraph()
         g.add_edge(1, 3)
         g.add_edge(2, 1)
@@ -40,17 +41,28 @@ def learn_embeddings(walks, filename='./tmp/temp.emb'):
     """
     Learn embeddings by optimizing the Skipgram objective using SGD.
     """
-    walks = [map(str, walk) for walk in walks]
+    walks = [list(map(str, walk)) for walk in walks]
     model = Word2Vec(walks, size=128, window=10, min_count=0, sg=1, workers=8, iter=1)
     model.wv.save_word2vec_format(filename)  ## TODO: keep in memory, dont write to file...
 
 
-def get_embeddings(g, emb_filename='./tmp/temp.emb'):
+def get_embeddings(emb_filename='./tmp/temp.emb'):
     """
     g is undirected for the time being
     """
     df = pd.read_csv(emb_filename, skiprows=1, sep=' ', header=None)  ## maybe switch to Numpy read file functions
     return df.as_matrix()
+
+
+def n2v_runner(g):
+    nx_G = nx.Graph(g)
+    nx.set_edge_attributes(nx_G, 'weight', 1)
+    G = node2vec.Graph(nx_G, False, 1, 1)
+    G.preprocess_transition_probs()
+    walks = G.simulate_walks(num_walks=10, walk_length=80)
+    learn_embeddings(walks)
+    embeddings = get_embeddings()
+    return embeddings
 
 
 def get_dendrogram(embeddings, method='best', metric='euclidean'):
@@ -71,21 +83,21 @@ def get_dendrogram(embeddings, method='best', metric='euclidean'):
 
     if method == 'best':
         best_method = None
-        best_score = None
+        best_score = 0
 
         for method in methods:
-            Z = linkage(embeddings[:, 1:], method)
-            c, coph_dist = cophenet(Z, pdist(embeddings[:, 1:], metric))
+            z = linkage(embeddings[:, 1:], method)
+            c, _ = cophenet(z, pdist(embeddings[:, 1:], metric))
             print(method, metric, c)
             if c > best_score:
                 best_score = c
                 best_method = method
         print('Using "{}, {}" for clustering'.format(best_method, metric))
-        Z = linkage(embeddings[:, 1:], best_method)
+        z = linkage(embeddings[:, 1:], best_method)
     else:
-        Z = linkage(embeddings[:, 1:], method)
+        z = linkage(embeddings[:, 1:], method)
 
-    root = to_tree(Z)
+    root = to_tree(z)
     labels = list(map(int, embeddings[:, 0]))
 
     def print_tree(node):
@@ -99,10 +111,7 @@ def get_dendrogram(embeddings, method='best', metric='euclidean'):
         right_list = print_tree(node.right)
         return [left_list, right_list]
 
-    dendro = print_tree(root)
-    l = list()  # this is for the outer [ ]
-    l.append(dendro)
-    return l
+    return [print_tree(root)]
 
 
 def find_boundary_edges(sg, g):
@@ -124,8 +133,9 @@ def find_boundary_edges(sg, g):
             in_edges += g.edges(n)
 
     # remove internal edges from list of boundary_edges
-    in_edges = [x for x in in_edges if x not in sg.edges()]
-    out_edges = [x for x in out_edges if x not in sg.edges()]
+    edge_set = set(sg.edges_iter())
+    in_edges = [x for x in in_edges if x not in edge_set]
+    out_edges = [x for x in out_edges if x not in edge_set]
 
     return in_edges, out_edges
 
@@ -141,7 +151,7 @@ def generalize_rhs(sg, internal_nodes):
     :return: generalized subgraph.
     """
     nodes = {}
-    internal_node_counter = 'a'
+    internal_node_counter = 'a'  # maybe change to a1, a2, ..., ak?
     boundary_node_counter = 0
     rhs = nx.MultiDiGraph()
 
@@ -203,7 +213,7 @@ def extract_vrg(g, tree):
                     v = new_node
                 g.add_edge(u, v)
 
-        rhs = generalize_rhs(sg, subtree)
+        rhs = generalize_rhs(sg, set(subtree))
         print(g.nodes(data=True))
 
         # replace subtree with new_node
@@ -279,17 +289,12 @@ def stochastic_vrg(vrg):
     return new_g
 
 
-def approx_min_conductance_partitioning(g):
-    """
-    Approximate minimum conductance partinioning. I'm using the median method as referenced here:
-    http://www.ieor.berkeley.edu/~goldberg/pubs/krishnan-recsys-final2.pdf
-    :param g: graph to recursively partition
-    :return: a dendrogram
-    """
+def approx_min_conductance_partitioning(g, max_k=2):
     lvl = list()
     node_list = g.nodes()
-    if len(node_list) <= 4:
+    if len(node_list) <= max_k:
         return node_list
+    print(node_list)
     fiedler_vector = nx.fiedler_vector(g.to_undirected())
     med = numpy.median(fiedler_vector)
     p1 = []
@@ -308,10 +313,10 @@ def main():
     Driver method for VRG
     :return:
     """
-    g = get_graph()
-    #embeddings = get_embeddings(g)
-    #tree = get_dendrogram(embeddings)
-    #print(tree)
+    g = get_graph('./tmp/dummy.txt')
+    # embeddings = n2v_runner(g.copy())
+    # tree = get_dendrogram(embeddings)
+    # # print(tree)
 
     tree = approx_min_conductance_partitioning(g)
     print(tree)
