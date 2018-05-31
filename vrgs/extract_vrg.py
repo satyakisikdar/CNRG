@@ -280,11 +280,16 @@ def stochastic_vrg(vrg):
 
 
 def approx_min_conductance_partitioning(g):
+    """
+    Approximate minimum conductance partinioning. I'm using the median method as referenced here:
+    http://www.ieor.berkeley.edu/~goldberg/pubs/krishnan-recsys-final2.pdf
+    :param g: graph to recursively partition
+    :return: a dendrogram
+    """
     lvl = list()
     node_list = g.nodes()
-    if len(node_list) <= 2:
+    if len(node_list) <= 4:
         return node_list
-    print(node_list)
     fiedler_vector = nx.fiedler_vector(g.to_undirected())
     med = numpy.median(fiedler_vector)
     p1 = []
@@ -309,6 +314,7 @@ def main():
     #print(tree)
 
     tree = approx_min_conductance_partitioning(g)
+    print(tree)
 
     #tree = [[[[1,2], [[3,4], 5]], [[9,8], [6,7]]]]
     vrg = extract_vrg(g, tree)
