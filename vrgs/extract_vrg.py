@@ -1,6 +1,8 @@
 import random as r
 
 import networkx as nx
+from numpy import linalg
+import numpy
 import pandas as pd
 from gensim.models import Word2Vec
 from scipy.cluster.hierarchy import linkage, to_tree, cophenet
@@ -277,6 +279,25 @@ def stochastic_vrg(vrg):
     return new_g
 
 
+def approx_min_conductance_partitioning(g):
+    lvl = list()
+    node_list = g.nodes()
+    if len(node_list) <= 2:
+        return node_list
+    print(node_list)
+    fiedler_vector = nx.fiedler_vector(g.to_undirected())
+    med = numpy.median(fiedler_vector)
+    p1 = []
+    p2 = []
+    for idx, n in enumerate(fiedler_vector):
+        if n > med:
+            p1.append(node_list[idx])
+        else:
+            p2.append(node_list[idx])
+    lvl.append(approx_min_conductance_partitioning(nx.subgraph(g, p1)))
+    lvl.append(approx_min_conductance_partitioning(nx.subgraph(g, p2)))
+    return [lvl]
+
 def main():
     """
     Driver method for VRG
@@ -287,7 +308,9 @@ def main():
     #tree = get_dendrogram(embeddings)
     #print(tree)
 
-    tree = [[[[1,2], [[3,4], 5]], [[9,8], [6,7]]]]
+    tree = approx_min_conductance_partitioning(g)
+
+    #tree = [[[[1,2], [[3,4], 5]], [[9,8], [6,7]]]]
     vrg = extract_vrg(g, tree)
 
     vrg_dict = {}
