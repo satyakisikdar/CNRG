@@ -2,7 +2,17 @@
 05/31
 - **Relevant papers**
   - <a href="http://citeseerx.ist.psu.edu/viewdoc/download?doi=10.1.1.220.2503&rep=rep1&type=pdf"> OPAvion: Mining and Visualization in Large Graphs </a>
+    - Pegasus has a large scale eigensolver to find *iteresting* patterns 
   - <a href="http://eda.mmci.uni-saarland.de/pubs/2015/vog-koutra,kang,vreeken,faloutsos-2015-sam.pdf">VOG: Summarizing and Understanding Large Graphs</a>
+    - Summarizes graphs - given a graph, finds set of overlapping subgraphs, to most succintly describe the given graph
+    - Uses MDL to come up with a quality function - a collection $M$ of structures has a description length $L(G, M)$, which is the quality score. 
+    - Use MDL to identify the structure type of the candidates
+    - VoG gives a list of overlapping subgraphs sorted in importance - structures that save the most bits, i.e. achieve best compression
+    - Minimizes $L(M) + L(D | M)$, $L(M)$ - length in bits of description of M, $L(D|M)$ - length in bits of the description of the data when encoded with $M$. Called two-part crude MDL, because it uses both graph and the model. Vocabulary $\Omega=\{fc, nc, fb, nb, ch, st\}$ f, n, c, b, ch, st = full, near, clique, bipartite core, chain, star.  
+    - Each structure $s \in M$ identifies a patch of the adj matrix $A$, known as $area(s, M, A)$ i.e., $(i, j) \in A$ where $i$ and $j$ are in $s$. 
+    - Nodes can overlap, edges are counted only in the first structure that they appear in.
+    - 
+    
   - Reducing large graphs to small supergraphs: a unified approach
   - <a href="https://people.csail.mit.edu/jshun/6886-s18/papers/Liu2018.pdf">Graph Summarization: A Survey</a>
   - <a href="http://reports-archive.adm.cs.cmu.edu/anon/anon/usr/ftp/2015/CMU-CS-15-126.pdf">Exploring and Making Sense of Large Graphs</a>
