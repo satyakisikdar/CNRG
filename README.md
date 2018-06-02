@@ -11,8 +11,10 @@
     - Minimizes $L(M) + L(D | M)$, $L(M)$ - length in bits of description of M, $L(D|M)$ - length in bits of the description of the data when encoded with $M$. Called two-part crude MDL, because it uses both graph and the model. Vocabulary $\Omega=\{fc, nc, fb, nb, ch, st\}$ f, n, c, b, ch, st = full, near, clique, bipartite core, chain, star.  
     - Each structure $s \in M$ identifies a patch of the adj matrix $A$, known as $area(s, M, A)$ i.e., $(i, j) \in A$ where $i$ and $j$ are in $s$. 
     - Nodes can overlap, edges are counted only in the first structure that they appear in.
-    - 
-    
+    - $M$ encodes a part of the matrix $A$, defined by the $area$ of substructures in $M$. So, there is an error $E = M \xor A$. Knowing $M$ and $E$, you can regenerate $A$ losslessly. $L(G, M) = L(M) + L(E)$. 
+    - First step - find subgraphs - either thru Subdue, METIS, or other community detection techniques.
+    - Length of a model $M$ is defined based on #structures and the encoding length per structure. Each clique, bipartite core, star, chain is encoded. 
+    - *GreedyNForget* - consider each structure in $C$ in descending order of quality, as long as the total encoded cost of the model does not increase, include the structure, otherwise reject.
   - Reducing large graphs to small supergraphs: a unified approach
   - <a href="https://people.csail.mit.edu/jshun/6886-s18/papers/Liu2018.pdf">Graph Summarization: A Survey</a>
   - <a href="http://reports-archive.adm.cs.cmu.edu/anon/anon/usr/ftp/2015/CMU-CS-15-126.pdf">Exploring and Making Sense of Large Graphs</a>
