@@ -3,6 +3,7 @@
 - **Relevant papers**
   - <a href="http://citeseerx.ist.psu.edu/viewdoc/download?doi=10.1.1.220.2503&rep=rep1&type=pdf"> OPAvion: Mining and Visualization in Large Graphs </a>
     - Pegasus has a large scale eigensolver to find *iteresting* patterns 
+    
   - <a href="http://eda.mmci.uni-saarland.de/pubs/2015/vog-koutra,kang,vreeken,faloutsos-2015-sam.pdf">VOG: Summarizing and Understanding Large Graphs</a>
     - Summarizes graphs - given a graph, finds set of overlapping subgraphs, to most succintly describe the given graph
     - Uses MDL to come up with a quality function - a collection $M$ of structures has a description length $L(G, M)$, which is the quality score. 
@@ -15,7 +16,17 @@
     - First step - find subgraphs - either thru Subdue, METIS, or other community detection techniques.
     - Length of a model $M$ is defined based on #structures and the encoding length per structure. Each clique, bipartite core, star, chain is encoded. 
     - *GreedyNForget* - consider each structure in $C$ in descending order of quality, as long as the total encoded cost of the model does not increase, include the structure, otherwise reject.
-  - Reducing large graphs to small supergraphs: a unified approach
+    - Tested with Cavemen graphs (n=841, m=~7,500)- two cliques separated by stars
+    
+  - <a href="http://web.eecs.umich.edu/~dkoutra/papers/18_Condense-SNAM.pdf">Reducing large graphs to small supergraphs: a unified approach</a>
+    - Summarizes the structure of a given  network by selecting a small set of its most informative structural patterns 
+    - Searches local structures that optimize MDL - can deal with overlaps - using pre-defined structural patterns - cliques, stars, bipartite cores, chains, *hyperbolic structures* with skewed distributions. 
+    - (a) Uses community detection, (b) then MDL to minimize edge redundancy by the structures, and (c) iterative, divide and conquer policy for reducing selection bias of substructures.
+    - $L(G, M) = L(M) + L(E) + L(O)$, $E$ and $O$ are the error and overlap matrices.
+    - Hyperbolic structures - skewed degree dist, with powerlaw exponent between -0.6 and -1.5.  
+    - They set no of clusters for METIS and SPECTRAL to $\sqrt{\frac{n}{2}}$ as a rule of thumb
+    - Metrics used - (a) Conciseness - compression rates, (b) Minimal redundancy - minimal overlap of supernodes, and (c) Coverage - number of nodes and edges covered by the summaries
+    
   - <a href="https://people.csail.mit.edu/jshun/6886-s18/papers/Liu2018.pdf">Graph Summarization: A Survey</a>
   - <a href="http://reports-archive.adm.cs.cmu.edu/anon/anon/usr/ftp/2015/CMU-CS-15-126.pdf">Exploring and Making Sense of Large Graphs</a>
   - <a href="http://www.vldb.org/pvldb/vol8/p1924-koutra.pdf">Perseus: an interactive large-scale graph mining and visualization tool</a>
