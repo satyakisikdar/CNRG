@@ -28,13 +28,17 @@
     - Metrics used - (a) Conciseness - compression rates, (b) Minimal redundancy - minimal overlap of supernodes, and (c) Coverage - number of nodes and edges covered by the summaries
     
   - <a href="https://people.csail.mit.edu/jshun/6886-s18/papers/Liu2018.pdf">Graph Summarization: A Survey</a>
+    - 
+    
+  - <a href="http://www.cs.umd.edu/hcil/trs/2012-29/2012-29.pdf">Motif Simplication: Improving Network Visualization</a>
+    - Uses 3 motifs - fans, connectors, and cliques  
   - <a href="http://reports-archive.adm.cs.cmu.edu/anon/anon/usr/ftp/2015/CMU-CS-15-126.pdf">Exploring and Making Sense of Large Graphs</a>
   - <a href="http://www.vldb.org/pvldb/vol8/p1924-koutra.pdf">Perseus: an interactive large-scale graph mining and visualization tool</a>
   - <a href="http://vialab.science.uoit.ca/wp-content/papercite-data/pdf/ver2017.pdf">Optimizing hierarchical visualizations with the minimum description length principle</a>
 - **Possible experiments**
   - Planting cliques and other well known structures and adding variable noise to test recoverability 
-- Stretch out current method with graphs - real and with planted partitions 
-- Read Danai Koutra's and related works to figure out experiments to do 
+  - Test out VRG on Cavemen graphs 
+  - Stretch out current method with graphs - real and with planted partitions 
 - Run METIS, and wrap it in the code. 
 -------
 05/24
