@@ -336,6 +336,7 @@ def main():
     # print(tree)
 
     g = nx.MultiDiGraph(g)
+    old_g = g.copy()
 
     tree = approx_min_conductance_partitioning(g, 2)
     print(tree)
@@ -353,7 +354,7 @@ def main():
     for n in range(1, 25):
         new_g = stochastic_vrg(vrg_dict)
         print('new_g (n = {}, m = {})'.format(new_g.order(), new_g.size()))
-        print('input graph degree distribution', nx.degree_histogram(get_graph()))
+        print('input graph degree distribution', nx.degree_histogram(old_g))
         print('output graph degree distribution', nx.degree_histogram(new_g))
 
 
