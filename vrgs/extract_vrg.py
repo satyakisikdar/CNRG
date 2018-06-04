@@ -7,8 +7,8 @@ from gensim.models import Word2Vec
 from scipy.cluster.hierarchy import linkage, to_tree, cophenet
 from scipy.spatial.distance import pdist
 
-import vrgs.node2vec as node2vec
-
+# import vrgs.node2vec as node2vec
+import node2vec 
 
 def get_graph(filename=None):
     if filename is not None:
@@ -320,14 +320,14 @@ def main():
     Driver method for VRG
     :return:
     """
-    g = get_graph('./tmp/dummy.txt')
-    embeddings = n2v_runner(g.copy())
-    tree = get_dendrogram(embeddings)
+    g = get_graph('./tmp/karate.g')
+    # embeddings = n2v_runner(g.copy())
+    # tree = get_dendrogram(embeddings)
+    # print(tree)
+
+    tree = approx_min_conductance_partitioning(g, 4)
     print(tree)
-
-    #tree = approx_min_conductance_partitioning(g, 4)
-    #print(tree)
-
+    return 
     # tree = [[[[1,2], [[3,4], 5]], [[9,8], [6,7]]]]
     vrg = extract_vrg(g, tree)
 
