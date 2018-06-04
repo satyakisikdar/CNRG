@@ -28,7 +28,6 @@
     - Metrics used - (a) Conciseness - compression rates, (b) Minimal redundancy - minimal overlap of supernodes, and (c) Coverage - number of nodes and edges covered by the summaries
     
   - <a href="https://people.csail.mit.edu/jshun/6886-s18/papers/Liu2018.pdf">Graph Summarization: A Survey</a>
-    - 
     
   - <a href="http://www.cs.umd.edu/hcil/trs/2012-29/2012-29.pdf">Motif Simplication: Improving Network Visualization</a>
     - Uses 3 motifs - fans, connectors, and cliques  
