@@ -301,12 +301,14 @@ def approx_min_conductance_partitioning(g, max_k=2):
     if len(node_list) <= max_k:
         return node_list
     print(node_list)
-    g = g.to_undirected()
-    if nx.number_connected_components(g) > 1:
-        g = max(nx.connected_component_subgraphs(g), key=len)
-    if g.order() < 2: # Fiedler vector doesn't work for < 2 nodes.
-        return g.nodes()
-    fiedler_vector = nx.fiedler_vector(g, method='lanczos')
+
+    #TODO we need something for disconnected graphs
+    if not nx.is_weakly_connected(g):
+        for p in nx.weakly_connected_component_subgraphs(g):
+            lvl.append(approx_min_conductance_partitioning(p))
+        return lvl
+
+    fiedler_vector = nx.fiedler_vector(g.to_undirected())
     med = numpy.median(fiedler_vector)
     p1 = []
     p2 = []
@@ -315,8 +317,8 @@ def approx_min_conductance_partitioning(g, max_k=2):
             p1.append(node_list[idx])
         else:
             p2.append(node_list[idx])
-    lvl.append(approx_min_conductance_partitioning(nx.subgraph(g, p1), max_k))
-    lvl.append(approx_min_conductance_partitioning(nx.subgraph(g, p2), max_k))
+    lvl.append(approx_min_conductance_partitioning(nx.subgraph(g, p1)))
+    lvl.append(approx_min_conductance_partitioning(nx.subgraph(g, p2)))
     return [lvl]
 
 
@@ -327,11 +329,13 @@ def main():
     """
     g = get_graph('./tmp/karate.g')
     # g = get_graph('./tmp/lesmis.g')
-    # g = nx.barbell_graph(8, 3)
+    #g = nx.barbell_graph(8, 3)
     # g = nx.DiGraph(g)
     # embeddings = n2v_runner(g.copy())
     # tree = get_dendrogram(embeddings)
     # print(tree)
+
+    g = nx.MultiDiGraph(g)
 
     tree = approx_min_conductance_partitioning(g, 2)
     print(tree)
