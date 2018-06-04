@@ -305,7 +305,7 @@ def approx_min_conductance_partitioning(g, max_k=2):
     #TODO we need something for disconnected graphs
     if not nx.is_weakly_connected(g):
         for p in nx.weakly_connected_component_subgraphs(g):
-            lvl.append(approx_min_conductance_partitioning(p))
+            lvl.append(approx_min_conductance_partitioning(p), max_k)
         return lvl
 
     fiedler_vector = nx.fiedler_vector(g.to_undirected())
@@ -317,8 +317,8 @@ def approx_min_conductance_partitioning(g, max_k=2):
             p1.append(node_list[idx])
         else:
             p2.append(node_list[idx])
-    lvl.append(approx_min_conductance_partitioning(nx.subgraph(g, p1)))
-    lvl.append(approx_min_conductance_partitioning(nx.subgraph(g, p2)))
+    lvl.append(approx_min_conductance_partitioning(nx.subgraph(g, p1), max_k))
+    lvl.append(approx_min_conductance_partitioning(nx.subgraph(g, p2), max_k))
     return [lvl]
 
 
