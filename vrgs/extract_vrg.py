@@ -241,7 +241,7 @@ def stochastic_vrg(vrg):
         # choose a non terminal node at random
         node_sample = r.sample(non_terminals, 1)[0]
         lhs = new_g.node[node_sample]['label']
-        print('Selected node ' + str(node_sample) + ' with label ' + str(lhs))
+        # print('Selected node ' + str(node_sample) + ' with label ' + str(lhs))
 
         rhs = r.sample(vrg[lhs], 1)[0]
 
@@ -301,7 +301,12 @@ def approx_min_conductance_partitioning(g, max_k=2):
     if len(node_list) <= max_k:
         return node_list
     print(node_list)
-    fiedler_vector = nx.fiedler_vector(g.to_undirected())
+    g = g.to_undirected()
+    if nx.number_connected_components(g) > 1:
+        g = max(nx.connected_component_subgraphs(g), key=len)
+    if g.order() < 2: # Fiedler vector doesn't work for < 2 nodes.
+        return g.nodes()
+    fiedler_vector = nx.fiedler_vector(g, method='lanczos')
     med = numpy.median(fiedler_vector)
     p1 = []
     p2 = []
@@ -321,13 +326,15 @@ def main():
     :return:
     """
     g = get_graph('./tmp/karate.g')
+    # g = get_graph('./tmp/lesmis.g')
+    # g = nx.barbell_graph(8, 3)
+    # g = nx.DiGraph(g)
     # embeddings = n2v_runner(g.copy())
     # tree = get_dendrogram(embeddings)
     # print(tree)
 
-    tree = approx_min_conductance_partitioning(g, 4)
+    tree = approx_min_conductance_partitioning(g, 2)
     print(tree)
-    return 
     # tree = [[[[1,2], [[3,4], 5]], [[9,8], [6,7]]]]
     vrg = extract_vrg(g, tree)
 
@@ -341,6 +348,7 @@ def main():
 
     for n in range(1, 25):
         new_g = stochastic_vrg(vrg_dict)
+        print('new_g (n = {}, m = {})'.format(new_g.order(), new_g.size()))
         print('input graph degree distribution', nx.degree_histogram(get_graph()))
         print('output graph degree distribution', nx.degree_histogram(new_g))
 
