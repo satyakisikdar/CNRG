@@ -6,13 +6,15 @@ import pandas as pd
 from gensim.models import Word2Vec
 from scipy.cluster.hierarchy import linkage, to_tree, cophenet
 from scipy.spatial.distance import pdist
-
+from time import time
 # import vrgs.node2vec as node2vec
 import node2vec 
 
 def get_graph(filename=None):
     if filename is not None:
         g = nx.read_edgelist(filename, nodetype=int, create_using=nx.MultiDiGraph())
+        # if nx.number_weakly_connected_components(g) > 0:
+        #     g = max(nx.weakly_connected_component_subgraphs(g), key=len)
     else:
         # g seems to be different than the dummy graph
         g = nx.MultiDiGraph()
@@ -187,10 +189,10 @@ def extract_vrg(g, tree):
             continue
 
         # subtree to be replaced
-        print(subtree)
+        # print(subtree)
 
         sg = g.subgraph(subtree)
-        print(sg.edges())
+        # print(sg.edges())
         boundary_edges = find_boundary_edges(sg, g)
         for direction in range(0, len(boundary_edges)):
             for u, v in boundary_edges[direction]:
@@ -213,7 +215,7 @@ def extract_vrg(g, tree):
                 g.add_edge(u, v)
 
         rhs = generalize_rhs(sg, set(subtree))
-        print(g.nodes(data=True))
+        # print(g.nodes(data=True))
 
         # replace subtree with new_node
         tree[index] = new_node
@@ -227,7 +229,6 @@ def stochastic_vrg(vrg):
     :param vrg: Grammar used to generate
     :return: newly generated graph
     """
-
     node_counter = 1
     non_terminals = set()
     new_g = nx.MultiDiGraph()
@@ -288,7 +289,7 @@ def stochastic_vrg(vrg):
     return new_g
 
 
-def approx_min_conductance_partitioning(g, max_k=2):
+def approx_min_conductance_partitioning(g, max_k):
     """
     Approximate minimum conductance partinioning. I'm using the median method as referenced here:
     http://www.ieor.berkeley.edu/~goldberg/pubs/krishnan-recsys-final2.pdf
@@ -300,7 +301,7 @@ def approx_min_conductance_partitioning(g, max_k=2):
     node_list = g.nodes()
     if len(node_list) <= max_k:
         return node_list
-    print(node_list)
+    # print(node_list)
 
     #TODO we need something for disconnected graphs
     if not nx.is_weakly_connected(g):
@@ -308,7 +309,7 @@ def approx_min_conductance_partitioning(g, max_k=2):
             lvl.append(approx_min_conductance_partitioning(p, max_k))
         return lvl
 
-    fiedler_vector = nx.fiedler_vector(g.to_undirected())
+    fiedler_vector = nx.fiedler_vector(g.to_undirected(), method='lanczos')
     med = numpy.median(fiedler_vector)
     p1 = []
     p2 = []
@@ -327,8 +328,15 @@ def main():
     Driver method for VRG
     :return:
     """
-    g = get_graph('./tmp/karate.g')
+    # g = get_graph('./tmp/karate.g')
     # g = get_graph('./tmp/lesmis.g')
+    # g = get_graph('./tmp/football.g')
+    g = get_graph('./tmp/GrQc.g')
+    # g = get_graph('./tmp/Enron.g')
+    # g = get_graph('./tmp/Slashdot.g')
+    # g = get_graph('./tmp/wikivote.g')
+    # g = get_graph('./tmp/hepth.g')
+
     #g = nx.barbell_graph(8, 3)
     # g = nx.DiGraph(g)
     # embeddings = n2v_runner(g.copy())
@@ -338,10 +346,18 @@ def main():
     g = nx.MultiDiGraph(g)
     old_g = g.copy()
 
-    tree = approx_min_conductance_partitioning(g, 2)
-    print(tree)
-    # tree = [[[[1,2], [[3,4], 5]], [[9,8], [6,7]]]]
+    tree_time = time()
+    k = 2
+    print('k =', k)
+    tree = approx_min_conductance_partitioning(g, k)
+    print('n = {}, m = {}'.format(old_g.order(), old_g.size()))
+    print('tree done in {} sec!'.format(time() - tree_time))
+
+    # print(tree)
+    vrg_time = time()
     vrg = extract_vrg(g, tree)
+    print('VRG extracted in {} sec'.format(time() - vrg_time))
+    print('#VRG rules: {}'.format(len(vrg)))
 
     vrg_dict = {}
     # we need to turn the list into a dict for efficient access to the LHSs
@@ -351,12 +367,26 @@ def main():
         else:
             vrg_dict[lhs].append(rhs)
 
-    for n in range(1, 25):
-        new_g = stochastic_vrg(vrg_dict)
-        print('new_g (n = {}, m = {})'.format(new_g.order(), new_g.size()))
-        print('input graph degree distribution', nx.degree_histogram(old_g))
-        print('output graph degree distribution', nx.degree_histogram(new_g))
 
+    n_list = []
+    m_list = []
+    gen_time_list = []
+
+    for n in range(1, 10):
+        gen_time = time()
+        new_g = stochastic_vrg(vrg_dict)
+        n_list.append(new_g.order())
+        m_list.append(new_g.size())
+        gen_time_list.append(time() - gen_time)
+        # print('old_g (n = {}, m = {})'.format(old_g.order(), old_g.size()))
+        # print('new_g (n = {}, m = {})'.format(new_g.order(), new_g.size()))
+        # print('input graph degree distribution', nx.degree_histogram(old_g))
+        # print('output graph degree distribution', nx.degree_histogram(new_g))
+
+    print('avg stats')
+    print('n = {}, m = {}, gen time = {} sec'.format(round(numpy.mean(n_list), 3),
+                             round(numpy.mean(m_list), 3),
+                              round(numpy.mean(gen_time_list), 3)))
 
 if __name__ == '__main__':
     main()
