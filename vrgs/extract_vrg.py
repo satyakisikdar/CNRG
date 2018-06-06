@@ -7,8 +7,8 @@ from gensim.models import Word2Vec
 from scipy.cluster.hierarchy import linkage, to_tree, cophenet
 from scipy.spatial.distance import pdist
 from time import time
-# import vrgs.node2vec as node2vec
-import node2vec 
+import vrgs.node2vec as node2vec
+# import node2vec
 
 def get_graph(filename=None):
     if filename is not None:
@@ -126,12 +126,12 @@ def find_boundary_edges(sg, g):
     """
     in_edges = list()
     out_edges = list()
-    for n in sg:
+    for n in sg.nodes_iter():
         if g.is_directed():
-            in_edges += g.in_edges(n)
-            out_edges += g.out_edges(n)
+            in_edges.extend(g.in_edges(n))
+            out_edges.extend(g.out_edges(n))
         else:
-            in_edges += g.edges(n)
+            in_edges.extend(g.edges(n))
 
     # remove internal edges from list of boundary_edges
     edge_set = set(sg.edges_iter())
@@ -160,11 +160,11 @@ def generalize_rhs(sg, internal_nodes):
         rhs.add_node(internal_node_counter, sg.node[n])
         nodes[n] = internal_node_counter
         internal_node_counter = chr(ord(internal_node_counter) + 1)
-    for n in [x for x in sg.nodes() if x not in internal_nodes]:
+    for n in [x for x in sg.nodes_iter() if x not in internal_nodes]:
         rhs.add_node(boundary_node_counter, sg.node[n])
         nodes[n] = boundary_node_counter
         boundary_node_counter += 1
-    for u, v, d in sg.edges(data=True):
+    for u, v, d in sg.edges_iter(data=True):
         rhs.add_edge(nodes[u], nodes[v], attr_dict=d)
     return rhs
 
@@ -183,7 +183,7 @@ def extract_vrg(g, tree):
         return vrg
     for index, subtree in enumerate(tree):
         # build the grammar from a left-to-right bottom-up tree ordering (in order traversal)
-        vrg += extract_vrg(g, subtree)
+        vrg.extend(extract_vrg(g, subtree))
         if not isinstance(subtree, list):
             # if we are at a leaf, then we need to backup one level
             continue
@@ -194,7 +194,8 @@ def extract_vrg(g, tree):
         sg = g.subgraph(subtree)
         # print(sg.edges())
         boundary_edges = find_boundary_edges(sg, g)
-        for direction in range(0, len(boundary_edges)):
+
+        for direction in range(len(boundary_edges)):
             for u, v in boundary_edges[direction]:
                 sg.add_edge(u, v, attr_dict={'b': True})
 
@@ -206,7 +207,8 @@ def extract_vrg(g, tree):
         g.add_node(new_node, attr_dict={'label': lhs})
 
         # rewire new_node
-        for direction in range(0, len(boundary_edges)):
+        subtree = set(subtree)
+        for direction in range(len(boundary_edges)):
             for u, v in boundary_edges[direction]:
                 if u in subtree:
                     u = new_node
@@ -219,7 +221,7 @@ def extract_vrg(g, tree):
 
         # replace subtree with new_node
         tree[index] = new_node
-        vrg += [(lhs, rhs)]
+        vrg.append((lhs, rhs))
     return vrg
 
 
@@ -256,7 +258,7 @@ def stochastic_vrg(vrg):
 
         nodes = {}
 
-        for n, d in rhs.nodes(data=True):
+        for n, d in rhs.nodes_iter(data=True):
             if isinstance(n, str):
                 new_node = node_counter
                 nodes[n] = new_node
@@ -270,7 +272,7 @@ def stochastic_vrg(vrg):
         r.shuffle(broken_edges[1])
 
         # wire the broken edge
-        for u, v, d in rhs.edges(data=True):
+        for u, v, d in rhs.edges_iter(data=True):
             if 'b' in d:
                 # boundry edge
                 if isinstance(u, str):
@@ -328,10 +330,11 @@ def main():
     Driver method for VRG
     :return:
     """
+    # g = get_graph()
     # g = get_graph('./tmp/karate.g')
     # g = get_graph('./tmp/lesmis.g')
-    # g = get_graph('./tmp/football.g')
-    g = get_graph('./tmp/GrQc.g')
+    g = get_graph('./tmp/football.g')
+    # g = get_graph('./tmp/GrQc.g')
     # g = get_graph('./tmp/Enron.g')
     # g = get_graph('./tmp/Slashdot.g')
     # g = get_graph('./tmp/wikivote.g')
