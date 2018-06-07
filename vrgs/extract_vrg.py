@@ -248,6 +248,8 @@ def stochastic_vrg(vrg):
 
         rhs = r.sample(vrg[lhs], 1)[0]
 
+        # TODO inflate here
+
         singleton = nx.MultiDiGraph()
         singleton.add_node(node_sample)
         broken_edges = find_boundary_edges(singleton, new_g)
