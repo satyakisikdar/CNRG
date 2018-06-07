@@ -302,6 +302,7 @@ def approx_min_conductance_partitioning(g, max_k):
     lvl = list()
     node_list = g.nodes()
     if len(node_list) <= max_k:
+        assert(len(node_list) > 0)
         return node_list
     # print(node_list)
 
@@ -309,19 +310,27 @@ def approx_min_conductance_partitioning(g, max_k):
     if not nx.is_weakly_connected(g):
         for p in nx.weakly_connected_component_subgraphs(g):
             lvl.append(approx_min_conductance_partitioning(p, max_k))
+        assert (len(lvl) > 0)
         return lvl
 
     fiedler_vector = nx.fiedler_vector(g.to_undirected(), method='lanczos')
-    med = numpy.median(fiedler_vector)
     p1 = []
     p2 = []
+    fiedler_dict = {}
     for idx, n in enumerate(fiedler_vector):
-        if n > med:
+        fiedler_dict[idx] = n
+    fiedler_vector = [(k, fiedler_dict[k]) for k in sorted(fiedler_dict, key=fiedler_dict.get, reverse=True)]
+    half_idx = len(fiedler_vector)//2 # floor division
+    for idx, _ in fiedler_vector:
+        if half_idx > 0:
             p1.append(node_list[idx])
         else:
             p2.append(node_list[idx])
+        half_idx -= 1 # decrement so halfway through it crosses 0 and puts into p2
+
     lvl.append(approx_min_conductance_partitioning(nx.subgraph(g, p1), max_k))
     lvl.append(approx_min_conductance_partitioning(nx.subgraph(g, p2), max_k))
+    assert (len(lvl) > 0)
     return [lvl]
 
 
@@ -333,12 +342,13 @@ def main():
     # g = get_graph()
     # g = get_graph('./tmp/karate.g')
     # g = get_graph('./tmp/lesmis.g')
-    g = get_graph('./tmp/football.g')
+    # g = get_graph('./tmp/football.g')
     # g = get_graph('./tmp/GrQc.g')
     # g = get_graph('./tmp/Enron.g')
     # g = get_graph('./tmp/Slashdot.g')
     # g = get_graph('./tmp/wikivote.g')
-    # g = get_graph('./tmp/hepth.g')
+    g = get_graph('./tmp/hepth.g')
+
 
     #g = nx.barbell_graph(8, 3)
     # g = nx.DiGraph(g)
@@ -350,7 +360,7 @@ def main():
     old_g = g.copy()
 
     tree_time = time()
-    k = 2
+    k = 3
     print('k =', k)
     tree = approx_min_conductance_partitioning(g, k)
     print('n = {}, m = {}'.format(old_g.order(), old_g.size()))
