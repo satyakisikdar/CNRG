@@ -152,7 +152,7 @@ def generalize_rhs(sg, internal_nodes):
     :return: generalized subgraph.
     """
     nodes = {}
-    internal_node_counter = 'a'  # maybe change to a1, a2, ..., ak?
+    internal_node_counter = 'a'
     boundary_node_counter = 0
     rhs = nx.MultiDiGraph()
 
@@ -160,10 +160,12 @@ def generalize_rhs(sg, internal_nodes):
         rhs.add_node(internal_node_counter, sg.node[n])
         nodes[n] = internal_node_counter
         internal_node_counter = chr(ord(internal_node_counter) + 1)
+
     for n in [x for x in sg.nodes_iter() if x not in internal_nodes]:
         rhs.add_node(boundary_node_counter, sg.node[n])
         nodes[n] = boundary_node_counter
         boundary_node_counter += 1
+
     for u, v, d in sg.edges_iter(data=True):
         rhs.add_edge(nodes[u], nodes[v], attr_dict=d)
     return rhs
@@ -225,6 +227,45 @@ def extract_vrg(g, tree):
     return vrg
 
 
+def contract_grammar(vrg):
+    """
+    Contracts the right hand side of VRGs into Isolated boundary nodes if possible.
+    :param vrg: list of VRG rules
+    :return: reduced VRG
+    """
+    mapping = {}  # mapping of isolated nodes for each rule
+
+    for i, rule in enumerate(vrg):
+        lhs, g_rhs = rule # LHS has a tuple (x, y): x is #incoming boundary edges, y is #outgoing boundary edges, RHS is a MultiDiGraph
+        for node in g_rhs.nodes_iter():
+            if isinstance(node, int) and g_rhs.degree(node) == 1:  # removing the isolated nodes
+                if i not in mapping:
+                    mapping[i] = set()
+                mapping[i].add(node)
+
+    print(mapping)  # mapping now has the bounary nodes which can be contracted to a single node 'I'
+
+    reduced_vrg = []
+
+    for i, rule in enumerate(vrg):
+        lhs, g_rhs = rule
+        if i not in mapping:   # the rule cannot be contracted
+            reduced_vrg.append(rule)
+        else:
+            new_g_rhs = g_rhs.copy()
+            new_g_rhs.add_node('I')  # the new isolated node
+            # rewire the edges to old isolated boundary nodes to the new isolated node
+            for iso_node in mapping[i]:
+                new_g_rhs.remove_node(iso_node)
+                for u in g_rhs.predecessors_iter(iso_node):
+                    new_g_rhs.add_edge(u, 'I', attr_dict={'b': True})
+                for v in g_rhs.successors_iter(iso_node):
+                    new_g_rhs.add_edge('I', v, attr_dict={'b': True})
+            reduced_vrg.append((lhs, new_g_rhs))
+    # print(reduced_vrg)
+    return reduced_vrg
+
+
 def stochastic_vrg(vrg):
     """
     Create a new graph from the VRG at random
@@ -276,7 +317,7 @@ def stochastic_vrg(vrg):
         # wire the broken edge
         for u, v, d in rhs.edges_iter(data=True):
             if 'b' in d:
-                # boundry edge
+                # boundary edge
                 if isinstance(u, str):
                     # outedges
                     choice = r.sample(broken_edges[1], 1)[0]
@@ -308,7 +349,6 @@ def approx_min_conductance_partitioning(g, max_k):
         return node_list
     # print(node_list)
 
-    #TODO we need something for disconnected graphs
     if not nx.is_weakly_connected(g):
         for p in nx.weakly_connected_component_subgraphs(g):
             lvl.append(approx_min_conductance_partitioning(p, max_k))
@@ -341,7 +381,7 @@ def main():
     Driver method for VRG
     :return:
     """
-    # g = get_graph()
+    g = get_graph()
     # g = get_graph('./tmp/karate.g')
     # g = get_graph('./tmp/lesmis.g')
     # g = get_graph('./tmp/football.g')
@@ -349,7 +389,7 @@ def main():
     # g = get_graph('./tmp/Enron.g')
     # g = get_graph('./tmp/Slashdot.g')
     # g = get_graph('./tmp/wikivote.g')
-    g = get_graph('./tmp/hepth.g')
+    # g = get_graph('./tmp/hepth.g')
 
 
     #g = nx.barbell_graph(8, 3)
@@ -373,6 +413,11 @@ def main():
     vrg = extract_vrg(g, tree)
     print('VRG extracted in {} sec'.format(time() - vrg_time))
     print('#VRG rules: {}'.format(len(vrg)))
+
+    reduced_vrg = contract_grammar(vrg)
+    print(reduced_vrg)
+    return
+
 
     vrg_dict = {}
     # we need to turn the list into a dict for efficient access to the LHSs
