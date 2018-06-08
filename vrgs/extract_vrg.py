@@ -233,36 +233,52 @@ def contract_grammar(vrg):
     :param vrg: list of VRG rules
     :return: reduced VRG
     """
-    mapping = {}  # mapping of isolated nodes for each rule
-
-    for i, rule in enumerate(vrg):
-        lhs, g_rhs = rule # LHS has a tuple (x, y): x is #incoming boundary edges, y is #outgoing boundary edges, RHS is a MultiDiGraph
-        for node in g_rhs.nodes_iter():
-            if isinstance(node, int) and g_rhs.degree(node) == 1:  # removing the isolated nodes
-                if i not in mapping:
-                    mapping[i] = set()
-                mapping[i].add(node)
-
-    print(mapping)  # mapping now has the bounary nodes which can be contracted to a single node 'I'
 
     reduced_vrg = []
 
     for i, rule in enumerate(vrg):
-        lhs, g_rhs = rule
-        if i not in mapping:   # the rule cannot be contracted
-            reduced_vrg.append(rule)
-        else:
-            new_g_rhs = g_rhs.copy()
-            new_g_rhs.add_node('I')  # the new isolated node
-            # rewire the edges to old isolated boundary nodes to the new isolated node
-            for iso_node in mapping[i]:
-                new_g_rhs.remove_node(iso_node)
-                for u in g_rhs.predecessors_iter(iso_node):
-                    new_g_rhs.add_edge(u, 'I', attr_dict={'b': True})
-                for v in g_rhs.successors_iter(iso_node):
-                    new_g_rhs.add_edge('I', v, attr_dict={'b': True})
-            reduced_vrg.append((lhs, new_g_rhs))
+        mapping = []  # mapping of isolated nodes for each rule
+        lhs, g_rhs = rule # LHS has a tuple (x, y): x is #incoming boundary edges, y is #outgoing boundary edges, RHS is a MultiDiGraph
+        for node in g_rhs.nodes_iter():
+            if isinstance(node, int) and g_rhs.degree(node) == 1:  # removing the isolated nodes
+                mapping.append(node)
+
+        print(mapping)  # mapping now has the bounary nodes which can be contracted to a single node 'I'
+
+        if len(mapping) == 0:
+            reduced_vrg.append((lhs, g_rhs))
+            continue
+
+        new_g_rhs = g_rhs.copy()
+        new_g_rhs.add_node('I')  # the new isolated node
+        # rewire the edges to old isolated boundary nodes to the new isolated node
+        for iso_node in mapping:
+            new_g_rhs.remove_node(iso_node)
+            for u in g_rhs.predecessors_iter(iso_node):
+                new_g_rhs.add_edge(u, 'I', attr_dict={'b': True})
+            for v in g_rhs.successors_iter(iso_node):
+                new_g_rhs.add_edge('I', v, attr_dict={'b': True})
+
+        new_g_rhs_renumbered = nx.MultiDiGraph()
+        mapper = {}
+        cnt = 0
+        for v, d in new_g_rhs.nodes_iter(data=True):
+            if isinstance(v, int) and v not in mapper:
+                mapper[v] = cnt
+                cnt += 1
+            else:
+                mapper[v] = v
+            new_g_rhs_renumbered.add_node(mapper[v], attr_dict=d)
+        for u, v, d in new_g_rhs.edges_iter(data=True):
+            new_g_rhs_renumbered.add_edge(mapper[u], mapper[v], attr_dict=d)
+
+        g_old = nx.convert_node_labels_to_integers(new_g_rhs)
+        g_new = nx.convert_node_labels_to_integers(new_g_rhs_renumbered)
+        assert(nx.is_isomorphic(g_old, g_new))
+
+        reduced_vrg.append((lhs, new_g_rhs_renumbered))
     # print(reduced_vrg)
+
     return reduced_vrg
 
 
@@ -288,7 +304,25 @@ def stochastic_vrg(vrg):
         # print('Selected node ' + str(node_sample) + ' with label ' + str(lhs))
 
         rhs = r.sample(vrg[lhs], 1)[0]
+        max_v = -1
+        for v in rhs.nodes_iter():
+            if isinstance(v, int):
+                max_v = max(v, max_v)
+        max_v += 1
+        for u, v in rhs.edges():
+            if u == 'I':
+                rhs.remove_edge(u,v)
+                rhs.add_edge(max_v, v, attr_dict={'b': True})
+                max_v += 1
+            elif v == 'I':
+                rhs.remove_edge(u, v)
+                rhs.add_edge(u, max_v, attr_dict={'b': True})
+                max_v += 1
 
+
+        if rhs.has_node('I'):
+            assert(rhs.degree('I') == 0)
+            rhs.remove_node('I')
         # TODO inflate here
 
         singleton = nx.MultiDiGraph()
@@ -384,7 +418,7 @@ def main():
     g = get_graph()
     # g = get_graph('./tmp/karate.g')
     # g = get_graph('./tmp/lesmis.g')
-    # g = get_graph('./tmp/football.g')
+    g = get_graph('./tmp/football.g')
     # g = get_graph('./tmp/GrQc.g')
     # g = get_graph('./tmp/Enron.g')
     # g = get_graph('./tmp/Slashdot.g')
@@ -402,7 +436,7 @@ def main():
     old_g = g.copy()
 
     tree_time = time()
-    k = 3
+    k = 4
     print('k =', k)
     tree = approx_min_conductance_partitioning(g, k)
     print('n = {}, m = {}'.format(old_g.order(), old_g.size()))
@@ -414,10 +448,7 @@ def main():
     print('VRG extracted in {} sec'.format(time() - vrg_time))
     print('#VRG rules: {}'.format(len(vrg)))
 
-    reduced_vrg = contract_grammar(vrg)
-    print(reduced_vrg)
-    return
-
+    vrg = contract_grammar(vrg)
 
     vrg_dict = {}
     # we need to turn the list into a dict for efficient access to the LHSs
@@ -432,21 +463,21 @@ def main():
     m_list = []
     gen_time_list = []
 
-    for n in range(1, 10):
+    for n in range(1, 500):
         gen_time = time()
         new_g = stochastic_vrg(vrg_dict)
         n_list.append(new_g.order())
         m_list.append(new_g.size())
         gen_time_list.append(time() - gen_time)
         # print('old_g (n = {}, m = {})'.format(old_g.order(), old_g.size()))
-        # print('new_g (n = {}, m = {})'.format(new_g.order(), new_g.size()))
+        print('new_g (n = {}, m = {})'.format(new_g.order(), new_g.size()))
         # print('input graph degree distribution', nx.degree_histogram(old_g))
         # print('output graph degree distribution', nx.degree_histogram(new_g))
 
     print('avg stats')
-    print('n = {}, m = {}, gen time = {} sec'.format(round(numpy.mean(n_list), 3),
+    print('n = {}, m = {}, std = {}, gen time = {} sec'.format(round(numpy.mean(n_list), 3),
                              round(numpy.mean(m_list), 3),
-                              round(numpy.mean(gen_time_list), 3)))
+                              round(numpy.std(n_list), 3), round(numpy.mean(gen_time_list), 3)))
 
 if __name__ == '__main__':
     main()
