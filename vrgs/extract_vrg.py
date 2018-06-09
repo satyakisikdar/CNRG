@@ -1,7 +1,7 @@
 import random as r
 
 import networkx as nx
-import numpy
+import numpy as np
 import pandas as pd
 from gensim.models import Word2Vec
 from scipy.cluster.hierarchy import linkage, to_tree, cophenet
@@ -9,6 +9,7 @@ from scipy.spatial.distance import pdist
 from time import time
 import vrgs.node2vec as node2vec
 # import node2vec
+from itertools import combinations
 
 def get_graph(filename=None):
     if filename is not None:
@@ -243,7 +244,7 @@ def contract_grammar(vrg):
             if isinstance(node, int) and g_rhs.degree(node) == 1:  # removing the isolated nodes
                 mapping.append(node)
 
-        print(mapping)  # mapping now has the bounary nodes which can be contracted to a single node 'I'
+        # print(mapping)  # mapping now has the bounary nodes which can be contracted to a single node 'I'
 
         if len(mapping) == 0:
             reduced_vrg.append((lhs, g_rhs))
@@ -282,7 +283,45 @@ def contract_grammar(vrg):
     return reduced_vrg
 
 
-def stochastic_vrg(vrg):
+def deduplicate_vrg(vrg):
+    """
+    De-duplicates the grammar by merging the isomorphic RHSs
+    :param vrg_dict: dictionary of LHS -> list of RHSs
+    :return: de-duplicated vrgs, weight of the rules
+    """
+    weight = {}
+    dedup_vrg = {}
+    iso_count = 0
+    for rule in vrg:
+        lhs, rhs = rule
+        if lhs not in dedup_vrg:  # first occurence, just put it in
+            dedup_vrg[lhs] = [rhs]
+            weight[lhs] = [1]
+        else:   # check for isomorphism
+            g_new = nx.convert_node_labels_to_integers(rhs)
+            existing_rhs = dedup_vrg[lhs].copy()  # need to save the lhs to prevent looping over new ones
+            isomorphic = False
+            for i, g_old in enumerate(existing_rhs):
+                g_o = nx.convert_node_labels_to_integers(g_old)
+                if nx.is_isomorphic(g_new, g_o):
+                    iso_count += 1
+                    weight[lhs][i] += 1
+                    isomorphic = True
+                    break
+            if not isomorphic:  # new rule
+                dedup_vrg[lhs].append(rhs)
+                weight[lhs].append(1)
+    print('#Isomorphic rules: ', iso_count)
+    # print('weights:', weight)
+    # normalize weights
+    for lhs, rhs in weight.items():
+        sum_ = sum(weight[lhs])
+        weight[lhs] = [x / sum_ for x in weight[lhs]]
+
+    return dedup_vrg, weight
+
+
+def stochastic_vrg(vrg, weight=None):
     """
     Create a new graph from the VRG at random
     :param vrg: Grammar used to generate
@@ -301,9 +340,11 @@ def stochastic_vrg(vrg):
         # choose a non terminal node at random
         node_sample = r.sample(non_terminals, 1)[0]
         lhs = new_g.node[node_sample]['label']
-        # print('Selected node ' + str(node_sample) + ' with label ' + str(lhs))
 
-        rhs = r.sample(vrg[lhs], 1)[0]
+        rhs_idx = int(np.random.choice(range(len(vrg[lhs])), size=1, p=weight[lhs]))
+        rhs = vrg[lhs][rhs_idx]
+        # print('Selected node ' + str(node_sample) + ' with label ' + str(lhs))
+        # rhs = r.sample(vrg[lhs], 1)[0] ## Replace with funkier sampling
         max_v = -1
         for v in rhs.nodes_iter():
             if isinstance(v, int):
@@ -323,7 +364,6 @@ def stochastic_vrg(vrg):
         if rhs.has_node('I'):
             assert(rhs.degree('I') == 0)
             rhs.remove_node('I')
-        # TODO inflate here
 
         singleton = nx.MultiDiGraph()
         singleton.add_node(node_sample)
@@ -415,10 +455,10 @@ def main():
     Driver method for VRG
     :return:
     """
-    g = get_graph()
+    # g = get_graph()
     # g = get_graph('./tmp/karate.g')
-    # g = get_graph('./tmp/lesmis.g')
-    g = get_graph('./tmp/football.g')
+    g = get_graph('./tmp/lesmis.g')
+    # g = get_graph('./tmp/football.g')
     # g = get_graph('./tmp/GrQc.g')
     # g = get_graph('./tmp/Enron.g')
     # g = get_graph('./tmp/Slashdot.g')
@@ -426,17 +466,16 @@ def main():
     # g = get_graph('./tmp/hepth.g')
 
 
-    #g = nx.barbell_graph(8, 3)
+    # g = nx.barbell_graph(8, 3)
     # g = nx.DiGraph(g)
     # embeddings = n2v_runner(g.copy())
     # tree = get_dendrogram(embeddings)
     # print(tree)
 
-    g = nx.MultiDiGraph(g)
     old_g = g.copy()
 
     tree_time = time()
-    k = 4
+    k = 3
     print('k =', k)
     tree = approx_min_conductance_partitioning(g, k)
     print('n = {}, m = {}'.format(old_g.order(), old_g.size()))
@@ -449,23 +488,15 @@ def main():
     print('#VRG rules: {}'.format(len(vrg)))
 
     vrg = contract_grammar(vrg)
-
-    vrg_dict = {}
-    # we need to turn the list into a dict for efficient access to the LHSs
-    for lhs, rhs in vrg:
-        if lhs not in vrg_dict:
-            vrg_dict[lhs] = [rhs]
-        else:
-            vrg_dict[lhs].append(rhs)
-
+    vrg_dict, weight = deduplicate_vrg(vrg)
 
     n_list = []
     m_list = []
     gen_time_list = []
 
-    for n in range(1, 500):
+    for n in range(10):
         gen_time = time()
-        new_g = stochastic_vrg(vrg_dict)
+        new_g = stochastic_vrg(vrg_dict, weight)
         n_list.append(new_g.order())
         m_list.append(new_g.size())
         gen_time_list.append(time() - gen_time)
@@ -474,10 +505,12 @@ def main():
         # print('input graph degree distribution', nx.degree_histogram(old_g))
         # print('output graph degree distribution', nx.degree_histogram(new_g))
 
-    print('avg stats')
-    print('n = {}, m = {}, std = {}, gen time = {} sec'.format(round(numpy.mean(n_list), 3),
-                             round(numpy.mean(m_list), 3),
-                              round(numpy.std(n_list), 3), round(numpy.mean(gen_time_list), 3)))
+
+    print('stats: n = {}, m = {}, std(n) = {}, gen time = {} sec'.format(round(np.mean(n_list), 3),
+                                                            round(np.mean(m_list), 3),
+                                                            round(np.std(n_list), 3),
+                                                            round(np.mean(gen_time_list), 3)))
+
 
 if __name__ == '__main__':
     main()
