@@ -8,35 +8,48 @@ from scipy.cluster.hierarchy import linkage, to_tree, cophenet
 from scipy.spatial.distance import pdist
 from time import time
 import vrgs.node2vec as node2vec
+from bitarray import bitarray
 import math
+from collections import Counter
+import string
+import matplotlib.pyplot as plt
 # import node2vec
 
 
 def get_graph(filename=None):
     if filename is not None:
-        g = nx.read_edgelist(filename, nodetype=int, create_using=nx.MultiDiGraph())
+        g = nx.read_edgelist(filename, nodetype=int, create_using=nx.MultiGraph())
         # if nx.number_weakly_connected_components(g) > 0:
         #     g = max(nx.weakly_connected_component_subgraphs(g), key=len)
     else:
         # g seems to be different than the dummy graph
-        g = nx.MultiDiGraph()
-        g.add_edge(1, 3)
-        g.add_edge(2, 1)
-        g.add_edge(2, 5)
-        g.add_edge(3, 4)
-        g.add_edge(4, 5)
-        g.add_edge(4, 2)
-        g.add_edge(4, 9)
-        g.add_edge(5, 1)
-        g.add_edge(5, 3)
+        g = nx.MultiGraph()
 
-        g.add_edge(6, 2)
-        g.add_edge(6, 7)
-        g.add_edge(6, 8)
-        g.add_edge(6, 9)
-        g.add_edge(7, 8)
-        g.add_edge(9, 8)
-        g.add_edge(9, 6)
+        g.add_edges_from([(1, 2), (1, 4), (1, 5),
+                          (2, 3), (2, 5), (2, 6),
+                          (3, 4), (3, 5), (3, 9),
+                          (4, 5),
+                          (6, 7), (6, 8), (6, 9),
+                          (7, 8), (7, 9),
+                          (8, 9)])
+
+        # g.add_edge(1, 3)
+        # g.add_edge(2, 1)
+        # g.add_edge(2, 5)
+        # g.add_edge(3, 4)
+        # g.add_edge(4, 5)
+        # g.add_edge(4, 2)
+        # g.add_edge(4, 9)
+        # g.add_edge(5, 1)
+        # g.add_edge(5, 3)
+        #
+        # g.add_edge(6, 2)
+        # g.add_edge(6, 7)
+        # g.add_edge(6, 8)
+        # g.add_edge(6, 9)
+        # g.add_edge(7, 8)
+        # g.add_edge(9, 8)
+        # g.add_edge(9, 6)
     return g
 
 
@@ -117,29 +130,28 @@ def get_dendrogram(embeddings, method='best', metric='euclidean'):
     return [print_tree(root)]
 
 
-def find_boundary_edges(sg, g):
+def find_boundary_edges(g, nbunch):
     """
     Collect all of the boundary edges (i.e., the edges
     that connect the subgraph to the original graph)
 
-    :param sg: subgraph to remove from graph
     :param g: whole graph
+    :param nbunch: set of nodes in the subgraph
     :return: boundary edges tuple of [0] indeges and [1] outedges. If undirected graph, then outedges will be empty
     """
-    in_edges = list()
-    out_edges = list()
-    for n in sg.nodes_iter():
-        if g.is_directed():
-            in_edges.extend(g.in_edges(n))
-            out_edges.extend(g.out_edges(n))
-        else:
-            in_edges.extend(g.edges(n))
-
-    # remove internal edges from list of boundary_edges
-    edge_set = set(sg.edges_iter())
-    in_edges = [x for x in in_edges if x not in edge_set]
-    out_edges = [x for x in out_edges if x not in edge_set]
-
+    nbunch = set(nbunch)
+    if g.is_directed():
+        in_edges = [(u, v) for v in nbunch
+                    for u in g.predecessors_iter(v)
+                    if u not in nbunch]
+        out_edges = [(u, v) for u in nbunch
+                     for v in g.successors_iter(u)
+                     if v not in nbunch]
+    else:
+        in_edges = [(u, v) for u in nbunch
+                    for v in g.neighbors_iter(u)
+                    if v not in nbunch]
+        out_edges = []
     return in_edges, out_edges
 
 
@@ -156,7 +168,8 @@ def generalize_rhs(sg, internal_nodes):
     nodes = {}
     internal_node_counter = 'a'
     boundary_node_counter = 0
-    rhs = nx.MultiDiGraph()
+    # rhs = nx.MultiDiGraph()
+    rhs = nx.MultiGraph()
 
     for n in internal_nodes:
         rhs.add_node(internal_node_counter, sg.node[n])
@@ -197,7 +210,7 @@ def extract_vrg(g, tree):
 
         sg = g.subgraph(subtree)
         # print(sg.edges())
-        boundary_edges = find_boundary_edges(sg, g)
+        boundary_edges = find_boundary_edges(g, subtree)
 
         for direction in range(len(boundary_edges)):
             for u, v in boundary_edges[direction]:
@@ -256,12 +269,16 @@ def contract_grammar(vrg):
         # rewire the edges to old isolated boundary nodes to the new isolated node
         for iso_node in mapping:
             new_rhs.remove_node(iso_node)
-            for u in rhs.predecessors_iter(iso_node):
-                new_rhs.add_edge(u, 'I', attr_dict={'b': True})
-            for v in rhs.successors_iter(iso_node):
-                new_rhs.add_edge('I', v, attr_dict={'b': True})
-
-        new_rhs_renumbered = nx.MultiDiGraph()
+            if rhs.is_directed():
+                for u in rhs.predecessors_iter(iso_node):
+                    new_rhs.add_edge(u, 'I', attr_dict={'b': True})
+                for v in rhs.successors_iter(iso_node):
+                    new_rhs.add_edge('I', v, attr_dict={'b': True})
+            else:
+                for u in rhs.neighbors_iter(iso_node):
+                    new_rhs.add_edge(u, 'I', attr_dict={'b': True})
+        new_rhs_renumbered = nx.MultiGraph()
+        # new_rhs_renumbered = nx.MultiDiGraph()
         mapper = {}
         cnt = 0
         for v, d in new_rhs.nodes_iter(data=True):
@@ -276,7 +293,7 @@ def contract_grammar(vrg):
 
         g_old = nx.convert_node_labels_to_integers(new_rhs)
         g_new = nx.convert_node_labels_to_integers(new_rhs_renumbered)
-        assert(nx.is_isomorphic(g_old, g_new))
+        assert(nx.faster_could_be_isomorphic(g_old, g_new))
 
         reduced_vrg.append((lhs, new_rhs_renumbered))
     # print(reduced_vrg)
@@ -288,52 +305,55 @@ def deduplicate_vrg(vrg):
     """
     De-duplicates the grammar by merging the isomorphic RHSs
     :param vrg: dictionary of LHS -> list of RHSs
-    :return: de-duplicated vrgs, weight of the rules
+    :return: de-duplicated vrgs, with the frequency of the rules
     """
-    weight = {}
     dedup_vrg = {}
     iso_count = 0
     for rule in vrg:
         lhs, rhs = rule
+        rhs = nx.freeze(rhs)
         if lhs not in dedup_vrg:  # first occurence, just put it in
-            dedup_vrg[lhs] = [rhs]
-            weight[lhs] = [1]
+            dedup_vrg[lhs] = [[rhs, 1]]  # first item of the rhs is the graph, the second is its frequency
         else:   # check for isomorphism
             g_new = nx.convert_node_labels_to_integers(rhs)
-            existing_rhs = dedup_vrg[lhs].copy()  # need to save the lhs to prevent looping over new ones
+            existing_rhs = list(map(lambda x: x[0], dedup_vrg[lhs]))  # need to save the lhs to prevent looping over new ones
             isomorphic = False
             for i, g_old in enumerate(existing_rhs):
                 g_o = nx.convert_node_labels_to_integers(g_old)
                 if nx.is_isomorphic(g_new, g_o):
                     iso_count += 1
-                    weight[lhs][i] += 1
+                    dedup_vrg[lhs][i][1] += 1
+                    # print('iso:', lhs, i)
                     isomorphic = True
                     break
             if not isomorphic:  # new rule
-                dedup_vrg[lhs].append(rhs)
-                weight[lhs].append(1)
-    print('#Isomorphic rules: ', iso_count)
-    # print('weights:', weight)
+                dedup_vrg[lhs].append([rhs, 1])
+    print(iso_count, 'isomorphic rules')
+    # print(dedup_vrg)
 
-    return dedup_vrg, weight
+    return dedup_vrg
 
 
-def stochastic_vrg(vrg, weight):
+def stochastic_vrg(vrg):
     """
     Create a new graph from the VRG at random
-    :param vrg: Grammar used to generate
-    :param weight: count of RHS occurences for a given LHS
+    :param vrg: Grammar used to generate with the frequency of rules
     :return: newly generated graph
     """
 
     # normalize weights to probabilities
-    for lhs, rhs in weight.items():
-        sum_ = sum(weight[lhs])
-        weight[lhs] = [x / sum_ for x in weight[lhs]]
+    # for lhs, rhs in vrg.items():
+    #     sum_ = sum(map(lambda x: x[1], rhs))
+    #     # vrg[lhs] = [x / sum_ for x in weight[lhs]]
+    #     for i, rule in enumerate(rhs):
+    #         rhs[i][1] = rule[1] / sum_
+    print(vrg)
+    return
 
     node_counter = 1
     non_terminals = set()
-    new_g = nx.MultiDiGraph()
+    new_g = nx.MultiGraph()
+    # new_g = nx.MultiDiGraph()
 
     new_g.add_node(0, attr_dict={'label': (0, 0)})
     non_terminals.add(0)
@@ -354,7 +374,7 @@ def stochastic_vrg(vrg, weight):
             if isinstance(v, int):
                 max_v = max(v, max_v)
         max_v += 1
-        for u, v in rhs.edges():
+        for u, v in rhs.edges_iter():
             if u == 'I':
                 rhs.remove_edge(u, v)
                 rhs.add_edge(max_v, v, attr_dict={'b': True})
@@ -368,7 +388,8 @@ def stochastic_vrg(vrg, weight):
             assert(rhs.degree('I') == 0)
             rhs.remove_node('I')
 
-        singleton = nx.MultiDiGraph()
+        singleton = nx.MultiGraph()
+        # singleton = nx.MultiDiGraph()
         singleton.add_node(node_sample)
         broken_edges = find_boundary_edges(singleton, new_g)
         assert (len(broken_edges[0]) == lhs[0] and len(broken_edges[1]) == lhs[1])
@@ -425,12 +446,17 @@ def approx_min_conductance_partitioning(g, max_k):
         assert(len(node_list) > 0)
         return node_list
     # print(node_list)
-
-    if not nx.is_weakly_connected(g):
-        for p in nx.weakly_connected_component_subgraphs(g):
-            lvl.append(approx_min_conductance_partitioning(p, max_k))
-        assert (len(lvl) > 0)
-        return lvl
+    if g.is_directed():
+        if not nx.is_weakly_connected(g):
+            for p in nx.weakly_connected_component_subgraphs(g):
+                lvl.append(approx_min_conductance_partitioning(p, max_k))
+            assert (len(lvl) > 0)
+            return lvl
+    else:
+        if not nx.is_connected(g):
+            for p in nx.connected_component_subgraphs(g):
+                lvl.append(approx_min_conductance_partitioning(p, max_k))
+            return lvl
 
     fiedler_vector = nx.fiedler_vector(g.to_undirected(), method='lanczos')
     p1 = []
@@ -453,6 +479,13 @@ def approx_min_conductance_partitioning(g, max_k):
     return [lvl]
 
 
+def gamma_code(n):
+    binary_n = format(n, 'b')
+    binary_offset = binary_n[1::]
+    unary_length = bitarray(True for i in range(len(binary_offset))) + bitarray([False])
+    return bitarray(unary_length) + bitarray(binary_offset)
+
+
 def nCr(n, r):
     """
     Returns the value of n choose r.
@@ -470,6 +503,8 @@ def nbits(x):
     :param x: argument
     :return: number of bits required to encode x in binary
     """
+    if x == 0:
+        return 0
     return math.ceil(math.log(x, 2))
 
 
@@ -477,8 +512,8 @@ def graph_mdl(g, l_u=2):
     """
     Get MDL for graphs
     Reference: http://citeseerx.ist.psu.edu/viewdoc/download?doi=10.1.1.407.6721&rep=rep1&type=pdf
-    :param graph g
-    :param number of unique labels in the graph - general graphs - 2, RHS graphs - 4
+    :param g: graph
+    :param l_u: number of unique labels in the graph - general graphs - 2, RHS graphs - 4
     :return: Length in bits to represent graph G in binary
     """
     n = g.order()
@@ -510,7 +545,32 @@ def graph_mdl(g, l_u=2):
     return mdl_v + mdl_r + mdl_e
 
 
-def vrg_mdl(vrg, weight):
+def graph_mdl_v2(g, l_u=2):
+    """
+    Get MDL for graphs
+    Reference: http://citeseerx.ist.psu.edu/viewdoc/download?doi=10.1.1.407.6721&rep=rep1&type=pdf
+    :param graph g
+    :param number of unique labels in the graph - general graphs - 2, RHS graphs - 4
+    :return: Length in bits to represent graph G in binary
+    """
+    n = g.order()
+
+    # encoding the nodes
+    mdl_v = nbits(n) + n * nbits(l_u)
+
+    # encoding rows of matrix
+    adj_mat = nx.to_numpy_matrix(g)
+
+    mdl_r = 0
+    for i in range(n):
+        for j in range(n):
+            a_ij = int(adj_mat[i, j])
+            mdl_r += len(gamma_code(a_ij + 1))
+
+    return mdl_v + mdl_r
+
+
+def vrg_mdl(vrg):
     """
     MDL encoding for VRGs
 
@@ -518,9 +578,8 @@ def vrg_mdl(vrg, weight):
     LHS -> RHS_1 | RHS_2 | RHS_3 | ...
     represented in vrg as
     (x, y) -> [MultiDiGraph_1, MultiDiGraph_2, MultiDiGraph_3, ..]
-
+    Must have a way to encode the edge - internal & boundary and node types
     :param vrg: vertex replacement grammar
-    :param weight: frequency of a rule
     :return: MDL for vrg
     """
     mdl = 0
@@ -538,9 +597,9 @@ def vrg_mdl(vrg, weight):
         max_x = max(max_x, x)
         max_y = max(max_y, y)
         max_rhs_count = max(max_rhs_count, len(rhs))
-        max_rhs_weight = max(max_rhs_weight, max(weight[lhs]))
-        for g in rhs:
-            all_rhs_graph_mdl += graph_mdl(g, l_u=4)  # 2 kinds of edges (boundary, non-boundary), 2 kinds of nodes (int/ext)
+        max_rhs_weight = max(max_rhs_weight, max(map(lambda x: x[1], rhs)))
+        for g, _ in rhs:
+            all_rhs_graph_mdl += graph_mdl(g, l_u=2)   # 2 kinds of edges (boundary, non-boundary), 2 kinds of nodes (int/ext)
     # 1. number of rules
     mdl += nbits(num_rules)
 
@@ -563,37 +622,107 @@ def vrg_mdl(vrg, weight):
 
     # TODO: 3. The parse tree for lossless decomposition - dunno how tho!
 
-
     return mdl
+
+
+def get_rhs_stats(vrg):
+    rhs_counts = Counter()
+    graph_set = set()
+
+    for graphs in vrg.values():
+        for g, count in graphs:
+            # int_nodes_g = list(filter(lambda x: str(x) in string.ascii_lowercase, g.nodes_iter()))
+            # g = nx.subgraph(g, int_nodes_g)
+            g = nx.convert_node_labels_to_integers(g)
+            g = nx.freeze(g)
+            if len(graph_set) == 0:
+                graph_set.add(g)
+                rhs_counts[g] = 1
+                continue
+
+            for h in graph_set.copy():
+                # int_nodes_h = list(filter(lambda x: str(x) in string.ascii_lowercase, h.nodes_iter()))
+                # h = nx.subgraph(h, int_nodes_h)
+                h = nx.convert_node_labels_to_integers(h)
+                h = nx.freeze(h)
+                if not nx.faster_could_be_isomorphic(g, h):
+                    graph_set.add(g)
+                    rhs_counts[g] = 1
+                else:
+                    print('iso!')
+                    rhs_counts[h] += 1
+                    break
+    for g in graph_set:
+        print('n = {} m = {}'.format(g.order(), g.size()))
+    print(rhs_counts)
+
+
+def get_freq_rhs(vrg):
+    rule_counts = Counter()
+
+    for _, rhs_list in vrg.items():
+        for rhs, freq in rhs_list:
+            if freq not in rule_counts:
+                rule_counts[freq] = []
+            rule_counts[freq].append(rhs)
+    print(sorted(rule_counts.items(), reverse=True)[: 10])
+
+    # plt.ylabel('#rules')
+    # plt.xlabel('frequency')
+    # # plt.xticks(range(min(rule_counts.keys()), math.ceil(max(rule_counts.keys())) + 1))
+    # plt.bar(rule_counts.keys(), list(map(len, rule_counts.values())))
+    # plt.show()
+
+    print('Top 5 most frequent rules')
+    for freq, rules in sorted(rule_counts.items(), reverse=True)[: 20]:
+        if freq == 1:
+            break
+        for rule in rules:
+            print('{}: {}'.format(freq, rule.edges()))
+
+    # print('Top 5 infrequent rules')
+    # for freq, rules in sorted(rule_counts.items())[: 5]:
+    #     # if freq == 1:
+    #     #     break
+    #     for rule in rules:
+    #         print('{}:  n = {}, m = {}'.format(freq, rule.order(), rule.size()))
+
 
 def main():
     """
     Driver method for VRG
     :return:
     """
-    # g = get_graph()
-    # g = get_graph('./tmp/karate.g')
-    # g = get_graph('./tmp/lesmis.g')
-    g = get_graph('./tmp/football.g')
-    # g = get_graph('./tmp/GrQc.g')
-    # g = get_graph('./tmp/Enron.g')
-    # g = get_graph('./tmp/Slashdot.g')
-    # g = get_graph('./tmp/wikivote.g')
-    # g = get_graph('./tmp/hepth.g')
+    g = get_graph()
+    # g = get_graph('./tmp/karate.g')             # 34    78
+    # g = get_graph('./tmp/lesmis.g')           # 77    254
+    # g = get_graph('./tmp/football.g')         # 115   613
+    # g = get_graph('./tmp/eucore.g')           # 1,005 25,571
+    # g = get_graph('./tmp/bitcoin_alpha.g')    # 3,783 24,186
+    # g = get_graph('./tmp/bitcoin_alpha.g')    # 3,783 24,186
+    # g = get_graph('./tmp/GrQc.g')             # 5,242 14,496
+    # g = get_graph('./tmp/bitcoin_otc.g')      # 5,881 35,592
+    # g = get_graph('./tmp/gnutella.g')         # 6,301 20,777
+    # g = get_graph('./tmp/wikivote.g')         # 7,115 103,689
+    # g = get_graph('./tmp/hepth.g')            # 27,770 352,807
+    # g = get_graph('./tmp/Enron.g')            # 36,692 183,831
+
+
     # g = nx.DiGraph(g)
     # embeddings = n2v_runner(g.copy())
     # tree = get_dendrogram(embeddings)
     # print(tree)
-    g_mdl = graph_mdl(g)
-    print('Graph MDL', g_mdl)
 
-    old_g = g.copy()
+    # print('Graph MDL', graph_mdl(g), graph_mdl_v2(g))
+
+    # old_g = g.copy()
 
     tree_time = time()
-    k = 3
+
+    k = 4
     print('k =', k)
+    print('n = {}, m = {}'.format(g.order(), g.size()))
     tree = approx_min_conductance_partitioning(g, k)
-    print('n = {}, m = {}'.format(old_g.order(), old_g.size()))
     print('tree done in {} sec!'.format(time() - tree_time))
 
     # print(tree)
@@ -602,13 +731,16 @@ def main():
     print('VRG extracted in {} sec'.format(time() - vrg_time))
     print('#VRG rules: {}'.format(len(vrg)))
 
+
+
     vrg = contract_grammar(vrg)
-    vrg_dict, weight = deduplicate_vrg(vrg)
+    vrg_dict = deduplicate_vrg(vrg)
+    # get_rhs_stats(vrg_dict)
+    get_freq_rhs(vrg_dict)
 
-    v_mdl = vrg_mdl(vrg_dict, weight)
-    print('VRG MDL', v_mdl)
+    # print('VRG MDL', vrg_mdl(vrg_dict))
+    # get_rhs_stats(vrg_dict)
     return
-
 
     n_list = []
     m_list = []
@@ -624,7 +756,6 @@ def main():
         print('new_g (n = {}, m = {})'.format(new_g.order(), new_g.size()))
         # print('input graph degree distribution', nx.degree_histogram(old_g))
         # print('output graph degree distribution', nx.degree_histogram(new_g))
-
 
     print('stats: n = {}, m = {}, std(n) = {}, gen time = {} sec'.format(round(np.mean(n_list), 3),
                                                             round(np.mean(m_list), 3),
