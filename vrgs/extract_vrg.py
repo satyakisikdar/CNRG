@@ -186,7 +186,7 @@ def generalize_rhs(sg, internal_nodes):
     return rhs
 
 
-def extract_vrg(g, tree):
+def extract_vrg(g, tree, lvl):
     """
     Extract a vertex replacement grammar (specifically an ed-NRC grammar) from a graph given a dendrogram tree
 
@@ -200,13 +200,13 @@ def extract_vrg(g, tree):
         return vrg
     for index, subtree in enumerate(tree):
         # build the grammar from a left-to-right bottom-up tree ordering (in order traversal)
-        vrg.extend(extract_vrg(g, subtree))
+        vrg.extend(extract_vrg(g, subtree, lvl+1))
         if not isinstance(subtree, list):
             # if we are at a leaf, then we need to backup one level
             continue
 
         # subtree to be replaced
-        # print(subtree)
+        print(subtree, lvl)
 
         sg = g.subgraph(subtree)
         # print(sg.edges())
@@ -238,7 +238,7 @@ def extract_vrg(g, tree):
 
         # replace subtree with new_node
         tree[index] = new_node
-        vrg.append((lhs, rhs))
+        vrg.append((lhs, rhs, lvl))
     return vrg
 
 
@@ -253,7 +253,7 @@ def contract_grammar(vrg):
 
     for i, rule in enumerate(vrg):
         mapping = []  # mapping of isolated nodes for each rule
-        lhs, rhs = rule  # LHS has a tuple (x, y): x is #incoming boundary edges, y is #outgoing boundary edges, RHS is a MultiDiGraph
+        lhs, rhs, lvl = rule  # LHS has a tuple (x, y): x is #incoming boundary edges, y is #outgoing boundary edges, RHS is a MultiDiGraph
         for node in rhs.nodes_iter():
             if isinstance(node, int) and rhs.degree(node) == 1:  # removing the isolated nodes
                 mapping.append(node)
@@ -476,7 +476,7 @@ def approx_min_conductance_partitioning(g, max_k):
     lvl.append(approx_min_conductance_partitioning(nx.subgraph(g, p1), max_k))
     lvl.append(approx_min_conductance_partitioning(nx.subgraph(g, p2), max_k))
     assert (len(lvl) > 0)
-    return [lvl]
+    return lvl
 
 
 def gamma_code(n):
@@ -719,7 +719,7 @@ def main():
 
     tree_time = time()
 
-    k = 4
+    k = 3
     print('k =', k)
     print('n = {}, m = {}'.format(g.order(), g.size()))
     tree = approx_min_conductance_partitioning(g, k)
@@ -727,7 +727,7 @@ def main():
 
     # print(tree)
     vrg_time = time()
-    vrg = extract_vrg(g, tree)
+    vrg = extract_vrg(g, [tree], 1)
     print('VRG extracted in {} sec'.format(time() - vrg_time))
     print('#VRG rules: {}'.format(len(vrg)))
 
