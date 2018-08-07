@@ -323,7 +323,7 @@ def contract_grammar(vrg):
 
     for i, rule in enumerate(vrg):
         mapping = []  # mapping of isolated nodes for each rule
-        lhs, rhs, lvl = rule  # LHS has a tuple (x, y): x is #incoming boundary edges, y is #outgoing boundary edges, RHS is a MultiDiGraph
+        lhs, rhs = rule  # LHS has a tuple (x, y): x is #incoming boundary edges, y is #outgoing boundary edges, RHS is a MultiDiGraph
         for node in rhs.nodes_iter():
             if isinstance(node, int) and rhs.degree(node) == 1:  # removing the isolated nodes
                 mapping.append(node)
@@ -548,13 +548,35 @@ def approx_min_conductance_partitioning(g, max_k):
             p2.append(node_list[idx])
         half_idx -= 1  # decrement so halfway through it crosses 0 and puts into p2
 
-    # sg1 = g.subgraph(p1)
-    # sg2 = g.subgraph(p2)
+    sg1 = g.subgraph(p1)
+    sg2 = g.subgraph(p2)
+    f1, f2 = False, False
+
+    # Hack to check and fix non connected subgraphs
+    if not nx.is_connected(sg1):
+        f1 = True
+        #maxsg1 = max(nx.connected_component_subgraphs(sg1), key = len)
+        for sg in sorted(nx.connected_component_subgraphs(sg1), key=len, reverse=True)[1:]:
+            p2.extend(sg.nodes())
+            for n in sg.nodes():
+                p1.remove(n)
+    if not nx.is_connected(sg2):
+        f2 = True
+        #maxsg2 = max(nx.connected_component_subgraphs(sg2), key = len)
+        for sg in sorted(nx.connected_component_subgraphs(sg2), key=len, reverse=True)[1:]:
+            p1.extend(sg.nodes())
+            for n in sg.nodes():
+                p2.remove(n)
+
+    if f1:
+        sg1 = g.subgraph(p1)
+    if f2:
+        sg2 = g.subgraph(p2)
 
     # assert nx.is_connected(sg1) and nx.is_connected(sg2), "subgraphs not connected in cond"
 
-    lvl.append(approx_min_conductance_partitioning(g.subgraph(p1), max_k))
-    lvl.append(approx_min_conductance_partitioning(g.subgraph(p2), max_k))
+    lvl.append(approx_min_conductance_partitioning(sg1, max_k))
+    lvl.append(approx_min_conductance_partitioning(sg2, max_k))
     assert (len(lvl) > 0)
     return lvl
 
@@ -796,7 +818,7 @@ def rule_coverage_info():
         lhs, rhs, lvl, edges, f = item
         lvl = max_lvl - lvl
 
-        if lvl == 15:
+        if lvl == 8:
             print(rhs.edges())
             print()
 
@@ -834,7 +856,7 @@ def rule_coverage_info():
     # plt.legend(loc='best')
     # plt.show()
 
-    ## Plot of level-wise rule MDL
+    # # Plot of level-wise rule MDL
     # avg_mdl_lvl = dict((k, np.mean(v)) for k, v in mdl_lvl.items())
     #
     # yerr = [np.std(v) for _, v in sorted(avg_mdl_lvl.items())]
@@ -858,23 +880,22 @@ def rule_coverage_info():
 
 
 
-    ## pairwise intersection of coverage of all rules
+    # # pairwise intersection of coverage of all rules
     # cov_mat = np.zeros(shape=(len(rule_coverage), len(rule_coverage)))
     #
     # for i, item1 in enumerate(rule_coverage):
-    #     _, rhs_stuff1 = item1
-    #     _, edges1, _ = rhs_stuff1
+    #     _, _, _, edges1, _ = item1
     #     j = i
-    #     for _, rhs_stuff2 in rule_coverage[i: ]:
-    #         _, edges2, _ = rhs_stuff2
+    #     for item2 in rule_coverage[i: ]:
+    #         __, _, _, edges2, _ = item2
     #         cov_mat[i, j] = jaccard(edges1, edges2)
     #         cov_mat[j, i] = cov_mat[i, j]
     #         j += 1
     #
     # mask = np.zeros_like(cov_mat, dtype=np.bool)
     # mask[np.triu_indices_from(mask)] = True
-    # # sns.heatmap(coverage_matrix, mask=mask, vmin=0, vmax=1, cmap='Reds')
-    # sns.clustermap(cov_mat, standard_scale=1)
+    # sns.heatmap(cov_mat, mask=mask, vmin=0, vmax=1, cmap='Reds')
+    # # sns.clustermap(cov_mat, standard_scale=1)
     # plt.show()
 
 
@@ -922,15 +943,15 @@ def main():
     vrg = extract_vrg(g, [tree], 1)
     print('VRG extracted in {} sec'.format(time() - vrg_time))
     print('#VRG rules: {}'.format(len(vrg)))
-    rule_coverage_info()
+    # rule_coverage_info()
     #
-    # vrg = contract_grammar(vrg)
-    # vrg_dict = deduplicate_vrg(vrg)
+    vrg = contract_grammar(vrg)
+    vrg_dict = deduplicate_vrg(vrg)
     # # get_rhs_stats(vrg_dict)
     # get_freq_rhs(vrg_dict)
 
-    # print('VRG MDL', vrg_mdl(vrg_dict))
-    # get_rhs_stats(vrg_dict)
+    print('VRG MDL', vrg_mdl(vrg_dict))
+    get_rhs_stats(vrg_dict)
     return
 
     n_list = []
