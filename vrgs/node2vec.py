@@ -1,5 +1,8 @@
 import numpy as np
 import random
+import pandas as pd
+import networkx as nx
+from gensim.models import Word2Vec
 
 
 class Graph:
@@ -147,3 +150,20 @@ def alias_draw(J, q):
         return kk
     else:
         return J[kk]
+
+def learn_embeddings(walks, filename='./tmp/temp.emb'):
+    """
+    Learn embeddings by optimizing the Skipgram objective using SGD.
+    """
+    walks = [list(map(str, walk)) for walk in walks]
+    model = Word2Vec(walks, size=128, window=10, min_count=0, sg=1, workers=8, iter=1)
+    model.wv.save_word2vec_format(filename)  # TODO: keep in memory, dont write to file...
+
+
+def get_embeddings(emb_filename='./tmp/temp.emb'):
+    """
+    g is undirected for the time being
+    """
+    df = pd.read_csv(emb_filename, skiprows=1, sep=' ', header=None)  # maybe switch to Numpy read file functions
+    return df.as_matrix()
+
