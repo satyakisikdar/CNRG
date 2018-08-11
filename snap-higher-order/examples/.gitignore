@@ -1,4 +1,0 @@
-*/*.dot
-!*/Makefile
-*/.DS_Store
-*/*.dSYM
