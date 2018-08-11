@@ -15,14 +15,9 @@ import vrgs.globals as globals
 import vrgs.partitions as partitions
 import vrgs.full_info as full_info
 
-def get_graph(filename=None):
-    if filename is not None:
-        g = nx.read_edgelist(filename, nodetype=int, create_using=nx.MultiGraph())
-        if nx.number_connected_components(g) > 0:
-            g = max(nx.connected_component_subgraphs(g), key=len)
-    else:
+def get_graph(filename='sample'):
+    if filename == 'sample':
         g = nx.MultiGraph()
-
         g.add_edges_from([(1, 2), (1, 3), (1, 5),
                           (2, 4), (2, 5), (2, 7),
                           (3, 4), (3, 5),
@@ -30,23 +25,14 @@ def get_graph(filename=None):
                           (6, 7), (6, 8), (6, 9),
                           (7, 8), (7, 9),
                           (8, 9)])
-
-        # g.add_edge(1, 3)
-        # g.add_edge(2, 1)
-        # g.add_edge(2, 5)
-        # g.add_edge(3, 4)
-        # g.add_edge(4, 5)
-        # g.add_edge(4, 2)
-        # g.add_edge(4, 9)
-        # g.add_edge(5, 1)
-        # g.add_edge(5, 3)
-        # g.add_edge(6, 2)
-        # g.add_edge(6, 7)
-        # g.add_edge(6, 8)
-        # g.add_edge(6, 9)
-        # g.add_edge(7, 8)
-        # g.add_edge(9, 8)
-        # g.add_edge(9, 6)
+    elif filename == 'BA':
+        g = nx.barabasi_albert_graph(10, 2, seed=42)
+        g = nx.MultiGraph(g)
+    else:
+        g = nx.read_edgelist(filename, nodetype=int, create_using=nx.MultiGraph())
+        if not nx.is_connected(g):
+            g = max(nx.connected_component_subgraphs(g), key=len)
+    g = nx.convert_node_labels_to_integers(g)
     return g
 
 
@@ -78,7 +64,7 @@ def deduplicate_rules(vrg_rules):
 
     uniq_rules = []
     [uniq_rules.extend(v) for v in lhs_dict.values()]
-    return uniq_rules
+    return uniq_rules, lhs_dict
 
 
 def main():
@@ -86,13 +72,13 @@ def main():
     Driver method for VRG
     :return:
     """
-    global original_graph
     # g = get_graph()
+    # g = get_graph('BA')
     # g = get_graph('./tmp/karate.g')           # 34    78
-    g = get_graph('./tmp/lesmis.g')           # 77    254
+    # g = get_graph('./tmp/lesmis.g')           # 77    254
     # g = get_graph('./tmp/football.g')         # 115   613
     # g = get_graph('./tmp/eucore.g')           # 1,005 25,571
-    # g = get_graph('./tmp/bitcoin_alpha.g')    # 3,783 24,186
+    g = get_graph('./tmp/bitcoin_alpha.g')    # 3,783 24,186
     # g = get_graph('./tmp/GrQc.g')             # 5,242 14,496
     # g = get_graph('./tmp/bitcoin_otc.g')      # 5,881 35,592
     # g = get_graph('./tmp/gnutella.g')         # 6,301 20,777
@@ -119,9 +105,16 @@ def main():
     print('#VRG rules: {}'.format(len(vrg_rules)))
 
 
-    uniq_rules = deduplicate_rules(vrg_rules)
-    print(uniq_rules)
-
+    uniq_rules, rule_dict = deduplicate_rules(vrg_rules)  # rule_dict is dictionary keyed in by lhs
+    # print(uniq_rules)
+    error_count = 0
+    for _ in range(10):
+        h = full_info.generate_graph(rule_dict)
+        if h == -1:
+            error_count += 1
+        else:
+            print('n = {}, m = {}'.format(h.order(), h.size()))
+    print('{} errors'.format(error_count))
     return
 
 

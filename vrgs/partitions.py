@@ -19,28 +19,21 @@ def approx_min_conductance_partitioning(g, max_k):
     :param max_k: upper bound of number of nodes allowed in the leaves
     :return: a dendrogram
     """
-    lvl = list()
+    lvl = []
     node_list = g.nodes()
     if len(node_list) <= max_k:
-        assert(len(node_list) > 0)
+        assert len(node_list) > 0
         return node_list
 
-    if g.is_directed():
-        if not nx.is_weakly_connected(g):
-            for p in nx.weakly_connected_component_subgraphs(g):
-                lvl.append(approx_min_conductance_partitioning(p, max_k))
-            assert (len(lvl) > 0)
-            return lvl
-    else:
-        if not nx.is_connected(g):
-            for p in nx.connected_component_subgraphs(g):
-                lvl.append(approx_min_conductance_partitioning(p, max_k))
-            assert  len(lvl) > 0
-            return lvl
+    if not nx.is_connected(g):
+        for p in nx.connected_component_subgraphs(g):
+            lvl.append(approx_min_conductance_partitioning(p, max_k))
+        assert len(lvl) > 0
+        return lvl
 
     assert nx.is_connected(g), "g is not connected in cond"
 
-    fiedler_vector = nx.fiedler_vector(g, method='lobpcg')
+    fiedler_vector = nx.fiedler_vector(g, method='lanczos')
     p1 = []
     p2 = []
     fiedler_dict = {}
@@ -75,13 +68,15 @@ def approx_min_conductance_partitioning(g, max_k):
             for n in sg.nodes_iter():
                 p2.remove(n)
 
-    if f1:
+    if f1 or f2:
         sg1 = g.subgraph(p1)
-    if f2:
         sg2 = g.subgraph(p2)
+
+    assert nx.is_connected(sg1) and nx.is_connected(sg2), "subgraphs are not connected in cond"
 
     lvl.append(approx_min_conductance_partitioning(sg1, max_k))
     lvl.append(approx_min_conductance_partitioning(sg2, max_k))
+
     assert (len(lvl) > 0)
     return lvl
 
