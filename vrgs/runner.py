@@ -120,8 +120,6 @@ def main():
     print('tree done in {} sec!'.format(time() - tree_time))
 
     vrg_time = time()
-    # vrg_rules = full_info.extract_vrg(g, tree=[tree], lvl=0)  # root is at level 0
-    # vrg_rules = part_info.extract_vrg(g, tree=[tree], lvl=0)
     vrg_rules = extract_vrg(g, tree=[tree], lvl=0)
 
     print('VRG extracted in {} sec'.format(time() - vrg_time))
@@ -133,8 +131,6 @@ def main():
     error_count = 0
     for i in range(10):
         gen_time = time()
-        # h = full_info.generate_graph(rule_dict)
-        # h = part_info.generate_graph(rule_dict)
         h = generate_graph(rule_dict)
         if h == -1:
             error_count += 1
