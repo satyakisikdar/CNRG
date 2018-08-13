@@ -15,6 +15,7 @@ import vrgs.globals as globals
 import vrgs.partitions as partitions
 import vrgs.full_info as full_info
 import vrgs.part_info as part_info
+import vrgs.no_info as no_info
 
 def get_graph(filename='sample'):
     if filename == 'sample':
@@ -85,8 +86,28 @@ def main():
     # g = get_graph('./tmp/hepth.g')            # 27,770 352,807
     # g = get_graph('./tmp/Enron.g')            # 36,692 183,831
 
-
     globals.original_graph = g.copy()
+
+    # for using no boundary information, set both flags to False
+    FULL_INFO = False
+    PART_INFO = True
+
+    if FULL_INFO:   # ensure FULL_INFO is True
+        print('Using FULL boundary information!\n')
+        extract_vrg = full_info.extract_vrg
+        generate_graph = full_info.generate_graph
+
+    elif PART_INFO:  # ensure PART_INFO is True and FULL_INFO is False
+        print('Using PARTIAL boundary information!\n')
+        extract_vrg = part_info.extract_vrg
+        generate_graph = part_info.generate_graph
+
+    else:  # ensure both TRUE_INFO and PART_INFO are False
+        print('Using NO boundary information!\n')
+        extract_vrg = no_info.extract_vrg
+        generate_graph = no_info.generate_graph
+
+
     tree_time = time()
 
     k = 4
@@ -100,7 +121,8 @@ def main():
 
     vrg_time = time()
     # vrg_rules = full_info.extract_vrg(g, tree=[tree], lvl=0)  # root is at level 0
-    vrg_rules = part_info.extract_vrg(g, tree=[tree], lvl=0)
+    # vrg_rules = part_info.extract_vrg(g, tree=[tree], lvl=0)
+    vrg_rules = extract_vrg(g, tree=[tree], lvl=0)
 
     print('VRG extracted in {} sec'.format(time() - vrg_time))
     print('#VRG rules: {}'.format(len(vrg_rules)))
@@ -109,15 +131,16 @@ def main():
     # print(uniq_rules)
 
     error_count = 0
-    for i in range(5):
+    for i in range(10):
         gen_time = time()
         # h = full_info.generate_graph(rule_dict)
-        h = part_info.generate_graph(rule_dict)
+        # h = part_info.generate_graph(rule_dict)
+        h = generate_graph(rule_dict)
         if h == -1:
             error_count += 1
         else:
             print('{}) n = {}, m = {}, time = {} sec'.format(i+1, h.order(), h.size(), time() - gen_time))
-    print('{} errors'.format(error_count))
+    print('{} generation errors'.format(error_count))
     print('total time: {} sec'.format(time() - tree_time))
     return
 

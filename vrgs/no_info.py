@@ -1,7 +1,7 @@
 """
-Partial info extraction and generation
+No info extraction and generation
 
-Partial boundary information containing node level info on boundary degree
+No boundary information is stored.
 """
 
 import networkx as nx
@@ -10,31 +10,10 @@ import numpy as np
 from vrgs.Rule import Rule
 from vrgs.globals import find_boundary_edges
 
-
-def set_boundary_degrees(g, sg):
-    """
-    Find the nunber of boundary edges that each node participate in.
-    This is stored as a node level attribute - 'b_deg' in nodes in g that are part of nbunch
-
-    :param g: whole graph
-    :param sg: the subgraph
-    :return: nothing
-    """
-    boundary_degree = {}
-
-    for u in sg.nodes_iter():
-        boundary_degree[u] = 0
-        for v in g.neighbors_iter(u):
-            if not sg.has_node(v):
-                boundary_degree[u] += g.number_of_edges(u, v)   # for a multi-graph
-
-    nx.set_node_attributes(sg, 'b_deg', boundary_degree)
-
-
 def extract_vrg(g, tree, lvl):
     """
     Extract a vertex replacement grammar (specifically an ed-NRC grammar) from a graph given a dendrogram tree
-    Stores only partial boundary information, specifically only the boundary degree
+    Stores no boundary info
 
     :param g: graph to extract from
     :param tree: dendrogram with nodes at the bottom.
@@ -57,7 +36,6 @@ def extract_vrg(g, tree, lvl):
         # print(subtree, lvl)
 
         sg = g.subgraph(subtree)
-        set_boundary_degrees(g, sg)
         boundary_edges = find_boundary_edges(g, subtree)
 
         # print('st:', subtree, nbunch)
@@ -92,9 +70,16 @@ def extract_vrg(g, tree, lvl):
         rule_list.append(rule)
     return rule_list
 
+
 def generate_graph(rule_dict):
     """
     Create a new graph from the VRG at random
+    The generator breaks if the number of broken edges != lhs label of non-terminal.
+    Possible work-arounds: 1. return the graph generated until that point, 2. report an error,
+    3. make sure that the degree of non-terminals are always equal to their LHS labels
+
+    Right now, it chooses option 2.
+
     :param rule_dict: List of unique VRG rules
     :return: newly generated graph
     """
@@ -125,6 +110,10 @@ def generate_graph(rule_dict):
 
         # print('broken edges: ', broken_edges)
 
+        if len(broken_edges) != lhs:
+            # print('generation error')
+            return -1
+
         assert len(broken_edges) == lhs
 
         new_g.remove_node(node_sample)
@@ -140,28 +129,18 @@ def generate_graph(rule_dict):
                 non_terminals.add(new_node)
             node_counter += 1
 
-
         # randomly assign broken edges to boundary edges
         random.shuffle(broken_edges)
 
         # randomly joining the new boundary edges from the RHS to the rest of the graph - uniformly at random
-        for n, d in rhs.graph.nodes_iter(data=True):
-            num_boundary_edges = d['b_deg']
-            if num_boundary_edges == 0:  # there are no boundary edges incident to that node
-                continue
-
-            assert len(broken_edges) >= num_boundary_edges
-
-            edge_candidates = broken_edges[: num_boundary_edges]   # picking the first num_broken edges
-            broken_edges = broken_edges[num_boundary_edges: ]    # removing them from future consideration
-
-            for u, v in edge_candidates:  # each edge is either (node_sample, v) or (u, node_sample)
-                if u == node_sample:
-                    u = nodes[n]
-                else:
-                    v = nodes[n]
-                # print('adding broken edge ({}, {})'.format(u, v))
-                new_g.add_edge(u, v)
+        for u, v in broken_edges:
+            n = random.sample(rhs.internal_nodes, 1)[0]
+            if u == node_sample:
+                u = nodes[n]
+            else:
+                v = nodes[n]
+            # print('adding boundary edge ({}, {})'.format(u, v))
+            new_g.add_edge(u, v)
 
 
         # adding the rhs to the new graph
@@ -169,4 +148,5 @@ def generate_graph(rule_dict):
             # print('adding RHS internal edge ({}, {})'.format(nodes[u], nodes[v]))
             new_g.add_edge(nodes[u], nodes[v])
     return new_g
+
 

@@ -9,25 +9,8 @@ import random
 import numpy as np
 import vrgs.globals as globals
 from vrgs.Rule import Rule
+from vrgs.globals import find_boundary_edges
 
-
-def find_boundary_edges(g, nbunch):
-    """
-    Collect all of the boundary edges (i.e., the edges
-    that connect the subgraph to the original graph)
-
-    :param g: whole graph
-    :param nbunch: set of nodes in the subgraph
-    :return: boundary edges
-    """
-    nbunch = set(nbunch)
-    boundary_edges = []
-    for u, v in g.edges_iter():
-        if u in nbunch and v not in nbunch:
-            boundary_edges.append((u, v))
-        elif u not in nbunch and v in nbunch:
-            boundary_edges.append((u, v))
-    return boundary_edges
 
 def deduplicate_edges(edges):
     """
@@ -220,9 +203,9 @@ def generate_graph(rule_dict):
         # wire the broken edge
         for u, v, d in rhs.graph.edges_iter(data=True):
             if 'b' in d:  # (u, v) is a boundary edge, so either u is latin or v is.
-                choice = random.sample(broken_edges, 1)[0]   # sample one broken edge randomly
+                choice = random.sample(broken_edges, 1)[0]  # sample one broken edge randomly
                 broken_edges.remove(choice)  # remove that from future considerations
-                # choice = broken_edges.pop()  # pop is so much faster
+                # choice = broken_edges.pop()  # pop is so much faster - I think we don't really need randomness here.
                 if isinstance(u, str):  # u is internal
                     u = nodes[u]   # replace u with the node_number
                     if choice[0] == node_sample:   # we don't want to re-insert the same node that we just removed.

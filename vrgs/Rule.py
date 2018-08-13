@@ -58,6 +58,7 @@ class Rule:
             mapping[n] = boundary_node_counter
             boundary_node_counter += 1
         self.graph = nx.relabel_nodes(self.graph, mapping=mapping)
+        self.internal_nodes = {mapping[n] for n in self.internal_nodes}
 
     def contract_rhs(self):
         """
