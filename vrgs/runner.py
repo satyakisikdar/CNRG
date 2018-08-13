@@ -14,6 +14,7 @@ import networkx as nx
 import vrgs.globals as globals
 import vrgs.partitions as partitions
 import vrgs.full_info as full_info
+import vrgs.part_info as part_info
 
 def get_graph(filename='sample'):
     if filename == 'sample':
@@ -32,7 +33,7 @@ def get_graph(filename='sample'):
         g = nx.read_edgelist(filename, nodetype=int, create_using=nx.MultiGraph())
         if not nx.is_connected(g):
             g = max(nx.connected_component_subgraphs(g), key=len)
-    g = nx.convert_node_labels_to_integers(g)
+        g = nx.convert_node_labels_to_integers(g)
     return g
 
 
@@ -40,31 +41,29 @@ def deduplicate_rules(vrg_rules):
     """
     Deduplicates the list of VRG rules. Two rules are 'equal' if they have the same LHS
     :param vrg_rules: list of Rule objects
-    :return: uniq_rules: list of unique Rules with updated frequencies
+    :return: rule_dict: list of unique Rules with updated frequencies
     """
-    lhs_dict = {}
+    rule_dict = {}
     iso_count = 0
 
     for rule in vrg_rules:
-        if rule.lhs not in lhs_dict:   # first occurence of a LHS
-            lhs_dict[rule.lhs] = []
+        if rule.lhs not in rule_dict:   # first occurence of a LHS
+            rule_dict[rule.lhs] = []
 
         isomorphic = False
-        for existing_rule in lhs_dict[rule.lhs]:
+        for existing_rule in rule_dict[rule.lhs]:
             if existing_rule == rule:  # isomorphic
                 existing_rule.frequency += 1
                 isomorphic = True
                 iso_count += 1
                 break # since the new rule can only be isomorphic to exactly 1 existing rule
         if not isomorphic:
-            lhs_dict[rule.lhs].append(rule)
+            rule_dict[rule.lhs].append(rule)
 
     if iso_count > 0:
         print('{} isomorphic rules'.format(iso_count))
 
-    uniq_rules = []
-    [uniq_rules.extend(v) for v in lhs_dict.values()]
-    return uniq_rules, lhs_dict
+    return rule_dict
 
 
 def main():
@@ -77,8 +76,8 @@ def main():
     # g = get_graph('./tmp/karate.g')           # 34    78
     # g = get_graph('./tmp/lesmis.g')           # 77    254
     # g = get_graph('./tmp/football.g')         # 115   613
-    # g = get_graph('./tmp/eucore.g')           # 1,005 25,571
-    g = get_graph('./tmp/bitcoin_alpha.g')    # 3,783 24,186
+    g = get_graph('./tmp/eucore.g')           # 1,005 25,571
+    # g = get_graph('./tmp/bitcoin_alpha.g')    # 3,783 24,186
     # g = get_graph('./tmp/GrQc.g')             # 5,242 14,496
     # g = get_graph('./tmp/bitcoin_otc.g')      # 5,881 35,592
     # g = get_graph('./tmp/gnutella.g')         # 6,301 20,777
@@ -100,21 +99,26 @@ def main():
     print('tree done in {} sec!'.format(time() - tree_time))
 
     vrg_time = time()
-    vrg_rules = full_info.extract_vrg(g, tree=[tree], lvl=0)  # root is at level 0
+    # vrg_rules = full_info.extract_vrg(g, tree=[tree], lvl=0)  # root is at level 0
+    vrg_rules = part_info.extract_vrg(g, tree=[tree], lvl=0)
+
     print('VRG extracted in {} sec'.format(time() - vrg_time))
     print('#VRG rules: {}'.format(len(vrg_rules)))
 
-
-    uniq_rules, rule_dict = deduplicate_rules(vrg_rules)  # rule_dict is dictionary keyed in by lhs
+    rule_dict = deduplicate_rules(vrg_rules)  # rule_dict is dictionary keyed in by lhs
     # print(uniq_rules)
+
     error_count = 0
-    for _ in range(10):
-        h = full_info.generate_graph(rule_dict)
+    for i in range(5):
+        gen_time = time()
+        # h = full_info.generate_graph(rule_dict)
+        h = part_info.generate_graph(rule_dict)
         if h == -1:
             error_count += 1
         else:
-            print('n = {}, m = {}'.format(h.order(), h.size()))
+            print('{}) n = {}, m = {}, time = {} sec'.format(i+1, h.order(), h.size(), time() - gen_time))
     print('{} errors'.format(error_count))
+    print('total time: {} sec'.format(time() - tree_time))
     return
 
 

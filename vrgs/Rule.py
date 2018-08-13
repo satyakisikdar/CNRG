@@ -1,6 +1,5 @@
 import networkx as nx
 import vrgs.MDL as MDL
-import re
 
 class Rule:
     def __init__(self, ):
@@ -30,11 +29,6 @@ class Rule:
         return self.lhs == other.lhs \
                 and nx.is_isomorphic(g1, g2)
 
-    # def __hash__(self):  # two rules hash to the same location if they share the same LHS
-    #     # rhs = self.rhs.copy()
-    #     # nx.freeze(rhs)
-    #     return hash((self.lhs))#, rhs))
-
     def calculate_cost(self):
         """
         Updates the MDL cost of the RHS
@@ -54,6 +48,7 @@ class Rule:
         mapping = {}
         internal_node_counter = 'a'
         boundary_node_counter = 0
+
 
         for n in self.internal_nodes:
             mapping[n] = internal_node_counter

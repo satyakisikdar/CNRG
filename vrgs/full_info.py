@@ -5,7 +5,6 @@ Uses explicit boundary information containing node level info on boundary nodes 
 """
 
 import networkx as nx
-import re
 import random
 import numpy as np
 import vrgs.globals as globals
@@ -223,6 +222,7 @@ def generate_graph(rule_dict):
             if 'b' in d:  # (u, v) is a boundary edge, so either u is latin or v is.
                 choice = random.sample(broken_edges, 1)[0]   # sample one broken edge randomly
                 broken_edges.remove(choice)  # remove that from future considerations
+                # choice = broken_edges.pop()  # pop is so much faster
                 if isinstance(u, str):  # u is internal
                     u = nodes[u]   # replace u with the node_number
                     if choice[0] == node_sample:   # we don't want to re-insert the same node that we just removed.
