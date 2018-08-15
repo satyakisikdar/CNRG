@@ -203,9 +203,9 @@ def generate_graph(rule_dict):
         # wire the broken edge
         for u, v, d in rhs.graph.edges_iter(data=True):
             if 'b' in d:  # (u, v) is a boundary edge, so either u is latin or v is.
-                choice = random.sample(broken_edges, 1)[0]  # sample one broken edge randomly
-                broken_edges.remove(choice)  # remove that from future considerations
-                # choice = broken_edges.pop()  # pop is so much faster - I think we don't really need randomness here.
+                #choice = random.sample(broken_edges, 1)[0]  # sample one broken edge randomly
+                #broken_edges.remove(choice)  # remove that from future considerations
+                choice = broken_edges.pop()  # pop is so much faster - I think we don't really need randomness here.
                 if isinstance(u, str):  # u is internal
                     u = nodes[u]   # replace u with the node_number
                     if choice[0] == node_sample:   # we don't want to re-insert the same node that we just removed.
