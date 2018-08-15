@@ -12,9 +12,9 @@ def find_boundary_edges(g, nbunch):
     """
     nbunch = set(nbunch)
     boundary_edges = []
-    for u, v in g.edges_iter():
-        if u in nbunch and v not in nbunch:
-            boundary_edges.append((u, v))
-        elif u not in nbunch and v in nbunch:
-            boundary_edges.append((u, v))
+    for u in nbunch:
+        for v in g.neighbors_iter(u):
+            if v not in nbunch:
+                edges = [(u, v)] * g.number_of_edges(u, v)
+                boundary_edges.extend(edges)
     return boundary_edges

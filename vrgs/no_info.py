@@ -7,7 +7,7 @@ No boundary information is stored.
 import networkx as nx
 import random
 import numpy as np
-from vrgs.Rule import Rule
+from vrgs.Rule import NoRule as Rule
 from vrgs.globals import find_boundary_edges
 
 def extract_vrg(g, tree, lvl):
@@ -74,26 +74,26 @@ def extract_vrg(g, tree, lvl):
 def generate_graph(rule_dict):
     """
     Create a new graph from the VRG at random
-    The generator breaks if the number of broken edges != lhs label of non-terminal.
-    Possible work-arounds: 1. return the graph generated until that point, 2. report an error,
-    3. make sure that the degree of non-terminals are always equal to their LHS labels
-
     Right now, it chooses option 2.
 
     :param rule_dict: List of unique VRG rules
     :return: newly generated graph
     """
     node_counter = 1
-    non_terminals = set()
+    # non_terminals = set()
+    terminals = set()  # the set of terminal nodes - that won't be expanded further
+    non_terminals = {}  # now a dictionary, key: non-terminal id, val: size of lhs
     new_g = nx.MultiGraph()
 
     new_g.add_node(0, attr_dict={'label': 0})
-    non_terminals.add(0)
+
+    # non_terminals.add(0)
+    non_terminals[0] = 0   # non-terminal 0 has size 0
 
     while len(non_terminals) > 0:      # continue until no more non-terminal nodes
         # choose a non terminal node at random
-        node_sample = random.sample(non_terminals, 1)[0]
-        lhs = new_g.node[node_sample]['label']
+        node_sample = random.sample(non_terminals.keys(), 1)[0]
+        lhs = non_terminals[node_sample]
 
         rhs_candidates = rule_dict[lhs]
         if len(rhs_candidates) == 1:
@@ -110,14 +110,11 @@ def generate_graph(rule_dict):
 
         # print('broken edges: ', broken_edges)
 
-        if len(broken_edges) != lhs:
-            # print('generation error')
-            return -1
 
         assert len(broken_edges) == lhs
 
         new_g.remove_node(node_sample)
-        non_terminals.remove(node_sample)
+        del non_terminals[node_sample]
 
         nodes = {}
 
@@ -125,28 +122,44 @@ def generate_graph(rule_dict):
             new_node = node_counter
             nodes[n] = new_node
             new_g.add_node(new_node, attr_dict=d)
-            if 'label' in d:  # if it's a new non-terminal add it to the set of non-terminals
-                non_terminals.add(new_node)
+            if 'label' in d:  # if it's a new non-terminal add it to the dictionary of non-terminals
+                non_terminals[new_node] = d['label']
+            else:
+                terminals.add(new_node)
             node_counter += 1
+
+
+        # adding the internal edges in the RHS  - no check of effective degree is necessary
+        for u, v in rhs.graph.edges_iter():
+            new_g.add_edge(nodes[u], nodes[v])
 
         # randomly assign broken edges to boundary edges
         random.shuffle(broken_edges)
 
-        # randomly joining the new boundary edges from the RHS to the rest of the graph - uniformly at random
-        for u, v in broken_edges:
-            n = random.sample(rhs.internal_nodes, 1)[0]
+
+        # no need to worry about the link to old nodes - only worry about the newly introduced nodes
+
+        possible_candidates = {nodes[n] for n in rhs.graph.nodes_iter()}
+
+        for u, v in broken_edges:  # either u = node_sample or v is.
+            while True:
+                n = random.sample(possible_candidates, 1)[0]
+                if n in non_terminals:
+                    effective_degree = non_terminals[n] - new_g.degree(n)
+                    if effective_degree > 0:  # n can take hold an edge
+                        break
+                    else:  # remove n from future consideration
+                        possible_candidates.remove(n)
+                else:  # n is not a non-terminal
+                    break
+
             if u == node_sample:
-                u = nodes[n]
+                u = n
             else:
-                v = nodes[n]
+                v = n
             # print('adding boundary edge ({}, {})'.format(u, v))
             new_g.add_edge(u, v)
 
-
-        # adding the rhs to the new graph
-        for u, v in rhs.graph.edges_iter():
-            # print('adding RHS internal edge ({}, {})'.format(nodes[u], nodes[v]))
-            new_g.add_edge(nodes[u], nodes[v])
     return new_g
 
 

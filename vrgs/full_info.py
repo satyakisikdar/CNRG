@@ -8,7 +8,7 @@ import networkx as nx
 import random
 import numpy as np
 import vrgs.globals as globals
-from vrgs.Rule import Rule
+from vrgs.Rule import FullRule as Rule
 from vrgs.globals import find_boundary_edges
 
 

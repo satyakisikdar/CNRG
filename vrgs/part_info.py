@@ -7,7 +7,7 @@ Partial boundary information containing node level info on boundary degree
 import networkx as nx
 import random
 import numpy as np
-from vrgs.Rule import Rule
+from vrgs.Rule import PartRule as Rule
 from vrgs.globals import find_boundary_edges
 
 
@@ -66,7 +66,6 @@ def extract_vrg(g, tree, lvl):
         rule.lhs = len(boundary_edges)
         rule.graph = sg
         rule.level = lvl
-        rule.internal_nodes = subtree
         rule.generalize_rhs()
         # rule.contract_rhs()
 

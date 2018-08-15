@@ -77,9 +77,9 @@ def main():
     # g = get_graph('./tmp/karate.g')           # 34    78
     # g = get_graph('./tmp/lesmis.g')           # 77    254
     # g = get_graph('./tmp/football.g')         # 115   613
-    g = get_graph('./tmp/eucore.g')           # 1,005 25,571
+    # g = get_graph('./tmp/eucore.g')           # 1,005 25,571
     # g = get_graph('./tmp/bitcoin_alpha.g')    # 3,783 24,186
-    # g = get_graph('./tmp/GrQc.g')             # 5,242 14,496
+    g = get_graph('./tmp/GrQc.g')             # 5,242 14,496
     # g = get_graph('./tmp/bitcoin_otc.g')      # 5,881 35,592
     # g = get_graph('./tmp/gnutella.g')         # 6,301 20,777
     # g = get_graph('./tmp/wikivote.g')         # 7,115 103,689
@@ -89,11 +89,11 @@ def main():
     globals.original_graph = g.copy()
 
     # for using no boundary information, set both flags to False
-    FULL_INFO = False
+    FULL_INFO = True
     PART_INFO = True
 
     if FULL_INFO:   # ensure FULL_INFO is True
-        print('Using FULL boundary information!\n')
+        print('\nUsing FULL boundary information!\n')
         extract_vrg = full_info.extract_vrg
         generate_graph = full_info.generate_graph
 
