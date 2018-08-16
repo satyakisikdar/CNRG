@@ -17,9 +17,8 @@ def GCD(h1, h2):
 
 def external_rage(G, netname):
     G = nx.Graph(G)
-    giant_nodes = max(nx.connected_component_subgraphs(G), key=len)
+    G = max(nx.connected_component_subgraphs(G), key=len)
 
-    G = nx.subgraph(G, giant_nodes[0])
     tmp_file = "tmp_{}.txt".format(netname)
     with open(tmp_file, 'w') as tmp:
         for e in G.edges_iter():

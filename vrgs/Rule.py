@@ -5,12 +5,12 @@ class BaseRule:
     """
     Base class for Rule
     """
-    def __init__(self):
-        self.lhs = 0  # the left hand side: the number of boundary edges
-        self.graph = nx.MultiGraph()  # the right hand side subgraph
-        self.level = 0  # level of discovery in the tree (the root is at 0)
-        self.cost = 0  # the cost of encoding the rule using MDL (in bits)
-        self.frequency = 1  # frequency of occurence
+    def __init__(self, lhs=0, graph=nx.MultiGraph(), level=0, cost=0, frequency=1):
+        self.lhs = lhs  # the left hand side: the number of boundary edges
+        self.graph = graph  # the right hand side subgraph
+        self.level = level  # level of discovery in the tree (the root is at 0)
+        self.cost = cost  # the cost of encoding the rule using MDL (in bits)
+        self.frequency = frequency  # frequency of occurence
 
     def __str__(self):
         st = '{} -> (n = {}, m = {})'.format(self.lhs, self.graph.order(), self.graph.size())
@@ -34,16 +34,26 @@ class BaseRule:
         g = nx.freeze(self.graph)
         return hash((self.lhs, g))
 
+    # def __del__(self):
+    #     print('del rule')
+
+    def __deepcopy__(self, memodict={}):
+        return BaseRule(lhs=self.lhs, graph=self.graph, level=self.level, cost=self.cost, frequency=self.frequency)
 
 
 class FullRule(BaseRule):
     """
     Rule object for full-info option
     """
-    def __init__(self):
-        super().__init__()
-        self.internal_nodes = set()  # the set of internal nodes
-        self.edges_covered = set()  # edges in the original graph that's covered by the rule
+    def __init__(self, lhs=0, graph=nx.MultiGraph(), level=0, cost=0, frequency=1, internal_nodes=set(),
+                 edges_covered=set()):
+        super().__init__(lhs=lhs, graph=graph, level=level, cost=cost, frequency=frequency)
+        self.internal_nodes = internal_nodes  # the set of internal nodes
+        self.edges_covered = edges_covered  # edges in the original graph that's covered by the rule
+
+    def __deepcopy__(self, memodict={}):
+        return FullRule(lhs=self.lhs, graph=self.graph, level=self.level, cost=self.cost, frequency=self.frequency,
+                        internal_nodes=self.internal_nodes, edges_covered=self.edges_covered)
 
     def calculate_cost(self):
         """
@@ -103,8 +113,11 @@ class PartRule(BaseRule):
     """
     Rule class for Partial option
     """
-    def __init__(self):
-        super().__init__()
+    def __init__(self, lhs=0, graph=nx.MultiGraph(), level=0, cost=0, frequency=1):
+        super().__init__(lhs=lhs, graph=graph, level=level, cost=cost, frequency=frequency)
+
+    def __deepcopy__(self, memodict={}):
+        return PartRule(lhs=self.lhs, graph=self.graph, level=self.level, cost=self.cost, frequency=self.frequency)
 
     def generalize_rhs(self):
         """
@@ -139,6 +152,9 @@ class NoRule(PartRule):
     """
     Class for no_info
     """
+    def __deepcopy__(self, memodict={}):
+        return NoRule(lhs=self.lhs, graph=self.graph, level=self.level, cost=self.cost, frequency=self.frequency)
+
     def calculate_cost(self):
         """
         Calculates the MDL for the rule. This just includes encoding the graph.

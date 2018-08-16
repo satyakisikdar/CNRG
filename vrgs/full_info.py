@@ -7,6 +7,8 @@ Uses explicit boundary information containing node level info on boundary nodes 
 import networkx as nx
 import random
 import numpy as np
+from copy import deepcopy
+
 import vrgs.globals as globals
 from vrgs.Rule import FullRule as Rule
 from vrgs.globals import find_boundary_edges

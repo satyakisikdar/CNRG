@@ -10,11 +10,11 @@ Runner script for VRGs
 
 from time import time
 import networkx as nx
-import matplotlib.pyplot as plt
-import seaborn as sns
+import csv
 from copy import deepcopy
 import os
 import sys
+import numpy as np
 
 sys.path.extend([os.getcwd(), os.path.dirname(os.getcwd())])
 
@@ -24,6 +24,8 @@ import vrgs.full_info as full_info
 import vrgs.part_info as part_info
 import vrgs.no_info as no_info
 import vrgs.analysis as analysis
+import vrgs.MDL as MDL
+
 
 def get_graph(filename='sample'):
     if filename == 'sample':
@@ -56,6 +58,7 @@ def deduplicate_rules(vrg_rules):
     iso_count = 0
 
     for rule in vrg_rules:
+        rule = deepcopy(rule)
         if rule.lhs not in rule_dict:   # first occurence of a LHS
             rule_dict[rule.lhs] = []
 
@@ -65,7 +68,7 @@ def deduplicate_rules(vrg_rules):
                 existing_rule.frequency += 1
                 isomorphic = True
                 iso_count += 1
-                break # since the new rule can only be isomorphic to exactly 1 existing rule
+                break   # since the new rule can only be isomorphic to exactly 1 existing rule
         if not isomorphic:
             rule_dict[rule.lhs].append(rule)
 
@@ -95,12 +98,12 @@ def extract_and_generate(g, k, tree, mode='FULL', num_graphs=5):
         generate_graph = full_info.generate_graph
 
     elif mode == 'PART':
-        print('Using PARTIAL boundary information!\n')
+        print('\nUsing PARTIAL boundary information!\n')
         extract_vrg = part_info.extract_vrg
         generate_graph = part_info.generate_graph
 
     else:
-        print('Using NO boundary information!\n')
+        print('\nUsing NO boundary information!\n')
         extract_vrg = no_info.extract_vrg
         generate_graph = no_info.generate_graph
 
@@ -108,23 +111,20 @@ def extract_and_generate(g, k, tree, mode='FULL', num_graphs=5):
     print('Original graph: n = {}, m = {}'.format(g.order(), g.size()))
 
     vrg_time = time()
-    vrg_rules = []
     vrg_rules = extract_vrg(g, tree=[tree], lvl=0)
 
     print('VRG extracted in {} sec'.format(time() - vrg_time))
     print('#VRG rules: {}'.format(len(vrg_rules)))
 
-    rule_dict, dedup_rules = deduplicate_rules(vrg_rules)  # rule_dict is dictionary keyed in by lhs
-
     graphs = []
     for i in range(num_graphs):
         gen_time = time()
-        h = generate_graph(rule_dict)
+        h = generate_graph(vrg_rules)
         print('Generated graph #{}: n = {}, m = {}, time = {} sec'.format(i+1, h.order(), h.size(), time() - gen_time))
         graphs.append(h)
 
     print('total time: {} sec'.format(time() - tree_time))
-    return graphs, vrg_rules
+    return graphs
 
 
 def main():
@@ -132,62 +132,107 @@ def main():
     Driver method for VRG
     :return:
     """
-
-    name = 'karate'  # 34    78
-    # name = 'lesmis' # 77    254
-    # name = 'football'  # 115   613
-    # name = 'eucore'  # 1,005 25,571
-    # name = 'bitcoin_alpha'  # 3,783 24,186
-    # name = 'GrQc'  # 4,158 13,428
-    # name = 'bitcoin_otc'  # 5,881 35,592
-    # name = 'gnutella'  # 6,301 20,777
-    # name = 'wikivote' # 7,115 103,689
-    # name = 'hepth'  # 27,770 352,807
-    # name = 'Enron'  # 36,692 183,831
-
-    names = ['karate', 'lesmis', ]#'football', 'eucore', 'GrQc', 'bitcoin_alpha']
-    k = 4
-    # # g = get_graph('./tmp/{}.g'.format(names[0]))
     # g = get_graph()
-    # g_original = nx.Graph(g)
-    #
-    # for _ in range(100):
-    #     tree = partitions.approx_min_conductance_partitioning(g, k)  # consider Pickling the tree?
-    #     extract_and_generate(g=g, k=4, tree=tree, mode='NO')
-    #     g = nx.Graph(g_original)
+    # print(analysis.hop_plot(g))
     # return
+
+    np.seterr(all='ignore')
+    names = ['karate', 'lesmis', ]#'football', 'eucore', 'GrQc', 'bitcoin_alpha']
+
+    with open('./stats.csv', 'w') as f:
+        csvwriter = csv.writer(f, quoting=csv.QUOTE_MINIMAL)
+        csvwriter.writerow(['', '', '',
+                            'actual graph', '',
+                            'full info', '',
+                            'part info', '',
+                            'no info', '',
+                            '', '', '', '',
+                            '', '', '',
+                            '', '', '',
+                            '', '', ''])
+
+        csvwriter.writerow(['graph name', 'count', 'k',
+                            'n', 'm',
+                            'n', 'm',
+                            'n', 'm',
+                            'n', 'm',
+                            'mdl_graph', 'mdl_full', 'mdl_part', 'mdl_no',
+                            'gcd_full', 'CVM_full_degree', 'CVM_full_PR',
+                            'gcd_part', 'CVM_part_degree', 'CVM_part_PR',
+                            'gcd_no', 'CVM_no_degree', 'CVM_no_PR'])
 
     for name in names:
         # g = get_graph()
         g = get_graph('./tmp/{}.g'.format(name))
         g.name = name
-
-        g_original = nx.Graph(g)
         k = 4
+        globals.original_graph = deepcopy(g)
 
-        # tree = partitions.n2v_partition(g)
-        tree = partitions.approx_min_conductance_partitioning(g, k)  # consider Pickling the tree?
-        tree_copy = deepcopy(tree)
-        # print(tree)
 
-        graph_dict = {}
+        graphs = {}
+        mdl_scores = {}
+        graph_mdl = [MDL.graph_mdl_v2(globals.original_graph, l_u=2)] * 10
 
         for mode in ['FULL', 'PART', 'NO']:
-            graphs, vrg_rules = extract_and_generate(g=g, k=k, tree=tree, mode=mode, num_graphs=10)
-            # analysis.analyze_rules(vrg_rules, mode)
-            graph_dict[mode] = graphs
-            g = deepcopy(g_original)
-            tree = deepcopy(tree_copy)
+            if mode == 'FULL':
+                extract_vrg = full_info.extract_vrg
+                generate_graph = full_info.generate_graph
 
-        # count = 1
-        # for g_full, g_part, g_no in zip(graph_dict['FULL'], graph_dict['PART'], graph_dict['NO']):
-        #     analysis.compare_graphs(g_original, g_full, g_part, g_no, count)
-        #     count += 1
-    # plt.title('Level-wise cumulative MDL')
-    # plt.xlabel('Level of discovery')
-    # plt.ylabel('MDL')
-    # plt.legend(loc='best')
-    # plt.show()
+            elif mode == 'PART':
+                extract_vrg = part_info.extract_vrg
+                generate_graph = part_info.generate_graph
+
+            else:
+                extract_vrg = no_info.extract_vrg
+                generate_graph = no_info.generate_graph
+
+            tree = partitions.approx_min_conductance_partitioning(g, k)
+
+            vrg = extract_vrg(deepcopy(g), tree=[deepcopy(tree)], lvl=0)
+            rule_dict = {}
+
+            for rule in vrg:
+                rule = deepcopy(rule)
+                if rule.lhs not in rule_dict:  # first occurence of a LHS
+                    rule_dict[rule.lhs] = []
+
+                isomorphic = False
+                for existing_rule in rule_dict[rule.lhs]:
+                    if existing_rule == rule:  # isomorphic
+                        existing_rule.frequency += 1
+                        isomorphic = True
+                        break  # since the new rule can only be isomorphic to exactly 1 existing rule
+                if not isomorphic:
+                    rule_dict[rule.lhs].append(rule)
+
+            mdl = 0
+
+            print('calculating {} MDL for {}'.format(mode, g.name))
+
+            for rule_list in rule_dict.values():
+                for rule in rule_list:
+                    rule.calculate_cost()
+                    mdl += rule.cost
+            mdl_scores[mode] = [mdl] * 10
+
+            graphs[mode] = []
+            for _ in range(10):
+                h = generate_graph(rule_dict)
+                graphs[mode].append(h)
+
+        count = 1
+        print('processing', globals.original_graph.name)
+
+        for g_full, g_part, g_no, \
+           g_mdl, mdl_full, mdl_part, mdl_no in zip(graphs['FULL'], graphs['PART'], graphs['NO'],
+                                                graph_mdl, mdl_scores['FULL'], mdl_scores['PART'], mdl_scores['NO']):
+            analysis.compare_graphs(g_true=globals.original_graph, g_full=g_full, g_part=g_part, g_no=g_no,
+                                    graph_mdl=g_mdl, mdl_full=mdl_full, mdl_part=mdl_part, mdl_no=mdl_no,
+                                    k=k, count=count)
+            print(count)
+            count += 1
+
+    return
 
 
 if __name__ == '__main__':

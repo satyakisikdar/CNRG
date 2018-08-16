@@ -7,6 +7,8 @@ Partial boundary information containing node level info on boundary degree
 import networkx as nx
 import random
 import numpy as np
+from copy import deepcopy
+
 from vrgs.Rule import PartRule as Rule
 from vrgs.globals import find_boundary_edges
 
@@ -90,12 +92,29 @@ def extract_vrg(g, tree, lvl):
         rule_list.append(rule)
     return rule_list
 
+
 def generate_graph(rule_dict):
     """
     Create a new graph from the VRG at random
     :param rule_dict: List of unique VRG rules
     :return: newly generated graph
     """
+    # rule_dict = {}
+    #
+    # for rule in vrg_rules:
+    #     rule = deepcopy(rule)
+    #     if rule.lhs not in rule_dict:   # first occurence of a LHS
+    #         rule_dict[rule.lhs] = []
+    #
+    #     isomorphic = False
+    #     for existing_rule in rule_dict[rule.lhs]:
+    #         if existing_rule == rule:  # isomorphic
+    #             existing_rule.frequency += 1
+    #             isomorphic = True
+    #             break   # since the new rule can only be isomorphic to exactly 1 existing rule
+    #     if not isomorphic:
+    #         rule_dict[rule.lhs].append(rule)
+
     node_counter = 1
     non_terminals = set()
     new_g = nx.MultiGraph()
@@ -167,6 +186,3 @@ def generate_graph(rule_dict):
             # print('adding RHS internal edge ({}, {})'.format(nodes[u], nodes[v]))
             new_g.add_edge(nodes[u], nodes[v])
     return new_g
-
-
-
