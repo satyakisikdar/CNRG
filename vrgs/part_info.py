@@ -10,7 +10,6 @@ import numpy as np
 from vrgs.Rule import PartRule as Rule
 from vrgs.globals import find_boundary_edges
 
-
 def set_boundary_degrees(g, sg):
     """
     Find the nunber of boundary edges that each node participate in.
@@ -168,4 +167,6 @@ def generate_graph(rule_dict):
             # print('adding RHS internal edge ({}, {})'.format(nodes[u], nodes[v]))
             new_g.add_edge(nodes[u], nodes[v])
     return new_g
+
+
 

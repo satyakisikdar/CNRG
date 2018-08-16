@@ -8,7 +8,7 @@ class BaseRule:
     def __init__(self):
         self.lhs = 0  # the left hand side: the number of boundary edges
         self.graph = nx.MultiGraph()  # the right hand side subgraph
-        self.level = set()  # level of discovery in the tree (the root is at 0)
+        self.level = 0  # level of discovery in the tree (the root is at 0)
         self.cost = 0  # the cost of encoding the rule using MDL (in bits)
         self.frequency = 1  # frequency of occurence
 
@@ -29,6 +29,10 @@ class BaseRule:
         g2 = nx.convert_node_labels_to_integers(other.graph)
         return self.lhs == other.lhs \
                 and nx.is_isomorphic(g1, g2)
+
+    def __hash__(self):
+        g = nx.freeze(self.graph)
+        return hash((self.lhs, g))
 
 
 
@@ -124,7 +128,7 @@ class PartRule(BaseRule):
         l_u = 2 (because we have one type of nodes and one type of edge)
         :return:
         """
-        b_deg = nx.get_edge_attributes(self.graph, 'b_deg')
+        b_deg = nx.get_node_attributes(self.graph, 'b_deg')
         max_boundary_degree = max(b_deg.values())
 
         self.cost = len(MDL.gamma_code(self.lhs + 1)) + MDL.graph_mdl_v2(self.graph, l_u=2) + \
