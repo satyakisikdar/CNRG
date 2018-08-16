@@ -10,12 +10,20 @@ Runner script for VRGs
 
 from time import time
 import networkx as nx
+import matplotlib.pyplot as plt
+import seaborn as sns
+from copy import deepcopy
+import os
+import sys
+
+sys.path.extend([os.getcwd(), os.path.dirname(os.getcwd())])
 
 import vrgs.globals as globals
 import vrgs.partitions as partitions
 import vrgs.full_info as full_info
 import vrgs.part_info as part_info
 import vrgs.no_info as no_info
+import vrgs.analysis as analysis
 
 def get_graph(filename='sample'):
     if filename == 'sample':
@@ -64,7 +72,59 @@ def deduplicate_rules(vrg_rules):
     if iso_count > 0:
         print('{} isomorphic rules'.format(iso_count))
 
-    return rule_dict
+    dedup_rules = []
+
+    [dedup_rules.extend(v) for v in rule_dict.values()]
+
+    return rule_dict, dedup_rules
+
+
+def extract_and_generate(g, k, tree, mode='FULL', num_graphs=5):
+    """
+    Runs a single run of extraction and generation
+    :param g: the original graph
+    :param k: parameter for cond tree
+    :param mode: FULL, PART, or NO
+    :return: h, vrg_list
+    """
+    tree_time = time()
+    globals.original_graph = deepcopy(g)
+    if mode == 'FULL':
+        print('\nUsing FULL boundary information!\n')
+        extract_vrg = full_info.extract_vrg
+        generate_graph = full_info.generate_graph
+
+    elif mode == 'PART':
+        print('Using PARTIAL boundary information!\n')
+        extract_vrg = part_info.extract_vrg
+        generate_graph = part_info.generate_graph
+
+    else:
+        print('Using NO boundary information!\n')
+        extract_vrg = no_info.extract_vrg
+        generate_graph = no_info.generate_graph
+
+    print('k =', k)
+    print('Original graph: n = {}, m = {}'.format(g.order(), g.size()))
+
+    vrg_time = time()
+    vrg_rules = []
+    vrg_rules = extract_vrg(g, tree=[tree], lvl=0)
+
+    print('VRG extracted in {} sec'.format(time() - vrg_time))
+    print('#VRG rules: {}'.format(len(vrg_rules)))
+
+    rule_dict, dedup_rules = deduplicate_rules(vrg_rules)  # rule_dict is dictionary keyed in by lhs
+
+    graphs = []
+    for i in range(num_graphs):
+        gen_time = time()
+        h = generate_graph(rule_dict)
+        print('Generated graph #{}: n = {}, m = {}, time = {} sec'.format(i+1, h.order(), h.size(), time() - gen_time))
+        graphs.append(h)
+
+    print('total time: {} sec'.format(time() - tree_time))
+    return graphs, vrg_rules
 
 
 def main():
@@ -72,73 +132,62 @@ def main():
     Driver method for VRG
     :return:
     """
-    # g = get_graph()
-    # g = get_graph('BA')
-    # g = get_graph('./tmp/karate.g')           # 34    78
-    # g = get_graph('./tmp/lesmis.g')           # 77    254
-    # g = get_graph('./tmp/football.g')         # 115   613
-    # g = get_graph('./tmp/eucore.g')           # 1,005 25,571
-    # g = get_graph('./tmp/bitcoin_alpha.g')    # 3,783 24,186
-    g = get_graph('./tmp/GrQc.g')             # 5,242 14,496
-    # g = get_graph('./tmp/bitcoin_otc.g')      # 5,881 35,592
-    # g = get_graph('./tmp/gnutella.g')         # 6,301 20,777
-    # g = get_graph('./tmp/wikivote.g')         # 7,115 103,689
-    # g = get_graph('./tmp/hepth.g')            # 27,770 352,807
-    # g = get_graph('./tmp/Enron.g')            # 36,692 183,831
 
-    globals.original_graph = g.copy()
+    name = 'karate'  # 34    78
+    # name = 'lesmis' # 77    254
+    # name = 'football'  # 115   613
+    # name = 'eucore'  # 1,005 25,571
+    # name = 'bitcoin_alpha'  # 3,783 24,186
+    # name = 'GrQc'  # 4,158 13,428
+    # name = 'bitcoin_otc'  # 5,881 35,592
+    # name = 'gnutella'  # 6,301 20,777
+    # name = 'wikivote' # 7,115 103,689
+    # name = 'hepth'  # 27,770 352,807
+    # name = 'Enron'  # 36,692 183,831
 
-    # for using no boundary information, set both flags to False
-    FULL_INFO = True
-    PART_INFO = True
-
-    if FULL_INFO:   # ensure FULL_INFO is True
-        print('\nUsing FULL boundary information!\n')
-        extract_vrg = full_info.extract_vrg
-        generate_graph = full_info.generate_graph
-
-    elif PART_INFO:  # ensure PART_INFO is True and FULL_INFO is False
-        print('Using PARTIAL boundary information!\n')
-        extract_vrg = part_info.extract_vrg
-        generate_graph = part_info.generate_graph
-
-    else:  # ensure both TRUE_INFO and PART_INFO are False
-        print('Using NO boundary information!\n')
-        extract_vrg = no_info.extract_vrg
-        generate_graph = no_info.generate_graph
-
-
-    tree_time = time()
-
+    names = ['karate', 'lesmis', ]#'football', 'eucore', 'GrQc', 'bitcoin_alpha']
     k = 4
-    print('k =', k)
-    print('n = {}, m = {}'.format(g.order(), g.size()))
+    # # g = get_graph('./tmp/{}.g'.format(names[0]))
+    # g = get_graph()
+    # g_original = nx.Graph(g)
+    #
+    # for _ in range(100):
+    #     tree = partitions.approx_min_conductance_partitioning(g, k)  # consider Pickling the tree?
+    #     extract_and_generate(g=g, k=4, tree=tree, mode='NO')
+    #     g = nx.Graph(g_original)
+    # return
 
-    # tree = partitions.n2v_partition(g)
-    tree = partitions.approx_min_conductance_partitioning(g, k)
-    # print(tree)
-    print('tree done in {} sec!'.format(time() - tree_time))
+    for name in names:
+        # g = get_graph()
+        g = get_graph('./tmp/{}.g'.format(name))
+        g.name = name
 
-    vrg_time = time()
-    vrg_rules = extract_vrg(g, tree=[tree], lvl=0)
+        g_original = nx.Graph(g)
+        k = 4
 
-    print('VRG extracted in {} sec'.format(time() - vrg_time))
-    print('#VRG rules: {}'.format(len(vrg_rules)))
+        # tree = partitions.n2v_partition(g)
+        tree = partitions.approx_min_conductance_partitioning(g, k)  # consider Pickling the tree?
+        tree_copy = deepcopy(tree)
+        # print(tree)
 
-    rule_dict = deduplicate_rules(vrg_rules)  # rule_dict is dictionary keyed in by lhs
-    # print(uniq_rules)
+        graph_dict = {}
 
-    error_count = 0
-    for i in range(10):
-        gen_time = time()
-        h = generate_graph(rule_dict)
-        if h == -1:
-            error_count += 1
-        else:
-            print('{}) n = {}, m = {}, time = {} sec'.format(i+1, h.order(), h.size(), time() - gen_time))
-    print('{} generation errors'.format(error_count))
-    print('total time: {} sec'.format(time() - tree_time))
-    return
+        for mode in ['FULL', 'PART', 'NO']:
+            graphs, vrg_rules = extract_and_generate(g=g, k=k, tree=tree, mode=mode, num_graphs=10)
+            # analysis.analyze_rules(vrg_rules, mode)
+            graph_dict[mode] = graphs
+            g = deepcopy(g_original)
+            tree = deepcopy(tree_copy)
+
+        # count = 1
+        # for g_full, g_part, g_no in zip(graph_dict['FULL'], graph_dict['PART'], graph_dict['NO']):
+        #     analysis.compare_graphs(g_original, g_full, g_part, g_no, count)
+        #     count += 1
+    # plt.title('Level-wise cumulative MDL')
+    # plt.xlabel('Level of discovery')
+    # plt.ylabel('MDL')
+    # plt.legend(loc='best')
+    # plt.show()
 
 
 if __name__ == '__main__':
