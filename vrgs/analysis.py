@@ -2,7 +2,7 @@
 Script for analysis
 """
 import networkx as nx
-import matplotlib.pyplot as plt
+#import matplotlib.pyplot as plt
 import numpy as np
 import csv
 from collections import deque, Counter
@@ -70,7 +70,7 @@ def compare_graphs(g_true, g_full, g_part, g_no, graph_mdl, mdl_full, mdl_part, 
     cdf_page_no = cdf_sum(no_page, true_page)
 
     # add MDL
-    with open('./stats.csv', 'a') as f:
+    with open('./stats_{}.csv'.format(k), 'a') as f:
         csvwriter = csv.writer(f, quoting=csv.QUOTE_MINIMAL)
         if count == 1:  # for every network, insert a blank row
             csvwriter.writerow(['', '', '', '', '', '', '', '', '', '', '', '',

@@ -48,85 +48,6 @@ def get_graph(filename='sample'):
     return g
 
 
-def deduplicate_rules(vrg_rules):
-    """
-    Deduplicates the list of VRG rules. Two rules are 'equal' if they have the same LHS
-    :param vrg_rules: list of Rule objects
-    :return: rule_dict: list of unique Rules with updated frequencies
-    """
-    rule_dict = {}
-    iso_count = 0
-
-    for rule in vrg_rules:
-        rule = deepcopy(rule)
-        if rule.lhs not in rule_dict:   # first occurence of a LHS
-            rule_dict[rule.lhs] = []
-
-        isomorphic = False
-        for existing_rule in rule_dict[rule.lhs]:
-            if existing_rule == rule:  # isomorphic
-                existing_rule.frequency += 1
-                isomorphic = True
-                iso_count += 1
-                break   # since the new rule can only be isomorphic to exactly 1 existing rule
-        if not isomorphic:
-            rule_dict[rule.lhs].append(rule)
-
-    if iso_count > 0:
-        print('{} isomorphic rules'.format(iso_count))
-
-    dedup_rules = []
-
-    [dedup_rules.extend(v) for v in rule_dict.values()]
-
-    return rule_dict, dedup_rules
-
-
-def extract_and_generate(g, k, tree, mode='FULL', num_graphs=5):
-    """
-    Runs a single run of extraction and generation
-    :param g: the original graph
-    :param k: parameter for cond tree
-    :param mode: FULL, PART, or NO
-    :return: h, vrg_list
-    """
-    tree_time = time()
-    globals.original_graph = deepcopy(g)
-    if mode == 'FULL':
-        print('\nUsing FULL boundary information!\n')
-        extract_vrg = full_info.extract_vrg
-        generate_graph = full_info.generate_graph
-
-    elif mode == 'PART':
-        print('\nUsing PARTIAL boundary information!\n')
-        extract_vrg = part_info.extract_vrg
-        generate_graph = part_info.generate_graph
-
-    else:
-        print('\nUsing NO boundary information!\n')
-        extract_vrg = no_info.extract_vrg
-        generate_graph = no_info.generate_graph
-
-    print('k =', k)
-    print('Original graph: n = {}, m = {}'.format(g.order(), g.size()))
-
-    vrg_time = time()
-    vrg_rules = extract_vrg(g, tree=[tree], lvl=0)
-
-    print('VRG extracted in {} sec'.format(time() - vrg_time))
-    print('#VRG rules: {}'.format(len(vrg_rules)))
-
-    graphs = []
-    for i in range(num_graphs):
-        gen_time = time()
-        h = generate_graph(vrg_rules)
-        print('Generated graph #{}: n = {}, m = {}, time = {} sec'.format(i+1, h.order(), h.size(), time() - gen_time))
-        graphs.append(h)
-
-    print('total time: {} sec'.format(time() - tree_time))
-    return graphs
-
-
 def main():
     """
     Driver method for VRG
@@ -135,11 +56,15 @@ def main():
     # g = get_graph()
     # print(analysis.hop_plot(g))
     # return
-
+    if len(sys.argv) < 2:
+        k = 3
+    else:
+        k = int(sys.argv[1])
+    print('k =', k)
     np.seterr(all='ignore')
-    names = ['karate', 'lesmis', ]#'football', 'eucore', 'GrQc', 'bitcoin_alpha']
+    names = ['karate', 'lesmis', 'football', 'eucore', 'GrQc', 'bitcoin_alpha']
 
-    with open('./stats.csv', 'w') as f:
+    with open('./stats_{}.csv'.format(k), 'w') as f:
         csvwriter = csv.writer(f, quoting=csv.QUOTE_MINIMAL)
         csvwriter.writerow(['', '', '',
                             'actual graph', '',
@@ -165,7 +90,6 @@ def main():
         # g = get_graph()
         g = get_graph('./tmp/{}.g'.format(name))
         g.name = name
-        k = 4
         globals.original_graph = deepcopy(g)
 
 
