@@ -8,8 +8,9 @@ import vrgs.node2vec as n2v
 import  networkx as nx
 from scipy.cluster.hierarchy import linkage, to_tree, cophenet
 from scipy.spatial.distance import pdist
-
-
+import numpy as np
+import scipy.sparse.linalg
+from sklearn.cluster import KMeans
 
 def approx_min_conductance_partitioning(g, max_k):
     """
@@ -33,9 +34,9 @@ def approx_min_conductance_partitioning(g, max_k):
 
     assert nx.is_connected(g), "g is not connected in cond"
 
-    fiedler_vector = nx.fiedler_vector(g, method='lanczos')
-    p1 = []
-    p2 = []
+    fiedler_vector = nx.fiedler_vector(g, method='lanczos', tol=0)
+    p1 = set()
+    p2 = set()
     fiedler_dict = {}
     for idx, n in enumerate(fiedler_vector):
         fiedler_dict[idx] = n
@@ -45,32 +46,39 @@ def approx_min_conductance_partitioning(g, max_k):
 
     for idx, _ in fiedler_vector:
         if half_idx > 0:
-            p1.append(node_list[idx])
+            p1.add(node_list[idx])
         else:
-            p2.append(node_list[idx])
+            p2.add(node_list[idx])
         half_idx -= 1  # decrement so halfway through it crosses 0 and puts into p2
 
     sg1 = g.subgraph(p1)
     sg2 = g.subgraph(p2)
-    f1, f2 = False, False
 
-    # Hack to check and fix non connected subgraphs
-    if not nx.is_connected(sg1):
-        f1 = True
-        for sg in sorted(nx.connected_component_subgraphs(sg1), key=len, reverse=True)[1: ]:
-            p2.extend(sg.nodes_iter())
-            for n in sg.nodes_iter():
-                p1.remove(n)
-    if not nx.is_connected(sg2):
-        f2 = True
-        for sg in sorted(nx.connected_component_subgraphs(sg2), key=len, reverse=True)[1: ]:
-            p1.extend(sg.nodes_iter())
-            for n in sg.nodes_iter():
-                p2.remove(n)
-
-    if f1 or f2:
+    iter_count = 0
+    while not (nx.is_connected(sg1) and nx.is_connected(sg2)):
         sg1 = g.subgraph(p1)
         sg2 = g.subgraph(p2)
+
+        # Hack to check and fix non connected subgraphs
+        if not nx.is_connected(sg1):
+            for sg in sorted(nx.connected_component_subgraphs(sg1), key=len, reverse=True)[1: ]:
+                p2.update(sg.nodes_iter())
+                for n in sg.nodes_iter():
+                    p1.remove(n)
+
+            sg2 = g.subgraph(p2)  # updating sg2 since p2 has changed
+
+        if not nx.is_connected(sg2):
+            for sg in sorted(nx.connected_component_subgraphs(sg2), key=len, reverse=True)[1: ]:
+                p1.update(sg.nodes_iter())
+                for n in sg.nodes_iter():
+                    p2.remove(n)
+
+        iter_count += 1
+
+    if iter_count > 2:
+        print('it took {} iterations to stabilize'.format(iter_count))
+
 
     assert nx.is_connected(sg1) and nx.is_connected(sg2), "subgraphs are not connected in cond"
 
@@ -79,6 +87,64 @@ def approx_min_conductance_partitioning(g, max_k):
 
     assert (len(lvl) > 0)
     return lvl
+
+
+def spectral_kmeans(g, k):
+    """
+    k-way ncut spectral clustering Ng et al. 2002 KNSC1
+    :param g: graph g
+    :param k: number of clusters
+    :return:
+    """
+    tree = []
+
+    if g.order() <= k:   # not more than k nodes, return the list of nodes
+        return g.nodes()
+
+    if k == 2:  # if k is two, use approx min partitioning
+        return [approx_min_conductance_partitioning(g, k)]
+
+    if not nx.is_connected(g):
+        for p in nx.connected_component_subgraphs(g):
+            if p.order() > k + 1:   # if p has more than k + 1 nodes, use spectral k-means
+                tree.append(spectral_kmeans(p, k))
+            else:   # try spectral k-means with a lesser k
+                tree.append(spectral_kmeans(p, k - 1))
+        assert len(tree) > 0
+        return tree
+
+    if k >= g.order() - 2:
+        return spectral_kmeans(g, k - 1)
+
+    assert nx.is_connected(g), "g is not connected in cond"
+
+    L = nx.laplacian_matrix(g)
+
+    assert k < g.order() - 2, "k is too high"
+
+    _, eigenvecs = scipy.sparse.linalg.eigs(L.asfptype(), k=k + 1, which='SM')  # compute the first k+1 eigenvectors
+    eigenvecs = eigenvecs[:, 1:]  # discard the first trivial eigenvector
+
+    U = np.apply_along_axis(lambda x: x / np.linalg.norm(x), axis=1, arr=eigenvecs)  # normalize each row by its norm
+
+    kmeans = KMeans(n_clusters=k, random_state=0).fit(U)
+
+    cluster_labels = kmeans.labels_
+    clusters = [[] for _ in range(max(cluster_labels) + 1)]
+
+    for u, clu_u in zip(g.nodes_iter(), cluster_labels):
+        clusters[clu_u].append(u)
+
+    for cluster in clusters:
+        sg = g.subgraph(cluster)
+        if len(cluster) > k + 1:
+            tree.append(spectral_kmeans(sg, k))
+        else:
+            tree.append(spectral_kmeans(sg, k - 1))
+
+    return tree
+
+
 
 
 def get_dendrogram(embeddings, method='best', metric='euclidean'):
