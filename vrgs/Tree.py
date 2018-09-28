@@ -5,7 +5,7 @@ class TreeNode:
     def __init__(self, key, payload=set(), is_leaf=False):
         self.key = key   # key of the node, each node has an unique key
         self.payload = payload  # payload on the node, could be anything
-
+        self.level = 0  # level of the node
         self.parent = None
         self.left = None  # left child
         self.right = None  # right child
@@ -15,9 +15,6 @@ class TreeNode:
 
 
     def __str__(self):
-        if len(self.payload) != 0:
-            return '{} ({}): {}'.format(self.key, self.nleaf, self.payload)
-
         if self.parent is None:
             parent = None
         else:
@@ -79,6 +76,6 @@ def create_tree(lst):
 
         return node.nleaf, node.payload.copy()
 
-    update_info(root)
+    update_info(node=root)
 
     return root

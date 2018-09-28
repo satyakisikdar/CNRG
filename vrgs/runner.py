@@ -17,6 +17,7 @@ import sys
 import numpy as np
 import matplotlib.pyplot as plt
 from matplotlib.lines import Line2D
+from collections import Counter
 
 sys.path.extend([os.getcwd(), os.path.dirname(os.getcwd())])
 
@@ -62,99 +63,32 @@ def main():
     """
     np.seterr(all='ignore')
 
-    # for _ in range(10):
-    #     g = nx.erdos_renyi_graph(100, 0.2)
-    #     h = nx.erdos_reny i_graph(100, 0.2)
-    #     print(GCD(g, h, mode='rage'), GCD(g, h, mode='orca'))
-    # return
+    # columns = ['name', 'k', 'count',
+    #            'actual_n', 'actual_m', 'actual_MDL',
+    #            'full_n', 'full_m', 'full_rules', 'full_MDL', 'GCD_full', 'CVM_full_d', 'CVM_full_pr',
+    #            'part_n', 'part_m', 'part_rules', 'part_MDL', 'GCD_part', 'CVM_part_d', 'CVM_part_pr',
+    #            'no_n', 'no_m', 'no_rules', 'no_MDL', 'GCD_no', 'CVM_no_d', 'CVM_no_pr']
 
-    g = get_graph()
-    # g = get_graph('./tmp/football.g')
-    # print(nx.laplacian_spectrum(g))
-    globals.original_graph = deepcopy(g)
-
-    tree = partitions.approx_min_conductance_partitioning(g, 1)
-    root = create_tree(tree)
-
-    funky_extract.funky_runner(root, 3)
-
-    print(root)
-
-
-    return
-
-    if len(sys.argv) < 2:
-        k = 3
-    else:
-        k = int(sys.argv[1])
-
-    print('k =', k)
     names = ['karate', 'lesmis', 'football', 'eucore', 'GrQc', 'gnutella', 'wikivote']
 
-    write = False
-    if write:
-        with open('./stats_{}.csv'.format(k), 'w') as f:
-            csvwriter = csv.writer(f, quoting=csv.QUOTE_MINIMAL)
-            csvwriter.writerow(['', '', '',
-                                'actual graph', '',
-                                'full info', '', '',
-                                'part info', '', '',
-                                'no info', '', '',
-                                '', '', '', '',
-                                '', '', '',
-                                '', '', '',
-                                '', '', ''])
 
-            csvwriter.writerow(['graph name', 'count', 'k',
-                                'n', 'm',
-                                'n', 'm', 'uniq rules',
-                                'n', 'm', 'uniq rules',
-                                'n', 'm', 'uniq rules',
-                                'mdl_graph', 'mdl_full', 'mdl_part', 'mdl_no',
-                                'gcd_full', 'CVM_full_degree', 'CVM_full_PR',
-                                'gcd_part', 'CVM_part_degree', 'CVM_part_PR',
-                                'gcd_no', 'CVM_no_degree', 'CVM_no_PR'])
+    for name in names[: 3]:
+        print()
+        print(name)
+        g = get_graph('./tmp/{}.g'.format(name))
+        # g = get_graph()
+        orig_graph = deepcopy(g)
+        tree = partitions.approx_min_conductance_partitioning(g, 1)
+        root = create_tree(tree)
 
-
-    for name in names[4: ]:
-
-        for k in range(2, 6):
-            # g = get_graph()
-            g = get_graph('./tmp/{}.g'.format(name))
-            g.name = name
-            globals.original_graph = deepcopy(g)
-            print('\nprocessing {} k = {}, n = {} m = {}'.format(globals.original_graph.name, k, globals.original_graph.order(),
-                                                       globals.original_graph.size()))
-
-            tree = partitions.approx_min_conductance_partitioning(g, k)
-
-            graphs = {}
-            mdl_scores = {}
-            rule_counts = {}
-
-            if write:
-                graph_mdl = [MDL.graph_mdl_v2(globals.original_graph, l_u=2)] * 10
-
-            for mode in ['FULL', 'PART', 'NO']:
-                if mode == 'FULL':
-                    extract_vrg = full_info.extract_vrg
-                    generate_graph = full_info.generate_graph
-
-                elif mode == 'PART':
-                    extract_vrg = part_info.extract_vrg
-                    generate_graph = part_info.generate_graph
-
-                else:
-                    extract_vrg = no_info.extract_vrg
-                    generate_graph = no_info.generate_graph
-
-                tree = partitions.approx_min_conductance_partitioning(g, k)
-
-                vrg = extract_vrg(deepcopy(g), tree=[deepcopy(tree)], lvl=0)
+        for k in range(2, 5):
+            print('k =', k)
+            for mode in ('full', 'part', 'no')[-1: ]:
+                rules = funky_extract.funky_extract(g=deepcopy(g), root=deepcopy(root), k=k, mode=mode)
                 rule_dict = {}
                 rule_count = 0
 
-                for rule in vrg:
+                for rule in rules:
                     rule = deepcopy(rule)
                     if rule.lhs not in rule_dict:  # first occurence of a LHS
                         rule_dict[rule.lhs] = []
@@ -168,44 +102,23 @@ def main():
                     if not isomorphic:
                         rule_dict[rule.lhs].append(rule)
                         rule_count += 1
-                rule_counts[mode] = [rule_count] * 10
 
-                print(mode, rule_count, 'rules', end=' ')
-                continue
-                mdl = 0
+                print('mode: {}, {} rules'.format(mode, rule_count))
 
-                if write:
-                    print('calculating {} MDL for {}'.format(mode, g.name))
+                if mode == 'full':
+                    generate_graph = full_info.generate_graph
+                elif mode == 'part':
+                    generate_graph = part_info.generate_graph
+                else:
+                    generate_graph = no_info.generate_graph
 
-                    for rule_list in rule_dict.values():
-                        for rule in rule_list:
-                            rule.calculate_cost()
-                            mdl += rule.cost
+                h = generate_graph(rule_dict)
 
-                    mdl_scores[mode] = [mdl] * 10
+                print('original graph {} nodes {} edges'.format(orig_graph.order(), orig_graph.size()))
+                print('generated graph {} nodes {} edges'.format(h.order(), h.size()))
 
-                graphs[mode] = []
-                for _ in range(10):
-                    h = generate_graph(rule_dict)
-                    graphs[mode].append(h)
 
-            count = 1
 
-            if write:
-                for g_full, g_part, g_no, \
-                    rule_full, rule_part, rule_no, \
-                   g_mdl, mdl_full, mdl_part, mdl_no \
-                        in zip(graphs['FULL'], graphs['PART'], graphs['NO'],
-                                rule_counts['FULL'], rule_counts['PART'], rule_counts['NO'],
-                                graph_mdl, mdl_scores['FULL'], mdl_scores['PART'], mdl_scores['NO']):
-
-                    analysis.compare_graphs(g_true=globals.original_graph, g_full=g_full, g_part=g_part, g_no=g_no,
-                                            graph_mdl=g_mdl, mdl_full=mdl_full, mdl_part=mdl_part, mdl_no=mdl_no,
-                                            rule_full=rule_full, rule_part=rule_part, rule_no=rule_no, k=k, count=count)
-                    print(count)
-                    count += 1
-
-    return
 
 
 if __name__ == '__main__':

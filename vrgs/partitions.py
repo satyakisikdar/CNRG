@@ -137,12 +137,14 @@ def spectral_kmeans(g, k):
 
     for cluster in clusters:
         sg = g.subgraph(cluster)
+        assert nx.is_connected(sg), "subgraph not connected"
         if len(cluster) > k + 1:
             tree.append(spectral_kmeans(sg, k))
         else:
             tree.append(spectral_kmeans(sg, k - 1))
 
     return tree
+
 
 
 

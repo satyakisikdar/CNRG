@@ -100,7 +100,7 @@ def vrg_mdl(vrg):
     Each rule looks like
     LHS -> RHS_1 | RHS_2 | RHS_3 | ...
     represented in vrg as
-    (x, y) -> [MultiDiGraph_1, MultiDiGraph_2, MultiDiGraph_3, ..]
+    (x, y) -> [MultiGraph_1, MultiGraph_2, MultiGraph_3, ..]
     Must have a way to encode the edge - internal & boundary and node types
     :param vrg: vertex replacement grammar
     :return: MDL for vrg
@@ -109,16 +109,14 @@ def vrg_mdl(vrg):
 
     num_rules = 0
     max_x = -1
-    max_y = -1
     max_rhs_count = -1
     max_rhs_weight = -1
     all_rhs_graph_mdl = 0
 
     for lhs, rhs in vrg.items():
-        x, y = lhs
+        x = lhs
         num_rules += len(rhs)
         max_x = max(max_x, x)
-        max_y = max(max_y, y)
         max_rhs_count = max(max_rhs_count, len(rhs))
         max_rhs_weight = max(max_rhs_weight, max(map(lambda x: x[1], rhs)))
         for g, _ in rhs:
@@ -128,8 +126,8 @@ def vrg_mdl(vrg):
 
     rule_mdl = 0  # mdl for one rule
     # 2. For each entry of the VRG dictionary,
-    #    a. LHS has two numbers 'x' and 'y', upper bounded by max(x) and max(y)
-    rule_mdl += nbits(max_x) + nbits(max_y)
+    #    a. LHS has one number 'x', upper bounded by max(x)
+    rule_mdl += nbits(max_x)
 
     #    b. List of RHS graphs -
     #       i. count of RHSs upper bounded by max number of subgraphs for any LHS
