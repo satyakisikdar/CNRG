@@ -2,23 +2,15 @@
 Funky extraction using Justus' method
 """
 
-import networkx as nx
 import random
-import numpy as np
-from copy import deepcopy
-import heapq
 from collections import defaultdict
 
-import vrgs.globals as globals
 from vrgs.Rule import FullRule
 from vrgs.Rule import NoRule
 from vrgs.Rule import PartRule
 from vrgs.globals import find_boundary_edges
 from vrgs.part_info import set_boundary_degrees
 
-
-
-from vrgs.Tree import create_tree, TreeNode
 
 def get_buckets(root, k):
     """
@@ -36,8 +28,8 @@ def get_buckets(root, k):
         val = abs(node.nleaf - k)
 
         if not node.is_leaf:  # don't add to the bucket if it's a leaf
-            bucket[val].add(node)   # bucket is a defaultdict
-            node2bucket[node] = val
+            bucket[val].add(node.key)   # bucket is a defaultdict
+            node2bucket[node.key] = val
 
         if node.left is not None:
             stack.append(node.left)
@@ -48,86 +40,77 @@ def get_buckets(root, k):
     return nodes, bucket, node2bucket
 
 
-def extract_subtree(k, buckets, node2bucket, active_nodes):
+def update_parents(node, buckets, node2bucket, k):
     """
+
+    :param node:
     :param k:
-    :param buckets:
-    :param node2bucket:
     :return:
+    """
+    # the subtree that is removed to be removed
+    node_key = node.key
+    subtree = node.leaves
+    subtree.remove(node.key)
+
+    while node.parent is not None:
+        old_val = node2bucket[node.parent.key]  # old value of parent
+        buckets[old_val].remove(node.parent.key)  # remove the parent from that bucket
+
+        node.parent.nleaf -= node.nleaf - 1  # since all the children of the node disappears, but the node remains
+        node.parent.leaves -= subtree
+        node.parent.leaves.add(node_key)
+
+        new_val = abs(node.parent.nleaf - k)  # new value of parent
+
+        buckets[new_val].add(node.parent.key)   # adding the parent to a new bucket
+        node2bucket[node.parent.key] = new_val   # updating the node2bucket dict
+
+        node = node.parent
+    return
+
+
+def extract_subtree(k, buckets, node2bucket, active_nodes, key2node):
+    """
+    :param k: size of subtree to be collapsed
+    :param buckets: mapping of val -> set of internal nodes in the tree
+    :param node2bucket: mapping of key -> node
+    :return: subtree, set of active nodes
     """
 
     # pick something from the smallest non-empty bucket
-
+    pick_randomly = True
     best_node = None
-    for id, bucket in sorted(buckets.items()):
-        if len(bucket) != 0:
-            best_node = random.sample(bucket, 1)[0]
+
+    for _, bucket in sorted(buckets.items()):
+        if pick_randomly and len(bucket) != 0:   # if picking randomly, and the bucket is not empty
+            possible_nodes = bucket & active_nodes   # possible nodes are the ones that are allowed
+            if len(possible_nodes) == 0:
+                continue
+
+            best_node_key = random.sample(possible_nodes, 1)[0]  # sample 1 node from the min bucket randomly
+            best_node = key2node[best_node_key]
+
+            bucket.remove(best_node_key)  # remove the best node from the bucket
             break
 
     if best_node is None:
-        return None
+        return None, None
 
-    subtree = best_node.payload.intersection(active_nodes)
-    new_node_key = min(subtree)
+    subtree = best_node.leaves & active_nodes   # only consider the leaves that are active
 
-    # print('removing {}, subtree: {}'.format(best_node.key, subtree))
+    new_node_key = min(subtree)  # key of the new node
 
-    # best_node is a leaf, so don't add it back to the bucket
-    node2bucket[best_node] = None
-
-    # disconnect the children of that node, remove them from active nodes
-    stack = [best_node]
-    while len(stack) != 0:
-        node = stack.pop()
-
-        active_nodes.remove(node.key)
-        val = abs(node.nleaf - k)
-
-        if not node.is_leaf:
-            buckets[val].remove(node)
-            node2bucket[node] = val
-
-        if node.left is not None:
-            stack.append(node.left)
-
-        if node.right is not None:
-            stack.append(node.right)
-
-
-    best_node.key = new_node_key  # the best node's key is now the key of the new_node
-
-    active_nodes.add(new_node_key)  # add the new node to the set of active nodes
-
-    best_node.payload = {new_node_key}  # update the payload of the new node
-    best_node.left = None
-    best_node.right = None
-    best_node.is_leaf = True
+    active_nodes = active_nodes - best_node.children  # all the children of this node are no longer active
+    active_nodes.remove(best_node.key)  # remove the old node too
+    active_nodes.add(new_node_key)  # add the new node key
+    best_node.key = new_node_key  # update the key
 
     if best_node.parent is not None:
-        best_node.parent.payload.add(new_node_key)
+        update_parents(node=best_node, buckets=buckets, node2bucket=node2bucket, k=k)
 
-    # update the nleafs for its parents
-    node = best_node
+    best_node.make_leaf(new_key=new_node_key)  # make the node a leaf
 
-    while node.parent is not None:
-        val = node2bucket[node.parent]  # old value of parent
-        buckets[val].remove(node.parent)  # remove the parent from that bucket
-
-        node.parent.nleaf -= node.nleaf - 1  # since all the children of the node disappears, but the node remains
-
-        node.parent.payload.add(new_node_key)   # each of the parents has to contain this value
-        val = abs(node.parent.nleaf - k)  # new value of parent
-
-        buckets[val].add(node.parent)   # adding the parent to a new bucket
-        node2bucket[node.parent] = val   # updating the node2bucket dict
-
-        node = node.parent
-
-    best_node.nleaf = 1   # we can't set this earlier since we are using the value in the while loop
-
-    return subtree
-
-    ## NOTE: nothing is removed from the payload after compression.. always take intersection of payload and active nodes
+    return subtree, active_nodes
 
 
 def funky_extract(g, root,k, mode='full'):
@@ -141,19 +124,22 @@ def funky_extract(g, root,k, mode='full'):
     :return: list of rules
     """
     nodes, buckets, node2bucket = get_buckets(root=root, k=k)
-    active_nodes = {node.key for node in nodes}
+    active_nodes = {node.key for node in nodes}  # all nodes in the tree
+    key2node = {node.key: node for node in nodes}   # key -> node mapping
 
     rule_list = list()
 
     if mode == 'full':
         Rule = FullRule
+
     elif mode == 'part':
         Rule = PartRule
+
     else:
         Rule = NoRule
 
     while True:
-        subtree = extract_subtree(k=k, buckets=buckets, node2bucket=node2bucket, active_nodes=active_nodes)
+        subtree, active_nodes = extract_subtree(k=k, buckets=buckets, node2bucket=node2bucket, active_nodes=active_nodes, key2node=key2node)
         if subtree is None:
             break
 
@@ -186,8 +172,6 @@ def funky_extract(g, root,k, mode='full'):
         g.add_node(new_node, attr_dict={'label': rule.lhs})
 
         # rewire new_node
-        subtree = set(subtree)
-
         for u, v in boundary_edges:
             if u in subtree:
                 u = new_node
@@ -195,8 +179,6 @@ def funky_extract(g, root,k, mode='full'):
                 v = new_node
             g.add_edge(u, v)
 
-
-        rule_list.append(rule)
+        rule_list.append(rule)  # add the rule into the rule list
 
     return rule_list
-

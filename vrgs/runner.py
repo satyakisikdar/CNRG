@@ -15,24 +15,15 @@ from copy import deepcopy
 import os
 import sys
 import numpy as np
-import matplotlib.pyplot as plt
-from matplotlib.lines import Line2D
-from collections import Counter
 
 sys.path.extend([os.getcwd(), os.path.dirname(os.getcwd())])
 
-import vrgs.globals as globals
 import vrgs.partitions as partitions
 import vrgs.full_info as full_info
 import vrgs.part_info as part_info
 import vrgs.no_info as no_info
-import vrgs.analysis as analysis
-import vrgs.MDL as MDL
 import vrgs.funky_extract as funky_extract
-
 from vrgs.Tree import create_tree
-
-from vrgs.GCD import GCD
 
 
 def get_graph(filename='sample'):
@@ -56,6 +47,56 @@ def get_graph(filename='sample'):
     return g
 
 
+def get_rule_graph(rule_dict):
+    g = nx.DiGraph()
+
+    stack = [0]
+    visited = set()
+
+    while len(stack) != 0:
+        u = stack.pop()
+        for rule in rule_dict[u]:
+            for node, d in rule.graph.nodes_iter(data=True):
+                if 'label' in d:
+                    v = d['label']
+
+                    if v not in visited:
+                        visited.add(v)
+                        g.add_edge(u, v)
+                        stack.append(v)
+    print(g.edges())
+    print('cycles', len(list(nx.simple_cycles(g))))
+    return g
+
+
+def get_rule_dict(rules):
+    """
+    returns the rule dictionary, keyed by LHS followed by a list of rules as values
+    :param rules:
+    :return:
+    """
+    rule_dict = {}
+    rule_count = 0
+
+    for rule in rules:
+        rule = deepcopy(rule)
+        if rule.lhs not in rule_dict:  # first occurence of a LHS
+            rule_dict[rule.lhs] = []
+
+        isomorphic = False
+        for existing_rule in rule_dict[rule.lhs]:
+            if existing_rule == rule:  # isomorphic
+                existing_rule.frequency += 1
+                isomorphic = True
+                break  # since the new rule can only be isomorphic to exactly 1 existing rule
+
+        if not isomorphic:
+            rule_dict[rule.lhs].append(rule)
+            rule_count += 1
+
+    return rule_dict, rule_count
+
+
 def main():
     """
     Driver method for VRG
@@ -71,39 +112,24 @@ def main():
 
     names = ['karate', 'lesmis', 'football', 'eucore', 'GrQc', 'gnutella', 'wikivote']
 
-
-    for name in names[: 3]:
+    for name in names[: 4]:
         print()
         print(name)
         g = get_graph('./tmp/{}.g'.format(name))
         # g = get_graph()
         orig_graph = deepcopy(g)
         tree = partitions.approx_min_conductance_partitioning(g, 1)
+        # tree = [[[[8], [6]], [[9], [7]]], [[[2], [4]], [[5], [[1], [3]]]]]
         root = create_tree(tree)
 
-        for k in range(2, 5):
-            print('k =', k)
-            for mode in ('full', 'part', 'no')[-1: ]:
-                rules = funky_extract.funky_extract(g=deepcopy(g), root=deepcopy(root), k=k, mode=mode)
-                rule_dict = {}
-                rule_count = 0
+        for k in range(4, 5):
+            print('\nk =', k)
+            for mode in ('full', 'part', 'no'):
+                rule_list = funky_extract.funky_extract(g=deepcopy(g), root=deepcopy(root), k=k, mode=mode)
 
-                for rule in rules:
-                    rule = deepcopy(rule)
-                    if rule.lhs not in rule_dict:  # first occurence of a LHS
-                        rule_dict[rule.lhs] = []
+                rule_dict, rule_count = get_rule_dict(rule_list)
 
-                    isomorphic = False
-                    for existing_rule in rule_dict[rule.lhs]:
-                        if existing_rule == rule:  # isomorphic
-                            existing_rule.frequency += 1
-                            isomorphic = True
-                            break  # since the new rule can only be isomorphic to exactly 1 existing rule
-                    if not isomorphic:
-                        rule_dict[rule.lhs].append(rule)
-                        rule_count += 1
-
-                print('mode: {}, {} rules'.format(mode, rule_count))
+                print('\nmode: {}, {} rules'.format(mode, rule_count))
 
                 if mode == 'full':
                     generate_graph = full_info.generate_graph
@@ -116,8 +142,6 @@ def main():
 
                 print('original graph {} nodes {} edges'.format(orig_graph.order(), orig_graph.size()))
                 print('generated graph {} nodes {} edges'.format(h.order(), h.size()))
-
-
 
 
 

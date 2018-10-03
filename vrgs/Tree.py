@@ -2,10 +2,13 @@ class TreeNode:
     """
     Node class for trees
     """
-    def __init__(self, key, payload=set(), is_leaf=False):
+    def __init__(self, key, is_leaf=False):
         self.key = key   # key of the node, each node has an unique key
-        self.payload = payload  # payload on the node, could be anything
         self.level = 0  # level of the node
+
+        self.leaves = set()  # set of leaf nodes that are children
+        self.children = set()  # set of children
+
         self.parent = None
         self.left = None  # left child
         self.right = None  # right child
@@ -27,6 +30,43 @@ class TreeNode:
 
     def __lt__(self, other):
         return self.nleaf < other.nleaf
+
+    def __copy__(self):
+        node_copy = TreeNode(key=self.key)
+
+        node_copy.parent = self.parent
+        node_copy.left = self.left
+        node_copy.right = self.right
+
+        node_copy.leaves = self.leaves
+        node_copy.children = self.children
+
+        node_copy.level = self.level
+        node_copy.is_leaf = self.is_leaf
+        node_copy.nleaf = self.nleaf
+
+        return node_copy
+
+    def __hash__(self):
+        return hash(self.key)
+
+    def copy(self):
+        return self.__copy__()
+
+    def make_leaf(self, new_key):
+        """
+        converts the internal tree node into a leaf
+        :param new_key: new key of the node
+        :return:
+        """
+        self.key = new_key  # the best node's key is now the key of the new_node
+        self.leaves = {self.key}  # update the leaves
+        self.children = set()
+
+        self.left = None
+        self.right = None
+        self.is_leaf = True
+        self.nleaf = 1
 
 
 def create_tree(lst):
@@ -58,23 +98,28 @@ def create_tree(lst):
         :return:
         """
         if node.is_leaf:
-            node.nleaf = 1
-            node.payload = {node.key}
+            node.make_leaf(new_key=node.key)  # the key doesn't change
 
         else:
             if node.left is not None:
                 node.left.parent = node
-                nleaf, pl = update_info(node.left)
+                nleaf, children, leaves = update_info(node.left)
                 node.nleaf += nleaf
-                node.payload = pl.copy()
+
+                node.children.add(node.left.key)
+                node.children.update(children)
+                node.leaves.update(leaves)
 
             if node.right is not None:
                 node.right.parent = node
-                nleaf, pl = update_info(node.right)
+                nleaf, children, leaves = update_info(node.right)
                 node.nleaf += nleaf
-                node.payload.update(pl)
 
-        return node.nleaf, node.payload.copy()
+                node.children.add(node.right.key)
+                node.children.update(children)
+                node.leaves.update(leaves)
+
+        return node.nleaf, node.children, node.leaves
 
     update_info(node=root)
 
