@@ -10,7 +10,7 @@ from vrgs.Rule import NoRule
 from vrgs.Rule import PartRule
 from vrgs.globals import find_boundary_edges
 from vrgs.part_info import set_boundary_degrees
-
+from vrgs.VRG import VRG
 
 def get_buckets(root, k):
     """
@@ -69,34 +69,65 @@ def update_parents(node, buckets, node2bucket, k):
     return
 
 
-def extract_subtree(k, buckets, node2bucket, active_nodes, key2node):
+def extract_subtree(k, buckets, node2bucket, active_nodes, key2node, g, mode, grammar):
     """
     :param k: size of subtree to be collapsed
     :param buckets: mapping of val -> set of internal nodes in the tree
     :param node2bucket: mapping of key -> node
+    :param g: graph
     :return: subtree, set of active nodes
     """
 
     # pick something from the smallest non-empty bucket
-    pick_randomly = True
+    pick_randomly = False
+    best_node_key = None  # the key of the best node found from the buckets
     best_node = None
 
-    for _, bucket in sorted(buckets.items()):
-        if pick_randomly and len(bucket) != 0:   # if picking randomly, and the bucket is not empty
-            possible_nodes = bucket & active_nodes   # possible nodes are the ones that are allowed
-            if len(possible_nodes) == 0:
-                continue
+    for _, bucket in sorted(buckets.items()):  # start with the bucket with the min value
+        possible_node_keys = bucket & active_nodes  # possible nodes are the ones that are allowed
 
-            best_node_key = random.sample(possible_nodes, 1)[0]  # sample 1 node from the min bucket randomly
-            best_node = key2node[best_node_key]
+        if len(possible_node_keys) == 0:  # if there is no possible nodes, move on
+            continue
 
-            bucket.remove(best_node_key)  # remove the best node from the bucket
-            break
+        elif len(possible_node_keys) == 1:  # just one node in the bucket
+            best_node_key = possible_node_keys.pop()
+
+        else:  # the bucket has more than one nodes
+            if pick_randomly:    # if picking randomly, and the bucket is not empty
+                best_node_key = random.sample(possible_node_keys, 1)[0]  # sample 1 node from the min bucket randomly
+
+            else:  # rule selection is MDL based
+                is_existing_rule = False  # checks if the bucket contains any existing rules
+                min_mdl = float('inf')
+                min_mdl_node_key = None
+
+                for node_key in possible_node_keys:
+                    subtree = key2node[node_key].leaves & active_nodes  # only consider the leaves that are active
+                    rule, _ = create_rule(subtree=subtree, mode=mode, g=g)  # the rule corresponding to the subtree
+
+                    if rule in grammar:  # the rule already exists pick that
+                        best_node_key = node_key
+                        is_existing_rule = True
+                        print('existing rule found!')
+                        break  # you dont need to look further
+
+                    rule.calculate_cost()  # find the MDL cost of the rule
+
+                    if rule.cost < min_mdl:  # keeps track of the rule with the minimum MDL in case there are no existing rules
+                        min_mdl = rule.cost
+                        min_mdl_node_key = node_key
+
+                if not is_existing_rule:  # all the rules were new
+                    best_node_key = min_mdl_node_key
+
+        # print('Picking node {} from the bucket'.format(best_node_key))
+        best_node = key2node[best_node_key]
+        break
 
     if best_node is None:
         return None, None
 
-    subtree = best_node.leaves & active_nodes   # only consider the leaves that are active
+    subtree = best_node.leaves & active_nodes  # only consider the leaves that are active
 
     new_node_key = min(subtree)  # key of the new node
 
@@ -113,6 +144,44 @@ def extract_subtree(k, buckets, node2bucket, active_nodes, key2node):
     return subtree, active_nodes
 
 
+def create_rule(subtree, g, mode):
+    """
+
+    """
+    sg = g.subgraph(subtree)
+    boundary_edges = find_boundary_edges(g, subtree)
+
+    if mode == 'full':  # in the full information case, we add the boundary edges to the RHS and contract it
+        rule = FullRule()
+        rule.lhs = len(boundary_edges)
+        rule.internal_nodes = subtree
+
+        for u, v in boundary_edges:
+            sg.add_edge(u, v, attr_dict={'b': True})
+
+        rule.graph = sg
+        rule.contract_rhs()  # TODO breaks generation - fix this..
+        rule.generalize_rhs()
+
+    elif mode == 'part':  # in the partial boundary info, we need to set the boundary degrees
+        rule = PartRule()
+        rule.lhs = len(boundary_edges)
+        rule.internal_nodes = subtree
+
+        set_boundary_degrees(g, sg)
+
+        rule.graph = sg
+        rule.generalize_rhs()
+
+    else:
+        rule = NoRule()
+        rule.lhs = len(boundary_edges)
+        rule.internal_nodes = subtree
+        rule.graph = sg
+        rule.generalize_rhs()
+    return rule, boundary_edges
+
+
 def funky_extract(g, root,k, mode='full'):
     """
     Runner function for the funcky extract
@@ -127,46 +196,23 @@ def funky_extract(g, root,k, mode='full'):
     active_nodes = {node.key for node in nodes}  # all nodes in the tree
     key2node = {node.key: node for node in nodes}   # key -> node mapping
 
-    rule_list = list()
-
-    if mode == 'full':
-        Rule = FullRule
-
-    elif mode == 'part':
-        Rule = PartRule
-
-    else:
-        Rule = NoRule
+    grammar = VRG(mode=mode, k=k)
 
     while True:
-        subtree, active_nodes = extract_subtree(k=k, buckets=buckets, node2bucket=node2bucket, active_nodes=active_nodes, key2node=key2node)
+        subtree, active_nodes = extract_subtree(k=k, buckets=buckets, node2bucket=node2bucket, key2node=key2node,
+                                                active_nodes=active_nodes, g=g, mode=mode, grammar=grammar)
         if subtree is None:
             break
 
-        sg = g.subgraph(subtree)
-        boundary_edges = find_boundary_edges(g, subtree)
-
-        rule = Rule()
-        rule.lhs = len(boundary_edges)
-        rule.internal_nodes = subtree
-        # rule.level = lvl
-
-        if mode == 'full':  # in the full information case, we add the boundary edges to the RHS and contract it
-            for u, v in boundary_edges:
-                sg.add_edge(u, v, attr_dict={'b': True})
-            rule.contract_rhs()
-
-        if mode == 'part':  # in the partial boundary info, we need to set the boundary degrees
-            set_boundary_degrees(g, sg)
-
-        rule.graph = sg
-        rule.generalize_rhs()
-
+        rule, boundary_edges = create_rule(subtree=subtree, mode=mode, g=g)
+        grammar.add_rule(rule)
 
         # next we contract the original graph
         [g.remove_node(n) for n in subtree]
 
         new_node = min(subtree)
+
+        assert len(boundary_edges) == rule.lhs
 
         # replace subtree with new_node
         g.add_node(new_node, attr_dict={'label': rule.lhs})
@@ -179,6 +225,4 @@ def funky_extract(g, root,k, mode='full'):
                 v = new_node
             g.add_edge(u, v)
 
-        rule_list.append(rule)  # add the rule into the rule list
-
-    return rule_list
+    return grammar

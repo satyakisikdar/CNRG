@@ -40,6 +40,9 @@ class BaseRule:
     def __deepcopy__(self, memodict={}):
         return BaseRule(lhs=self.lhs, graph=self.graph, level=self.level, cost=self.cost, frequency=self.frequency)
 
+    def contract_rhs(self):
+        pass
+
 
 class FullRule(BaseRule):
     """
@@ -91,22 +94,22 @@ class FullRule(BaseRule):
         """
         Contracts the RHS such that all boundary nodes with degree 1 are replaced by a special boundary isolated node I
         """
-        iso_nodes = set()
-        for node in self.graph.nodes_iter():
-            if isinstance(node, int) and self.graph.degree(node) == 1:  # identifying the isolated nodes
-                iso_nodes.add(node)
-
-        if len(iso_nodes) == 0:  # the rule cannot be contracted
-            return
-
-        rhs_copy = self.graph.copy()
-
-        [self.graph.add_edge(u, 'I', attr_dict={'b': True})  # add the new edges
-         for iso_node in iso_nodes
-         for u in rhs_copy.neighbors_iter(iso_node)]
-
-        self.graph.remove_nodes_from(iso_nodes)   # remove the old isolated nodes
-
+        # iso_nodes = set()
+        # for node in self.graph.nodes_iter():
+        #     if isinstance(node, int) and self.graph.degree(node) == 1:  # identifying the isolated nodes
+        #         iso_nodes.add(node)
+        #
+        # if len(iso_nodes) == 0:  # the rule cannot be contracted
+        #     return
+        #
+        # rhs_copy = self.graph.copy()
+        #
+        # [self.graph.add_edge(u, 'I', attr_dict={'b': True})  # add the new edges
+        #  for iso_node in iso_nodes
+        #  for u in rhs_copy.neighbors_iter(iso_node)]
+        #
+        # self.graph.remove_nodes_from(iso_nodes)   # remove the old isolated nodes
+        return
 
 
 class PartRule(BaseRule):

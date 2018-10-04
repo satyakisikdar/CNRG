@@ -156,8 +156,6 @@ def generate_graph(rule_dict):
             idx = int(np.random.choice(range(len(rhs_candidates)), size=1, p=weights))  # pick based on probability
             rhs = rhs_candidates[idx]
 
-        # print('Selected node {} with label {}'.format(node_sample, lhs))
-
         max_v = -1
         for v in rhs.graph.nodes_iter():
             if isinstance(v, int):
@@ -176,14 +174,13 @@ def generate_graph(rule_dict):
                     rhs.graph.add_edge(u, max_v, attr_dict={'b': True})
                     max_v += 1
 
+
             assert rhs.graph.degree('I') == 0
             rhs.graph.remove_node('I')
 
         broken_edges = find_boundary_edges(new_g, [node_sample])
 
-        # print('broken edges: ', broken_edges)
-
-        assert len(broken_edges) == lhs
+        assert len(broken_edges) == lhs, 'expected {}, got {}'.format(lhs, len(broken_edges))
 
         new_g.remove_node(node_sample)
         non_terminals.remove(node_sample)
@@ -199,29 +196,34 @@ def generate_graph(rule_dict):
                     non_terminals.add(new_node)
                 node_counter += 1
 
+        for u, v, d in rhs.graph.edges_iter(data=True):
+            if 'b' not in d:  # (u, v) is not a boundary edge
+                  new_g.add_edge(nodes[u], nodes[v])
+
         # randomly assign broken edges to boundary edges
         random.shuffle(broken_edges)
 
-        # wire the broken edge
-        for u, v, d in rhs.graph.edges_iter(data=True):
-            if 'b' in d:  # (u, v) is a boundary edge, so either u is latin or v is.
-                choice = broken_edges.pop()  # pop is so much faster - I think we don't really need randomness here.
-                if isinstance(u, str):  # u is internal
-                    u = nodes[u]   # replace u with the node_number
-                    if choice[0] == node_sample:   # we don't want to re-insert the same node that we just removed.
-                        v = choice[1]   # then choice[0] is the sampled node, so we pick v to be choice[1]
-                    else:
-                        v = choice[0]   # same reason as above, only now choice[1] is the sampled node
-                else:  # v is internal
-                    v = nodes[v]   # replace v with the node number
-                    if choice[0] == node_sample:   # same reason as above.
-                        u = choice[1]
-                    else:
-                        u = choice[0]
-            else:
-                # (u, v) is an internal edge, add edge (nodes[u], nodes[v]) to the new graph
-                u, v = nodes[u], nodes[v]
-            # print('adding ({}, {}) to graph'.format(u, v))
-            new_g.add_edge(u, v)
-        # print()
+        boundary_edge_count = 0
+        for u, v,  d in rhs.graph.edges_iter(data=True):
+            if 'b' in d:  # (u, v) is a boundary edge
+                boundary_edge_count += 1
+
+        assert len(broken_edges) >= boundary_edge_count, 'broken edges {}, boundary edges {}'.format(len(broken_edges),
+                                                                                                    boundary_edge_count)
+        for u, v,  d in rhs.graph.edges_iter(data=True):
+            if 'b' not in d:  # (u, v) is not a boundary edge
+                continue
+
+            b_u, b_v = broken_edges.pop()
+            if isinstance(u, str):  # u is internal
+                if b_u == node_sample:  # b_u is the sampled node
+                    new_g.add_edge(nodes[u], b_v)
+                else:
+                    new_g.add_edge(nodes[u], b_u)
+            else:  # v is internal
+                if b_u == node_sample:
+                    new_g.add_edge(nodes[v], b_v)
+                else:
+                    new_g.add_edge(nodes[v], b_u)
+
     return new_g

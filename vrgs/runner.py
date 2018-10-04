@@ -69,34 +69,6 @@ def get_rule_graph(rule_dict):
     return g
 
 
-def get_rule_dict(rules):
-    """
-    returns the rule dictionary, keyed by LHS followed by a list of rules as values
-    :param rules:
-    :return:
-    """
-    rule_dict = {}
-    rule_count = 0
-
-    for rule in rules:
-        rule = deepcopy(rule)
-        if rule.lhs not in rule_dict:  # first occurence of a LHS
-            rule_dict[rule.lhs] = []
-
-        isomorphic = False
-        for existing_rule in rule_dict[rule.lhs]:
-            if existing_rule == rule:  # isomorphic
-                existing_rule.frequency += 1
-                isomorphic = True
-                break  # since the new rule can only be isomorphic to exactly 1 existing rule
-
-        if not isomorphic:
-            rule_dict[rule.lhs].append(rule)
-            rule_count += 1
-
-    return rule_dict, rule_count
-
-
 def main():
     """
     Driver method for VRG
@@ -112,24 +84,22 @@ def main():
 
     names = ['karate', 'lesmis', 'football', 'eucore', 'GrQc', 'gnutella', 'wikivote']
 
-    for name in names[: 4]:
+    for name in names[: 5]:
         print()
         print(name)
         g = get_graph('./tmp/{}.g'.format(name))
         # g = get_graph()
         orig_graph = deepcopy(g)
         tree = partitions.approx_min_conductance_partitioning(g, 1)
-        # tree = [[[[8], [6]], [[9], [7]]], [[[2], [4]], [[5], [[1], [3]]]]]
+        # tree = [[[[6], [7]], [[8], [9]]], [[[5], [[3], [4]]], [[1], [2]]]]
         root = create_tree(tree)
 
-        for k in range(4, 5):
+        for k in range(2, 5):
             print('\nk =', k)
-            for mode in ('full', 'part', 'no'):
-                rule_list = funky_extract.funky_extract(g=deepcopy(g), root=deepcopy(root), k=k, mode=mode)
+            for mode in ('full', 'part', 'no')[: 1]:
+                grammar = funky_extract.funky_extract(g=deepcopy(g), root=deepcopy(root), k=k, mode=mode)
 
-                rule_dict, rule_count = get_rule_dict(rule_list)
-
-                print('\nmode: {}, {} rules'.format(mode, rule_count))
+                # print('mode: {}, {} rules MDL: {} w/ contraction {}'.format(mode, len(grammar), grammar.get_cost(), grammar.get_cost(contract=True)))
 
                 if mode == 'full':
                     generate_graph = full_info.generate_graph
@@ -138,7 +108,7 @@ def main():
                 else:
                     generate_graph = no_info.generate_graph
 
-                h = generate_graph(rule_dict)
+                h = generate_graph(grammar.rule_dict)
 
                 print('original graph {} nodes {} edges'.format(orig_graph.order(), orig_graph.size()))
                 print('generated graph {} nodes {} edges'.format(h.order(), h.size()))
