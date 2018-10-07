@@ -1,16 +1,20 @@
 from collections import defaultdict
+from time import time
+import vrgs.full_info as full_info
+import vrgs.part_info as part_info
+import vrgs.no_info as no_info
 
 class VRG:
     """
     Class for Vertex Replacement Grammars
     """
-    def __init__(self, mode='full', k=0):
+    def __init__(self, mode, k):
         self.mode = mode  # type of VRG - full, part, or no
-        self.rule_list = []   # list of rule objects
+        self.k = k
 
+        self.rule_list = []   # list of rule objects
         self.rule_dict = defaultdict(list)  # dictionary of rules, keyed in by their LHS
         self.mdl = 0  # the MDL of the rules
-        self.k = k
 
     def __len__(self):
         return len(self.rule_list)
@@ -46,3 +50,27 @@ class VRG:
         self.mdl = 0
         self.calculate_cost(contract)
         return self.mdl
+
+    def generate_graphs(self, count):
+        """
+        generate count many graphs from the grammar
+        :param count: number of graphs to be generated
+        :return:
+        """
+        if self.mode == 'full':
+            generate_graph = full_info.generate_graph
+        elif self.mode == 'part':
+            generate_graph = part_info.generate_graph
+        else:
+            generate_graph = no_info.generate_graph
+
+        graphs = []
+
+        for _ in range(count):
+            start_time = time()
+            h = generate_graph(self.rule_dict)
+            t = time() - start_time
+            graphs.append(h)
+            print('n = {} m = {} ({} secs)'.format(h.order(), h.size(), round(t, 3)))
+
+        return graphs

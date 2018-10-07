@@ -12,7 +12,7 @@ import numpy as np
 import scipy.sparse.linalg
 from sklearn.cluster import KMeans
 
-def approx_min_conductance_partitioning(g, max_k):
+def approx_min_conductance_partitioning(g, max_k=1):
     """
     Approximate minimum conductance partinioning. I'm using the median method as referenced here:
     http://www.ieor.berkeley.edu/~goldberg/pubs/krishnan-recsys-final2.pdf
@@ -102,7 +102,7 @@ def spectral_kmeans(g, k):
         return g.nodes()
 
     if k == 2:  # if k is two, use approx min partitioning
-        return [approx_min_conductance_partitioning(g, k)]
+        return [approx_min_conductance_partitioning(g, 1)]
 
     if not nx.is_connected(g):
         for p in nx.connected_component_subgraphs(g):

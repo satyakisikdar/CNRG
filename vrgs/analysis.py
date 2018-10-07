@@ -35,7 +35,30 @@ def analyze_rules(vrg_rules, type='FULL'):
     plt.plot(xs, ys, marker='o', label=type, alpha=0.5)
 
 
-def compare_graphs(g_true, g_full, g_part, g_no, graph_mdl, mdl_full, mdl_part, mdl_no, k, count):
+
+def compare_two_graphs(g_true, g):
+    """
+    Compares two graphs
+    :param g_true: actual graph
+    :param g: generated graph
+    :return:
+    """
+    true_deg = list(g_true.degree().values())
+    true_page = list(map(lambda x: round(x, 3), nx.pagerank_numpy(g_true).values()))
+
+    g_deg = list(g.degree().values())
+    g_page = list(map(lambda x: round(x, 3), nx.pagerank_numpy(g).values()))
+
+    gcd = GCD(g_true, g, mode='orca')
+    cvm_deg = cvm_distance(true_deg, g_deg)
+    cvm_page = cvm_distance(true_page, g_page)
+
+    return gcd, cvm_deg, cvm_page
+
+
+def compare_graphs(g_true, g_full, g_part, g_no,
+                   graph_mdl, mdl_full, mdl_part, mdl_no,
+                   k, count):
     """
     Compares two graphs g1 and g2
     Hop-plots, 90% diameter
@@ -94,8 +117,7 @@ def hop_plot(g):
     :return:
     """
     hop_counts = Counter()
-    # for u in g.nodes_iter():
-    for u in [1, 2, 3]:
+    for u in g.nodes_iter():
         q = deque()
         nodes_covered = {u}
         q.append(u)
@@ -115,7 +137,7 @@ def hop_plot(g):
 
 
 
-def cdf_sum(data1, data2):
+def cvm_distance(data1, data2):
     data1, data2 = map(np.asarray, (data1, data2))
     n1 = len(data1)
     n2 = len(data2)

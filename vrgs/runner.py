@@ -19,10 +19,7 @@ import numpy as np
 sys.path.extend([os.getcwd(), os.path.dirname(os.getcwd())])
 
 import vrgs.partitions as partitions
-import vrgs.full_info as full_info
-import vrgs.part_info as part_info
-import vrgs.no_info as no_info
-import vrgs.funky_extract as funky_extract
+from vrgs.funky_extract import funky_extract
 from vrgs.Tree import create_tree
 
 
@@ -76,42 +73,38 @@ def main():
     """
     np.seterr(all='ignore')
 
+
+    # networkx to matrix
+    # np.savetxt('karate.mat', nx.to_numpy_matrix(g), fmt='%d')
     # columns = ['name', 'k', 'count',
     #            'actual_n', 'actual_m', 'actual_MDL',
     #            'full_n', 'full_m', 'full_rules', 'full_MDL', 'GCD_full', 'CVM_full_d', 'CVM_full_pr',
     #            'part_n', 'part_m', 'part_rules', 'part_MDL', 'GCD_part', 'CVM_part_d', 'CVM_part_pr',
     #            'no_n', 'no_m', 'no_rules', 'no_MDL', 'GCD_no', 'CVM_no_d', 'CVM_no_pr']
 
-    names = ['karate', 'lesmis', 'football', 'eucore', 'GrQc', 'gnutella', 'wikivote']
+    names = ('karate', 'lesmis', 'football', 'eucore', 'GrQc', 'gnutella', 'wikivote')
 
-    for name in names[: 5]:
+    for name in names[: 3]:
         print()
         print(name)
+
         g = get_graph('./tmp/{}.g'.format(name))
         # g = get_graph()
         orig_graph = deepcopy(g)
-        tree = partitions.approx_min_conductance_partitioning(g, 1)
+
+        tree = partitions.approx_min_conductance_partitioning(g)
         # tree = [[[[6], [7]], [[8], [9]]], [[[5], [[3], [4]]], [[1], [2]]]]
+
         root = create_tree(tree)
 
-        for k in range(2, 5):
+        for k in range(3, 7):
             print('\nk =', k)
-            for mode in ('full', 'part', 'no')[: 1]:
-                grammar = funky_extract.funky_extract(g=deepcopy(g), root=deepcopy(root), k=k, mode=mode)
 
-                # print('mode: {}, {} rules MDL: {} w/ contraction {}'.format(mode, len(grammar), grammar.get_cost(), grammar.get_cost(contract=True)))
+            for mode in ('full', 'part', 'no'):
+                grammar = funky_extract(g=deepcopy(g), root=deepcopy(root), k=k, mode=mode, pick_randomly=True)
+                print('\n"{}" original graph {} nodes {} edges'.format(mode, orig_graph.order(), orig_graph.size()))
 
-                if mode == 'full':
-                    generate_graph = full_info.generate_graph
-                elif mode == 'part':
-                    generate_graph = part_info.generate_graph
-                else:
-                    generate_graph = no_info.generate_graph
-
-                h = generate_graph(grammar.rule_dict)
-
-                print('original graph {} nodes {} edges'.format(orig_graph.order(), orig_graph.size()))
-                print('generated graph {} nodes {} edges'.format(h.order(), h.size()))
+                graphs = grammar.generate_graphs(count=5)
 
 
 

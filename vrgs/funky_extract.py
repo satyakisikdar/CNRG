@@ -4,6 +4,9 @@ Funky extraction using Justus' method
 
 import random
 from collections import defaultdict
+import networkx as nx
+import numpy as np
+from time import time
 
 from vrgs.Rule import FullRule
 from vrgs.Rule import NoRule
@@ -69,7 +72,7 @@ def update_parents(node, buckets, node2bucket, k):
     return
 
 
-def extract_subtree(k, buckets, node2bucket, active_nodes, key2node, g, mode, grammar):
+def extract_subtree(k, buckets, node2bucket, active_nodes, key2node, g, mode, grammar, pick_randomly=True):
     """
     :param k: size of subtree to be collapsed
     :param buckets: mapping of val -> set of internal nodes in the tree
@@ -79,7 +82,6 @@ def extract_subtree(k, buckets, node2bucket, active_nodes, key2node, g, mode, gr
     """
 
     # pick something from the smallest non-empty bucket
-    pick_randomly = False
     best_node_key = None  # the key of the best node found from the buckets
     best_node = None
 
@@ -145,9 +147,6 @@ def extract_subtree(k, buckets, node2bucket, active_nodes, key2node, g, mode, gr
 
 
 def create_rule(subtree, g, mode):
-    """
-
-    """
     sg = g.subgraph(subtree)
     boundary_edges = find_boundary_edges(g, subtree)
 
@@ -160,7 +159,7 @@ def create_rule(subtree, g, mode):
             sg.add_edge(u, v, attr_dict={'b': True})
 
         rule.graph = sg
-        rule.contract_rhs()  # TODO breaks generation - fix this..
+        rule.contract_rhs()  # TODO breaks generation - fix this.. - currently commented out in FullRule
         rule.generalize_rhs()
 
     elif mode == 'part':  # in the partial boundary info, we need to set the boundary degrees
@@ -182,7 +181,7 @@ def create_rule(subtree, g, mode):
     return rule, boundary_edges
 
 
-def funky_extract(g, root,k, mode='full'):
+def funky_extract(g, root,k, pick_randomly, mode):
     """
     Runner function for the funcky extract
     :param g: graph
@@ -192,6 +191,9 @@ def funky_extract(g, root,k, mode='full'):
 
     :return: list of rules
     """
+
+    start_time = time()
+
     nodes, buckets, node2bucket = get_buckets(root=root, k=k)
     active_nodes = {node.key for node in nodes}  # all nodes in the tree
     key2node = {node.key: node for node in nodes}   # key -> node mapping
@@ -200,7 +202,8 @@ def funky_extract(g, root,k, mode='full'):
 
     while True:
         subtree, active_nodes = extract_subtree(k=k, buckets=buckets, node2bucket=node2bucket, key2node=key2node,
-                                                active_nodes=active_nodes, g=g, mode=mode, grammar=grammar)
+                                                active_nodes=active_nodes, g=g, mode=mode, grammar=grammar,
+                                                pick_randomly=pick_randomly)
         if subtree is None:
             break
 
@@ -225,4 +228,110 @@ def funky_extract(g, root,k, mode='full'):
                 v = new_node
             g.add_edge(u, v)
 
+    end_time = time()
+
+    print('Grammar extracted in {} secs'.format(round(end_time - start_time, 3)))
+
     return grammar
+
+
+def funky_generate(grammar, mode):
+    """
+    Generate a graph using the grammar
+    :param grammar: a VRG object
+    :param mode: full / part / no
+    :return:
+    """
+    node_counter = 1
+    non_terminals = set()
+    new_g = nx.MultiGraph()
+
+    new_g.add_node(0, attr_dict={'label': 0})
+    non_terminals.add(0)
+
+    while len(non_terminals) > 0:      # continue until no more non-terminal nodes
+        # choose a non terminal node at random
+        node_sample = random.sample(non_terminals, 1)[0]
+        lhs = new_g.node[node_sample]['label']
+
+        rhs_candidates = grammar.rule_dict[lhs]
+        if len(rhs_candidates) == 1:
+            rhs = rhs_candidates[0]
+        else:
+            weights = np.array([rule.frequency for rule in rhs_candidates])
+            weights = weights / np.sum(weights)   # normalize into probabilities
+            idx = int(np.random.choice(range(len(rhs_candidates)), size=1, p=weights))  # pick based on probability
+            rhs = rhs_candidates[idx]
+
+        if mode == 'full':  # only full information has boundary node info
+            max_v = -1
+            for v in rhs.graph.nodes_iter():
+                if isinstance(v, int):
+                    max_v = max(v, max_v)
+            max_v += 1
+
+            # expanding the 'I' nodes into separate integer labeled nodes
+            if rhs.graph.has_node('I'):
+                for u, v in rhs.graph.edges():
+                    if u == 'I':
+                        rhs.graph.remove_edge(u, v)
+                        rhs.graph.add_edge(max_v, v, attr_dict={'b': True})
+                        max_v += 1
+                    elif v == 'I':
+                        rhs.graph.remove_edge(u, v)
+                        rhs.graph.add_edge(u, max_v, attr_dict={'b': True})
+                        max_v += 1
+
+                assert rhs.graph.degree('I') == 0
+                rhs.graph.remove_node('I')
+
+        broken_edges = find_boundary_edges(new_g, [node_sample])
+
+        assert len(broken_edges) == lhs, 'expected {}, got {}'.format(lhs, len(broken_edges))
+
+        new_g.remove_node(node_sample)
+        non_terminals.remove(node_sample)
+
+        nodes = {}
+
+        for n, d in rhs.graph.nodes_iter(data=True):
+            if isinstance(n, str):
+                new_node = node_counter
+                nodes[n] = new_node
+                new_g.add_node(new_node, attr_dict=d)
+                if 'label' in d:  # if it's a new non-terminal add it to the set of non-terminals
+                    non_terminals.add(new_node)
+                node_counter += 1
+
+        for u, v, d in rhs.graph.edges_iter(data=True):
+            if 'b' not in d:  # (u, v) is not a boundary edge
+                  new_g.add_edge(nodes[u], nodes[v])
+
+        # randomly assign broken edges to boundary edges
+        random.shuffle(broken_edges)
+
+        boundary_edge_count = 0
+        for u, v,  d in rhs.graph.edges_iter(data=True):
+            if 'b' in d:  # (u, v) is a boundary edge
+                boundary_edge_count += 1
+
+        assert len(broken_edges) >= boundary_edge_count, 'broken edges {}, boundary edges {}'.format(len(broken_edges),
+                                                                                                    boundary_edge_count)
+        for u, v,  d in rhs.graph.edges_iter(data=True):
+            if 'b' not in d:  # (u, v) is not a boundary edge
+                continue
+
+            b_u, b_v = broken_edges.pop()
+            if isinstance(u, str):  # u is internal
+                if b_u == node_sample:  # b_u is the sampled node
+                    new_g.add_edge(nodes[u], b_v)
+                else:
+                    new_g.add_edge(nodes[u], b_u)
+            else:  # v is internal
+                if b_u == node_sample:
+                    new_g.add_edge(nodes[v], b_v)
+                else:
+                    new_g.add_edge(nodes[v], b_u)
+
+
+    return new_g

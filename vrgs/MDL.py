@@ -82,13 +82,16 @@ def graph_mdl_v2(g, l_u=2):
     mdl_v = nbits(n) + n * nbits(l_u)
 
     # encoding rows of matrix
-    adj_mat = nx.to_numpy_matrix(g)
-
     mdl_r = 0
-    for i in range(n):
-        for j in range(n):
-            a_ij = int(adj_mat[i, j])
-            mdl_r += len(gamma_code(a_ij + 1))
+
+    # counting the upper triangle
+    nnz = 2 * g.size()  # the number of non-zero entries in the matrix
+
+    for u, v in g.edges_iter():
+        k = g.number_of_edges(u, v)
+        mdl_r += 2 * len(gamma_code(k + 1))
+
+    mdl_r += (n ** 2 - nnz) * len(gamma_code(0 + 1))
 
     return mdl_v + mdl_r
 
