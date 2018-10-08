@@ -230,7 +230,7 @@ def funky_extract(g, root,k, pick_randomly, mode):
 
     end_time = time()
 
-    print('Grammar extracted in {} secs'.format(round(end_time - start_time, 3)))
+    print('\nGrammar extracted in {} secs'.format(round(end_time - start_time, 3)))
 
     return grammar
 

@@ -9,28 +9,31 @@ import numpy as np
 
 def GCD(h1, h2, mode='rage'):
     if mode == 'rage':
-        df_g = external_rage(h1, 'Orig')
-        df_h = external_rage(h2, 'Test')
+        df_g = external_rage(h1, 'orig')
+        df_h = external_rage(h2, 'test')
     else:
         df_g = external_orca(h1, 'orig')
         df_h = external_orca(h2, 'test')
+
     gcm_g = tijana_eval_compute_gcm(df_g)
     gcm_h = tijana_eval_compute_gcm(df_h)
+
     gcd = tijana_eval_compute_gcd(gcm_g, gcm_h)
     return round(gcd, 3)
 
 
 def external_orca(g, gname):
+    g = nx.Graph(g)  # convert it into a simple graph
     g = max(nx.connected_component_subgraphs(g), key=len)
     g = nx.convert_node_labels_to_integers(g, first_label=0)
 
-    file_dir = './tmp'
-    with open('{}/{}.in'.format(file_dir, gname), 'w') as f:
+    file_dir = 'tmp'
+    with open('./{}/{}.in'.format(file_dir, gname), 'w') as f:
         f.write('{} {}\n'.format(g.order(), g.size()))
         for u, v in g.edges_iter():
             f.write('{} {}\n'.format(u, v))
 
-    args = './orca', '4', '{}/{}.in'.format(file_dir, gname), '{}/{}.out'.format(file_dir, gname)
+    args = './orca', '4', './{}/{}.in'.format(file_dir, gname), './{}/{}.out'.format(file_dir, gname)
 
     popen = subprocess.Popen(args, stdout=subprocess.DEVNULL)
     popen.wait()
