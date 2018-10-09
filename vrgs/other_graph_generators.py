@@ -50,9 +50,9 @@ def bter_wrapper(g):
 
     print('\n'.join(matlab_code), file=open('./tmp/matlab/{}_code.m'.format(g.name), 'w'))
 
-    exit_code = subprocess.call('cat ./tmp/matlab/{}_code.m | matlab'.format(g.name), shell=True)
+    completed_process = subprocess.run('cat ./tmp/matlab/{}_code.m | matlab'.format(g.name), shell=True)
 
-    if exit_code != 0:
+    if completed_process.returncode != 0:
         print('error in matlab')
         return None
 
@@ -277,3 +277,45 @@ def kronecker2_random_graph(k, P, seed=None, directed=True):
         G = G.to_undirected()
 
     return G
+
+
+def subdue(g):
+    name = g.name
+    g = nx.convert_node_labels_to_integers(g, first_label=1)
+    g.name = name
+
+    with open('./tmp/{}_subdue.g'.format(g.name), 'w') as f:
+        for u in sorted(g.nodes_iter()):
+            f.write('\nv {} v'.format(u))
+
+        for u, v in g.edges_iter():
+            f.write('\nu {} {} e'.format(u, v))
+
+    completed_process = subprocess.run('./subdue -undirected -nsubs 100000 ./tmp/{}_subdue.g'.format(g.name),
+                                       shell=True, stdout=subprocess.PIPE)
+
+    if completed_process.returncode != 0:
+        return None
+
+    structures = []
+    raw_st = completed_process.stdout.decode("utf-8")
+
+    lines = raw_st.split('\n')
+
+    for i, line in enumerate(lines):
+        if line.startswith('('):  # start of a substructure
+            sub_count = int(line.split(',')[-2].split()[-1])
+            substr = nx.Graph()
+            next_line = lines[i + 1]
+            n = int(next_line[next_line.find('(') + 1: next_line.find('v')])
+            m = int(next_line[next_line.find(',') + 1: next_line.find('e')])
+            for j in range(i + 2, i + 2 + m + n):
+                if lines[j].strip().startswith('u'):  # it's an edge
+                    u, v = map(int, lines[j].split()[1: 3])
+                    substr.add_edge(u, v)
+
+            structures.append((substr, sub_count))
+
+    # print(structures)
+
+    return structures
