@@ -31,7 +31,7 @@ def nbits(x):
     return math.ceil(math.log(x, 2))
 
 
-def graph_mdl(g, l_u=2):
+def graph_mdl_old(g, l_u=2):
     """
     Get MDL for graphs
     Reference: http://citeseerx.ist.psu.edu/viewdoc/download?doi=10.1.1.407.6721&rep=rep1&type=pdf
@@ -68,7 +68,7 @@ def graph_mdl(g, l_u=2):
     return mdl_v + mdl_r + mdl_e
 
 
-def graph_mdl_v2(g, l_u=2):
+def graph_mdl(g, l_u=2):
     """
     Get MDL for graphs using Gamma coding
     :param g: graph

@@ -49,7 +49,7 @@ def compare_two_graphs(g_true, g):
     g_deg = list(g.degree().values())
     g_page = list(map(lambda x: round(x, 3), nx.pagerank_numpy(g).values()))
 
-    gcd = GCD(g_true, g, mode='orca')
+    gcd = GCD(g_true, g)
     cvm_deg = cvm_distance(true_deg, g_deg)
     cvm_page = cvm_distance(true_page, g_page)
 
