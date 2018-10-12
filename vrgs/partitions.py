@@ -11,6 +11,28 @@ from scipy.spatial.distance import pdist
 import numpy as np
 import scipy.sparse.linalg
 from sklearn.cluster import KMeans
+import random
+
+def get_random_partition(g):
+    nodes = g.nodes()
+    random.shuffle(nodes)
+    return random_partition(nodes)
+
+def random_partition(nodes):
+    tree = []
+    if len(nodes) < 2:
+        return nodes
+
+    left = nodes[: len(nodes) // 2]
+    right = nodes[len(nodes) // 2: ]
+
+    tree.append(random_partition(left))
+    tree.append(random_partition(right))
+
+    return tree
+
+
+
 
 def approx_min_conductance_partitioning(g, max_k=1):
     """
@@ -144,9 +166,6 @@ def spectral_kmeans(g, k):
             tree.append(spectral_kmeans(sg, k - 1))
 
     return tree
-
-
-
 
 
 def get_dendrogram(embeddings, method='best', metric='euclidean'):
