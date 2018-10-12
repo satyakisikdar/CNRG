@@ -18,6 +18,7 @@ def get_random_partition(g):
     random.shuffle(nodes)
     return random_partition(nodes)
 
+
 def random_partition(nodes):
     tree = []
     if len(nodes) < 2:
