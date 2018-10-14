@@ -1,0 +1,4 @@
+G = dlmread('./data/karate.mat');
+nnodes = size(G, 1);
+nedges = nnz(G) / 2;
+fprintf('Number of nodes: %d edges: %s', nnodes, nedges)a

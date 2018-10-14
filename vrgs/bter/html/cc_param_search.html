@@ -1,0 +1,199 @@
+
+<!DOCTYPE html
+  PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<html><head>
+      <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+   <!--
+This HTML was auto-generated from MATLAB code.
+To make changes, update the MATLAB code and republish this document.
+      --><title>cc_param_search</title><meta name="generator" content="MATLAB 8.1"><link rel="schema.DC" href="http://purl.org/dc/elements/1.1/"><meta name="DC.date" content="2014-01-10"><meta name="DC.source" content="cc_param_search.m"><style type="text/css">
+html,body,div,span,applet,object,iframe,h1,h2,h3,h4,h5,h6,p,blockquote,pre,a,abbr,acronym,address,big,cite,code,del,dfn,em,font,img,ins,kbd,q,s,samp,small,strike,strong,sub,sup,tt,var,b,u,i,center,dl,dt,dd,ol,ul,li,fieldset,form,label,legend,table,caption,tbody,tfoot,thead,tr,th,td{margin:0;padding:0;border:0;outline:0;font-size:100%;vertical-align:baseline;background:transparent}body{line-height:1}ol,ul{list-style:none}blockquote,q{quotes:none}blockquote:before,blockquote:after,q:before,q:after{content:'';content:none}:focus{outine:0}ins{text-decoration:none}del{text-decoration:line-through}table{border-collapse:collapse;border-spacing:0}
+
+html { min-height:100%; margin-bottom:1px; }
+html body { height:100%; margin:0px; font-family:Arial, Helvetica, sans-serif; font-size:10px; color:#000; line-height:140%; background:#fff none; overflow-y:scroll; }
+html body td { vertical-align:top; text-align:left; }
+
+h1 { padding:0px; margin:0px 0px 25px; font-family:Arial, Helvetica, sans-serif; font-size:1.5em; color:#d55000; line-height:100%; font-weight:normal; }
+h2 { padding:0px; margin:0px 0px 8px; font-family:Arial, Helvetica, sans-serif; font-size:1.2em; color:#000; font-weight:bold; line-height:140%; border-bottom:1px solid #d6d4d4; display:block; }
+h3 { padding:0px; margin:0px 0px 5px; font-family:Arial, Helvetica, sans-serif; font-size:1.1em; color:#000; font-weight:bold; line-height:140%; }
+
+a { color:#005fce; text-decoration:none; }
+a:hover { color:#005fce; text-decoration:underline; }
+a:visited { color:#004aa0; text-decoration:none; }
+
+p { padding:0px; margin:0px 0px 20px; }
+img { padding:0px; margin:0px 0px 20px; border:none; }
+p img, pre img, tt img, li img { margin-bottom:0px; } 
+
+ul { padding:0px; margin:0px 0px 20px 23px; list-style:square; }
+ul li { padding:0px; margin:0px 0px 7px 0px; }
+ul li ul { padding:5px 0px 0px; margin:0px 0px 7px 23px; }
+ul li ol li { list-style:decimal; }
+ol { padding:0px; margin:0px 0px 20px 0px; list-style:decimal; }
+ol li { padding:0px; margin:0px 0px 7px 23px; list-style-type:decimal; }
+ol li ol { padding:5px 0px 0px; margin:0px 0px 7px 0px; }
+ol li ol li { list-style-type:lower-alpha; }
+ol li ul { padding-top:7px; }
+ol li ul li { list-style:square; }
+
+.content { font-size:1.2em; line-height:140%; padding: 20px; }
+
+pre, tt, code { font-size:12px; }
+pre { margin:0px 0px 20px; }
+pre.error { color:red; }
+pre.codeinput { padding:10px; border:1px solid #d3d3d3; background:#f7f7f7; }
+pre.codeoutput { padding:10px 11px; margin:0px 0px 20px; color:#4c4c4c; }
+
+@media print { pre.codeinput, pre.codeoutput { word-wrap:break-word; width:100%; } }
+
+span.keyword { color:#0000FF }
+span.comment { color:#228B22 }
+span.string { color:#A020F0 }
+span.untermstring { color:#B20000 }
+span.syscmd { color:#B28C00 }
+
+.footer { width:auto; padding:10px 0px; margin:25px 0px 0px; border-top:1px dotted #878787; font-size:0.8em; line-height:140%; font-style:italic; color:#878787; text-align:left; float:none; }
+.footer p { margin:0px; }
+.footer a { color:#878787; }
+.footer a:hover { color:#878787; text-decoration:underline; }
+.footer a:visited { color:#878787; }
+
+table th { padding:7px 5px; text-align:left; vertical-align:middle; border: 1px solid #d6d4d4; font-weight:bold; }
+table td { padding:7px 5px; text-align:left; vertical-align:top; border:1px solid #d6d4d4; }
+
+
+
+
+
+  </style></head><body><div class="content"><h2>Contents</h2><div><ul><li><a href="#3">License</a></li></ul></div><pre class="codeinput"><span class="keyword">function</span> p1 = cc_param_search(nd,maxcc,gcc,varargin)
+</pre><pre class="codeinput"><span class="comment">%CC_PARAM_SEARCH Clustering coefficient parameter search</span>
+<span class="comment">%</span>
+<span class="comment">%   XI = CC_PARAM_SEARCH(ND, MAXCCD, GCC) finds the parameter XI such that</span>
+<span class="comment">%   the clustering coefficint profile defined by</span>
+<span class="comment">%</span>
+<span class="comment">%   CCD(D) = MAXCCD * exp(-(D-1)*XI) for D &gt;= 2,</span>
+<span class="comment">%</span>
+<span class="comment">%   has the specified global clustering coefficient (GCC) and maximum</span>
+<span class="comment">%   clustering coefficient (MAXCCD).</span>
+<span class="comment">%</span>
+<span class="comment">%   Examples</span>
+<span class="comment">%     % nd &lt;- degree distribution</span>
+<span class="comment">%     % maxccd_target &lt;- target for maximum ccd value</span>
+<span class="comment">%     % gcc_target &lt;- target for global clustering coefficient</span>
+<span class="comment">%     xi = cc_param_search(nd, maxccd_target, gcc_target);</span>
+<span class="comment">%     ccd_target = [0; maxccd_target * exp(-(0:maxdeg-2)'.* xi)];</span>
+<span class="comment">%     maxdeg = find(nd&gt;0,1,'last');</span>
+<span class="comment">%</span>
+<span class="comment">%   See also DEGDIST_PARAM_SEARCH, BTER</span>
+<span class="comment">%</span>
+<span class="comment">%   Reference:</span>
+<span class="comment">%   T. G. Kolda, A. Pinar, T. Plantenga and C. Seshadhri. A Scalable</span>
+<span class="comment">%   Generative Graph Model with Community Structure, arXiv:1302.6636,</span>
+<span class="comment">%   March 2013. (http://arxiv.org/abs/1302.6636)</span>
+<span class="comment">%</span>
+<span class="comment">% Tamara G. Kolda, Ali Pinar, and others, FEASTPACK v1.1, Sandia National</span>
+<span class="comment">% Laboratories, SAND2013-4136W, http://www.sandia.gov/~tgkolda/feastpack/,</span>
+<span class="comment">% January 2014</span>
+</pre><h2>License<a name="3"></a></h2><p>Copyright (c) 2014, Sandia National Laboratories All rights reserved.</p><p>Redistribution and use in source and binary forms, with or without modification, are permitted provided that the following conditions are met:</p><div><ol><li>Redistributions of source code must retain the above copyright notice, this list of conditions and the following disclaimer.</li><li>Redistributions in binary form must reproduce the above copyright notice, this list of conditions and the following disclaimer in the documentation and/or other materials provided with the distribution.</li></ol></div><p>THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.</p><p>Sandia National Laboratories is a multi-program laboratory managed and operated by Sandia Corporation, a wholly owned subsidiary of Lockheed Martin Corporation, for the U.S. Department of Energy's National Nuclear Security Administration under contract DE-AC04-94AL85000.</p><pre class="codeinput">params = inputParser;
+params.addParamValue(<span class="string">'fminsearch_opts'</span>, optimset(<span class="string">'TolFun'</span>, 1e-4, <span class="string">'TolX'</span>, 1e-4));
+params.parse(varargin{:});
+options = params.Results.fminsearch_opts;
+
+fhandle = @(x) objfunc(nd, maxcc, gcc, x);
+[xstar,~,~] = fminsearch(fhandle, 0.5, options);
+p1 = xstar;
+</pre><pre class="codeinput"><span class="keyword">function</span> y = objfunc(nd,maxcc,gcc,xi)
+<span class="comment">%OBJFUNC Compute objectiv function, as described above</span>
+maxd = length(nd);
+ccd_mean = [0; maxcc*exp(-(0:maxd-2)'.* xi)];
+nWedges = nd' .* ((1:maxd).*((1:maxd)-1)/2);
+gcc_xi = (nWedges*ccd_mean) / sum(nWedges);
+y = abs(gcc - gcc_xi);
+fprintf(<span class="string">'xi = %e, target gcc = %f, current gcc = %f\n'</span>, xi, gcc, gcc_xi);
+</pre><p class="footer"><br><a href="http://www.mathworks.com/products/matlab/">Published with MATLAB&reg; R2013a</a><br></p></div><!--
+##### SOURCE BEGIN #####
+function p1 = cc_param_search(nd,maxcc,gcc,varargin)
+%CC_PARAM_SEARCH Clustering coefficient parameter search
+%
+%   XI = CC_PARAM_SEARCH(ND, MAXCCD, GCC) finds the parameter XI such that
+%   the clustering coefficint profile defined by
+%
+%   CCD(D) = MAXCCD * exp(-(D-1)*XI) for D >= 2,
+%
+%   has the specified global clustering coefficient (GCC) and maximum
+%   clustering coefficient (MAXCCD).
+%
+%   Examples
+%     % nd <- degree distribution
+%     % maxccd_target <- target for maximum ccd value
+%     % gcc_target <- target for global clustering coefficient
+%     xi = cc_param_search(nd, maxccd_target, gcc_target);
+%     ccd_target = [0; maxccd_target * exp(-(0:maxdeg-2)'.* xi)];
+%     maxdeg = find(nd>0,1,'last');
+%
+%   See also DEGDIST_PARAM_SEARCH, BTER
+%
+%   Reference:
+%   T. G. Kolda, A. Pinar, T. Plantenga and C. Seshadhri. A Scalable
+%   Generative Graph Model with Community Structure, arXiv:1302.6636, 
+%   March 2013. (http://arxiv.org/abs/1302.6636)
+%
+% Tamara G. Kolda, Ali Pinar, and others, FEASTPACK v1.1, Sandia National
+% Laboratories, SAND2013-4136W, http://www.sandia.gov/~tgkolda/feastpack/,
+% January 2014  
+
+%% License
+% Copyright (c) 2014, Sandia National Laboratories
+% All rights reserved.
+%
+% Redistribution and use in source and binary forms, with or without
+% modification, are permitted provided that the following conditions are
+% met:  
+%
+% # Redistributions of source code must retain the above copyright notice,
+% this list of conditions and the following disclaimer. 
+% # Redistributions in binary form must reproduce the above copyright
+% notice, this list of conditions and the following disclaimer in the
+% documentation and/or other materials provided with the distribution.  
+%
+% THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS
+% IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO,
+% THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR
+% PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR
+% CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL,
+% EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO,
+% PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR
+% PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF
+% LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING
+% NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
+% SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.          
+%
+%
+% Sandia National Laboratories is a multi-program laboratory managed and
+% operated by Sandia Corporation, a wholly owned subsidiary of Lockheed
+% Martin Corporation, for the U.S. Department of Energy's National Nuclear
+% Security Administration under contract DE-AC04-94AL85000. 
+
+
+params = inputParser;
+params.addParamValue('fminsearch_opts', optimset('TolFun', 1e-4, 'TolX', 1e-4));
+params.parse(varargin{:});
+options = params.Results.fminsearch_opts;
+
+fhandle = @(x) objfunc(nd, maxcc, gcc, x);
+[xstar,~,~] = fminsearch(fhandle, 0.5, options);
+p1 = xstar;
+
+function y = objfunc(nd,maxcc,gcc,xi)
+%OBJFUNC Compute objectiv function, as described above
+maxd = length(nd);
+ccd_mean = [0; maxcc*exp(-(0:maxd-2)'.* xi)];
+nWedges = nd' .* ((1:maxd).*((1:maxd)-1)/2);
+gcc_xi = (nWedges*ccd_mean) / sum(nWedges);
+y = abs(gcc - gcc_xi);
+fprintf('xi = %e, target gcc = %f, current gcc = %f\n', xi, gcc, gcc_xi);
+
+
+
+##### SOURCE END #####
+--></body></html>

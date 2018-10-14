@@ -1,0 +1,552 @@
+
+<!DOCTYPE html
+  PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<html><head>
+      <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+   <script type="text/javascript" src="http://cdn.mathjax.org/mathjax/latest/MathJax.js?config=TeX-AMS-MML_HTMLorMML"></script><!--
+This HTML was auto-generated from MATLAB code.
+To make changes, update the MATLAB code and republish this document.
+      --><title>BTER Guide: How to create a BTER graph that matches an existing graph</title><meta name="generator" content="MATLAB 8.1"><link rel="schema.DC" href="http://purl.org/dc/elements/1.1/"><meta name="DC.date" content="2014-01-10"><meta name="DC.source" content="doc_bter_match.m"><style type="text/css">
+html,body,div,span,applet,object,iframe,h1,h2,h3,h4,h5,h6,p,blockquote,pre,a,abbr,acronym,address,big,cite,code,del,dfn,em,font,img,ins,kbd,q,s,samp,small,strike,strong,sub,sup,tt,var,b,u,i,center,dl,dt,dd,ol,ul,li,fieldset,form,label,legend,table,caption,tbody,tfoot,thead,tr,th,td{margin:0;padding:0;border:0;outline:0;font-size:100%;vertical-align:baseline;background:transparent}body{line-height:1}ol,ul{list-style:none}blockquote,q{quotes:none}blockquote:before,blockquote:after,q:before,q:after{content:'';content:none}:focus{outine:0}ins{text-decoration:none}del{text-decoration:line-through}table{border-collapse:collapse;border-spacing:0}
+
+html { min-height:100%; margin-bottom:1px; }
+html body { height:100%; margin:0px; font-family:Arial, Helvetica, sans-serif; font-size:10px; color:#000; line-height:140%; background:#fff none; overflow-y:scroll; }
+html body td { vertical-align:top; text-align:left; }
+
+h1 { padding:0px; margin:0px 0px 25px; font-family:Arial, Helvetica, sans-serif; font-size:1.5em; color:#d55000; line-height:100%; font-weight:normal; }
+h2 { padding:0px; margin:0px 0px 8px; font-family:Arial, Helvetica, sans-serif; font-size:1.2em; color:#000; font-weight:bold; line-height:140%; border-bottom:1px solid #d6d4d4; display:block; }
+h3 { padding:0px; margin:0px 0px 5px; font-family:Arial, Helvetica, sans-serif; font-size:1.1em; color:#000; font-weight:bold; line-height:140%; }
+
+a { color:#005fce; text-decoration:none; }
+a:hover { color:#005fce; text-decoration:underline; }
+a:visited { color:#004aa0; text-decoration:none; }
+
+p { padding:0px; margin:0px 0px 20px; }
+img { padding:0px; margin:0px 0px 20px; border:none; }
+p img, pre img, tt img, li img { margin-bottom:0px; } 
+
+ul { padding:0px; margin:0px 0px 20px 23px; list-style:square; }
+ul li { padding:0px; margin:0px 0px 7px 0px; }
+ul li ul { padding:5px 0px 0px; margin:0px 0px 7px 23px; }
+ul li ol li { list-style:decimal; }
+ol { padding:0px; margin:0px 0px 20px 0px; list-style:decimal; }
+ol li { padding:0px; margin:0px 0px 7px 23px; list-style-type:decimal; }
+ol li ol { padding:5px 0px 0px; margin:0px 0px 7px 0px; }
+ol li ol li { list-style-type:lower-alpha; }
+ol li ul { padding-top:7px; }
+ol li ul li { list-style:square; }
+
+.content { font-size:1.2em; line-height:140%; padding: 20px; }
+
+pre, tt, code { font-size:12px; }
+pre { margin:0px 0px 20px; }
+pre.error { color:red; }
+pre.codeinput { padding:10px; border:1px solid #d3d3d3; background:#f7f7f7; }
+pre.codeoutput { padding:10px 11px; margin:0px 0px 20px; color:#4c4c4c; }
+
+@media print { pre.codeinput, pre.codeoutput { word-wrap:break-word; width:100%; } }
+
+span.keyword { color:#0000FF }
+span.comment { color:#228B22 }
+span.string { color:#A020F0 }
+span.untermstring { color:#B20000 }
+span.syscmd { color:#B28C00 }
+span.monospace { color:#993333 }
+
+.footer { width:auto; padding:10px 0px; margin:25px 0px 0px; border-top:1px dotted #878787; font-size:0.8em; line-height:140%; font-style:italic; color:#878787; text-align:left; float:none; }
+.footer p { margin:0px; }
+.footer a { color:#878787; }
+.footer a:hover { color:#878787; text-decoration:underline; }
+.footer a:visited { color:#878787; }
+
+table th { padding:7px 5px; text-align:left; vertical-align:middle; border: 1px solid #d6d4d4; font-weight:bold; }
+table td { padding:7px 5px; text-align:left; vertical-align:top; border:1px solid #d6d4d4; }
+
+
+
+
+
+  </style></head><body><div class="content"><h1>BTER Guide: How to create a BTER graph that matches an existing graph</h1><!--introduction--><p>By the BTER Team (Sandia National Laboratories, Livermore, CA):</p><div><ul><li>Tamara G. Kolda, <a href="mailto:tgkolda@sandia.gov">tgkolda@sandia.gov</a></li><li>Ali Pinar, <a href="mailto:apinar@sandia.gov">apinar@sandia.gov</a></li><li>Todd Plantenga, <a href="mailto:tplante@sandia.gov">tplante@sandia.gov</a></li><li>C. Seshadhri, <a href="mailto:scomand@sandia.gov">scomand@sandia.gov</a></li></ul></div><p>April 2013</p><p>Distributed with <a href="index.html">FEASTPACK</a>.</p><p>Sandia National Laboratories is a multi-program laboratory managed and operated by Sandia Corporation, a wholly owned subsidiary of Lockheed Martin Corporation, for the U.S. Department of Energy's National Nuclear Security Administration under contract DE-AC04-94AL85000.</p><!--/introduction--><h2>Contents</h2><div><ul><li><a href="#1">Step 1: Load a graph</a></li><li><a href="#2">Step 2: Compute the degree distribution</a></li><li><a href="#3">Step 3: Calculate the clustering coefficient per degree</a></li><li><a href="#4">Step 4: Generate BTER model</a></li><li><a href="#5">Step 5: Create sparse matrix representation of BTER graph</a></li><li><a href="#6">Step 6: Calculate metrics on BTER graph and compare to original</a></li><li><a href="#7">Step 7: Visualize the data</a></li><li><a href="#9">Step 7 (alternate): Visualize the results with binning</a></li><li><a href="#12">"Blowup" option in BTER for better match to degree-1 vertices</a></li><li><a href="#13">Larger graphs: Deduplicating the edge list</a></li><li><a href="#14">Larger graphs: Calculating the clustering coefficients</a></li><li><a href="#15">References</a></li></ul></div><h2>Step 1: Load a graph<a name="1"></a></h2><p>Some preprocessing may be needed to make the graph simple.</p><pre class="language-matlab">G = G + G'; <span class="comment">%&lt;- Make the graph undirected</span>
+G = spones(G); <span class="comment">%&lt;- Make the graph unweighted</span>
+G = spdiags(zeros(size(G,1),1),0,G); <span class="comment">%&lt;- Remove self-loops</span>
+</pre><p>We use an example graph from the SNAP collection which has already been preprocessed and is included in the distribution.</p><pre class="codeinput">load(<span class="string">'data/ca-AstroPh-simple'</span>);
+nnodes = size(G,1);
+nedges = nnz(G)/2;
+fprintf(<span class="string">'Graph name: %s\n'</span>, graphname);
+fprintf(<span class="string">'Number of nodes: %d\n'</span>, nnodes);
+fprintf(<span class="string">'Number of edges: %d\n'</span>, nedges);
+</pre><pre class="codeoutput">Graph name: ca-AstroPh-simple
+Number of nodes: 18772
+Number of edges: 198050
+</pre><h2>Step 2: Compute the degree distribution<a name="2"></a></h2><p>Calculate the number of nodes per degree.</p><pre class="codeinput">nd = accumarray(nonzeros(sum(G,2)),1);
+maxdegree = find(nd&gt;0,1,<span class="string">'last'</span>);
+fprintf(<span class="string">'Maximum degree: %d\n'</span>, maxdegree);
+</pre><pre class="codeoutput">Maximum degree: 504
+</pre><h2>Step 3: Calculate the clustering coefficient per degree<a name="3"></a></h2><p>This can be extremely expensive, especially for large graphs. We provide C code and accompanying mex interfaces to do both exact and estimated calculations. The matlab function <span class="monospace"><tt>ccperdeg</tt></span> is an interface to both; see below for details. The <span class="monospace"><tt>ccperdeg</tt></span> function returns the clustering coefficient per degree (<span class="monospace"><tt>ccd</tt></span>) and the global clustering coefficient (<span class="monospace"><tt>gcc</tt></span>). In the second case, the value of 'nsamples' is the number of sample wedges per bin.</p><pre class="codeinput">[ccd,gcc] = ccperdeg(G);
+fprintf(<span class="string">'Global clustering coefficient: %.2f\n'</span>, gcc);
+</pre><pre class="codeoutput">Global clustering coefficient: 0.32
+</pre><h2>Step 4: Generate BTER model<a name="4"></a></h2><p>BTER creates two edges lists, corresponding to Phase 1 and Phase 2 edges, respectively.</p><pre class="codeinput">fprintf(<span class="string">'Running BTER...\n'</span>);
+t1=tic;
+[E1,E2] = bter(nd,ccd);
+toc(t1)
+fprintf(<span class="string">'Number of edges created by BTER: %d\n'</span>, size(E1,1) + size(E2,1));
+</pre><pre class="codeoutput">Running BTER...
+--- BTER HPC Set-up ---
+Desired number of nodes: 18771
+Desired number of edges: 198050
+Multiplier to degree-1 nodes: 1
+Maximum degree: 504
+Number of groups: 76
+Number of blocks: 2095
+Phase 1 total weight: 303303
+Phase 2 total weight: 52313
+Time for setup (sec): 0.02
+Determined phase for 355616 edges in 0.018912 seconds
+Sampled 303534 edges for phase 1 in 0.185769 seconds
+Sampled 52082 edges for phase 2 in 0.058720 seconds
+Removed 35 loops in 0.001642 seconds
+--- BTER HPC Complete ---
+Elapsed time is 0.319444 seconds.
+Number of edges created by BTER: 355581
+</pre><h2>Step 5: Create sparse matrix representation of BTER graph<a name="5"></a></h2><p>Converting the edge list to an adjacency matrix is often the most expensive part in MATLAB. We separate this step because the edge list may be sufficient for many applications.</p><pre class="codeinput">fprintf(<span class="string">'Turning edge list into adjacency matrix (including dedup)...\n'</span>);
+t2=tic;
+G_bter = bter_edges2graph(E1,E2);
+toc(t2);
+fprintf(<span class="string">'Number of edges in dedup''d graph: %d\n'</span>, nnz(G)/2);
+</pre><pre class="codeoutput">Turning edge list into adjacency matrix (including dedup)...
+Elapsed time is 0.770594 seconds.
+Number of edges in dedup'd graph: 198050
+</pre><h2>Step 6: Calculate metrics on BTER graph and compare to original<a name="6"></a></h2><pre class="codeinput"><span class="comment">% Number of nodes and edges</span>
+nnodes_bter = size(G_bter,1);
+nedges_bter = nnz(G_bter)/2;
+fprintf(<span class="string">'Comparative Results: %s versus BTER\n'</span>, graphname);
+fprintf(<span class="string">'Number of nodes: %d versus %d\n'</span>, nnodes, nnodes_bter);
+fprintf(<span class="string">'Number of edges: %d versus %d\n'</span>, nedges, nedges_bter);
+
+<span class="comment">% Degree disttribution</span>
+nd_bter = accumarray(nonzeros(sum(G_bter,2)),1);
+maxdegree_bter = find(nd_bter&gt;0,1,<span class="string">'last'</span>);
+fprintf(<span class="string">'Maximum degree: %d versus %d\n'</span>, maxdegree, maxdegree_bter);
+
+<span class="comment">% Clustering coefficients</span>
+[ccd_bter,gcc_bter] = ccperdeg(G_bter);
+fprintf(<span class="string">'Global clustering coefficient: %.2f versus %.2f\n'</span>, gcc, gcc_bter);
+</pre><pre class="codeoutput">Comparative Results: ca-AstroPh-simple versus BTER
+Number of nodes: 18772 versus 18771
+Number of edges: 198050 versus 195795
+Maximum degree: 504 versus 423
+Global clustering coefficient: 0.32 versus 0.33
+</pre><h2>Step 7: Visualize the data<a name="7"></a></h2><pre class="codeinput"><span class="comment">% Degree distribution</span>
+figure;
+loglog(1:length(nd),nd,<span class="string">'ro'</span>,1:length(nd_bter),nd_bter,<span class="string">'b*'</span>);
+title(<span class="string">'Degree distribution'</span>);
+xlabel(<span class="string">'Degree'</span>);
+ylabel(<span class="string">'Frequency'</span>);
+legend(graphname, <span class="string">'BTER'</span>);
+</pre><img vspace="5" hspace="5" src="doc_bter_match_01.png" alt=""> <pre class="codeinput"><span class="comment">% Clustering coefficients</span>
+figure;
+semilogx(1:length(ccd),ccd,<span class="string">'ro'</span>,1:length(ccd_bter),ccd_bter,<span class="string">'b*'</span>);
+title(<span class="string">'Clutering Coefficients'</span>);
+xlabel(<span class="string">'Degree'</span>);
+ylabel(<span class="string">'Mean CC'</span>);
+legend(graphname, <span class="string">'BTER'</span>);
+</pre><img vspace="5" hspace="5" src="doc_bter_match_02.png" alt=""> <h2>Step 7 (alternate): Visualize the results with binning<a name="9"></a></h2><p>The data can be extremely crowded, especially for the higher degrees. We also include the <span class="monospace"><tt>bindata</tt></span> function that can be used to logrithmically bin the data. Type <span class="monospace"><tt>'help bindata'</tt></span> for full instructions. We make the following parameter choices here:</p><div><ul><li><span class="monospace"><tt>tau = 10</tt></span> : The first 10 bins are singleton bins.</li><li><span class="monospace"><tt>omega = 1.5</tt></span> : Subsequent bins grow in size by a factor of 1.5.</li><li><span class="monospace"><tt>ybinfun = @mean</tt></span> : Take the average of all entries in the bin.</li><li><span class="monospace"><tt>prebin = true</tt></span> : Ensures every entry in the bin has an assigned value, even if its zero. <i>Especially significant for last bin which may not be completely specified by the inputs.</i></li></ul></div><pre class="codeinput">binparams = {<span class="string">'tau'</span>, 10,<span class="string">'omega'</span>, 1.5, <span class="string">'ybinfun'</span>, @mean, <span class="string">'prebin'</span>, false};
+</pre><p>In the binned version, the degree distibution can be non-integer and less than one because its the average value for the bin.</p><pre class="codeinput"><span class="comment">% Degree distribution</span>
+figure;
+[xx1,yy1] = bindata([], nd, binparams{:});
+[xx2,yy2] = bindata([], nd_bter, binparams{:});
+loglog(xx1,yy1,<span class="string">'ro'</span>,xx2,yy2,<span class="string">'b*'</span>);
+title(<span class="string">'Degree distribution (logrithmically binned with means)'</span>);
+xlabel(<span class="string">'Degree'</span>);
+ylabel(<span class="string">'Frequency'</span>);
+legend(graphname, <span class="string">'BTER'</span>);
+</pre><img vspace="5" hspace="5" src="doc_bter_match_03.png" alt=""> <p>Clustering coefficients</p><pre class="codeinput">figure;
+[xx1,yy1] = bindata([], ccd, binparams{:});
+[xx2,yy2] = bindata([], ccd_bter, binparams{:});
+semilogx(xx1,yy1,<span class="string">'ro'</span>,xx2,yy2,<span class="string">'b*'</span>);
+title(<span class="string">'Clutering Coefficients (logrithmically binned with means)'</span>);
+xlabel(<span class="string">'Degree'</span>);
+ylabel(<span class="string">'Mean CC'</span>);
+legend(graphname, <span class="string">'BTER'</span>);
+</pre><img vspace="5" hspace="5" src="doc_bter_match_04.png" alt=""> <h2>"Blowup" option in BTER for better match to degree-1 vertices<a name="12"></a></h2><p>In many cases, BTER underestimates the number of degree-1 nodes. This is a well-understood problem, and we use the correction prescribed by Durak et al. (arXiv:1210.5288, 2012). We can see that now the number of degree-1 vertices is much more accurate.</p><pre class="codeinput">[E1_alt,E2_alt] = bter(nd,ccd,<span class="string">'verbose'</span>,false,<span class="string">'blowup'</span>,10);
+G_alt = bter_edges2graph(E1_alt, E2_alt);
+nd_alt = accumarray(nonzeros(sum(G_alt,2)),1);
+figure;
+loglog(1:length(nd),nd,<span class="string">'ro'</span>,1:length(nd_bter),nd_bter,<span class="string">'b*'</span>);
+hold <span class="string">on</span>;
+loglog(1:length(nd_alt),nd_alt,<span class="string">'g^'</span>,<span class="string">'Color'</span>, [0 .7 .2]);
+title(<span class="string">'Degree distribution'</span>);
+xlabel(<span class="string">'Degree'</span>);
+ylabel(<span class="string">'Frequency'</span>);
+legend(graphname, <span class="string">'BTER'</span>, <span class="string">'BTER with Blowup'</span>);
+</pre><img vspace="5" hspace="5" src="doc_bter_match_05.png" alt=""> <h2>Larger graphs: Deduplicating the edge list<a name="13"></a></h2><p>It's expensive to form a sparse adjancey matrix for very large graphs. If you want to remove duplicate edges in the edge list, we suggest the following procedure.</p><pre class="codeinput"><span class="comment">% Before we begin, we have to do some preprocessing to remove any loops</span>
+<span class="comment">% from Phase 2 (cannot occur in Phase 1), and order the vertices defining</span>
+<span class="comment">% the edges so that the least index is always first. Note that this step</span>
+<span class="comment">% can be skipped if 'swap' and 'rmloops' options area set to true when</span>
+<span class="comment">% running BTER.</span>
+
+<span class="comment">% --- Preprocessing for Deduplication ---</span>
+<span class="comment">% Remove loops in Phase 2</span>
+tf = (E2(:,1) == E2(:,2));
+E2 = E2(~tf,:);
+<span class="comment">% Consistently order Phase 1</span>
+tf = E1(:,1) &gt; E1(:,2);
+tmp = E1(tf,2);
+E1(tf,2) = E1(tf,1);
+E1(tf,1) = tmp;
+<span class="comment">% Consistently order Phase 2</span>
+tf = E2(:,1) &gt; E2(:,2);
+tmp = E2(tf,2);
+E2(tf,2) = E2(tf,1);
+E2(tf,1) = tmp;
+<span class="comment">% --- Preprocessing Complete ---</span>
+
+<span class="comment">% First, deduplicate Phase 1, which has most of the duplication</span>
+E1_dedup = unique(E1,<span class="string">'rows'</span>);
+fprintf(<span class="string">'Number of duplicates in Phase 1: %d\n'</span>, size(E1,1) - size(E1_dedup,1));
+
+<span class="comment">% Next, deduplicate Phase 2, which does not have much duplication</span>
+E2_dedup = unique(E2,<span class="string">'rows'</span>);
+fprintf(<span class="string">'Number of duplicates in Phase 2: %d\n'</span>, size(E2,1) - size(E2_dedup,1));
+
+<span class="comment">% Finally, remove any duplicates between the 2 phases.</span>
+E_dedup = unique([E1_dedup; E2_dedup], <span class="string">'rows'</span>);
+fprintf(<span class="string">'Number of duplicates across Phasees: %d\n'</span>, <span class="keyword">...</span>
+    size(E1_dedup,1) + size(E2_dedup,1) - size(E_dedup,1));
+fprintf(<span class="string">'Final number of edges: %d\n'</span>, size(E_dedup,1));
+</pre><pre class="codeoutput">Number of duplicates in Phase 1: 157937
+Number of duplicates in Phase 2: 776
+Number of duplicates across Phasees: 1073
+Final number of edges: 195795
+</pre><h2>Larger graphs: Calculating the clustering coefficients<a name="14"></a></h2><p>For larger graphs, calculating the clustering coefficient exactly can be extremely expensive. Here we compare the exact and estimated clustering coefficients using the two different methods.</p><pre class="codeinput"><span class="comment">% Load a bigger graph</span>
+load(<span class="string">'data/web-NotreDame-simple'</span>);
+nnodes = size(G,1);
+nedges = nnz(G)/2;
+fprintf(<span class="string">'Graph name: %s\n'</span>, graphname);
+fprintf(<span class="string">'Number of nodes: %d\n'</span>, nnodes);
+fprintf(<span class="string">'Number of edges: %d\n'</span>, nedges);
+
+<span class="comment">% Calculate the clustering coefficients _exactly_.</span>
+tic;
+[ccd0,gcc0] = ccperdeg(G,<span class="string">'nsamples'</span>,0);
+t = toc;
+fprintf(<span class="string">'      Exact GCC: %e (%f seconds to compute) \n'</span>, gcc0, t);
+
+<span class="comment">% Calculate the clustering coefficients using wedge sampling.</span>
+nsamples = 2000;
+tic;
+[ccd,gcc] = ccperdeg(G,<span class="string">'nsamples'</span>,nsamples);
+t = toc;
+fprintf(<span class="string">'  Estimated GCC: %e (%f seconds to compute) \n'</span>, gcc, t);
+
+<span class="comment">% Compute the bound on the error and check results.</span>
+delta = 0.001; <span class="comment">%&lt;-Corresponding to 99.9% confidence.</span>
+errorbound = sqrt(log(2/delta)/(2*nsamples));
+fprintf(<span class="string">' Expected error: %e (with 99.9%% confidence)\n'</span>, errorbound);
+fprintf(<span class="string">'  Max CCD error: %e\n'</span>, max(abs(ccd-ccd0)));
+fprintf(<span class="string">'      GCC error: %e\n'</span>, abs(gcc-gcc0));
+
+<span class="comment">% Visualize the differences</span>
+figure;
+e = ones(size(ccd0));
+errorbar(1:length(ccd0),ccd0,errorbound*e,errorbound*e,<span class="string">'b.'</span>);
+set(gca,<span class="string">'XScale'</span>,<span class="string">'log'</span>)
+hold <span class="string">on</span>;
+plot(1:length(ccd),ccd,<span class="string">'r*'</span>);
+xl = xlim;
+xlim([1 xl(2)]);
+ylim([-errorbound 1+errorbound]);
+title(<span class="string">'Clutering Coefficients Calculation Comparison'</span>);
+xlabel(<span class="string">'Degree'</span>);
+ylabel(<span class="string">'Mean CC'</span>);
+legend(<span class="string">'Exact'</span>, <span class="string">'Wedge Sampling'</span>);
+</pre><pre class="codeoutput">Graph name: web-NotreDame-simple
+Number of nodes: 325729
+Number of edges: 1090108
+      Exact GCC: 8.767355e-02 (2.091621 seconds to compute) 
+  Estimated GCC: 8.747799e-02 (0.535013 seconds to compute) 
+ Expected error: 4.359158e-02 (with 99.9% confidence)
+  Max CCD error: 2.666742e-02
+      GCC error: 1.955560e-04
+</pre><img vspace="5" hspace="5" src="doc_bter_match_06.png" alt=""> <h2>References<a name="15"></a></h2><div><ul><li>SNAP: Stanford Network Analysis Project, <a href="http://snap.stanford.edu/">http://snap.stanford.edu/</a></li><li>ca-AstroPh: Astro Physics collaboration network, SNAP, <a href="http://snap.stanford.edu/data/ca-AstroPh.html">http://snap.stanford.edu/data/ca-AstroPh.html</a></li><li>web-NotreDame: Notre Dame web graph, SNAP, <a href="http://snap.stanford.edu/data/web-NotreDame.html">http://snap.stanford.edu/data/web-NotreDame.html</a></li><li>BTER Model:   C. Seshadhri, T. G. Kolda and A. Pinar. <b>Community structure and   scale-free collections of Erd&ouml;s-R&eacute;nyi graphs</b>, <i>Physical Review E</i>   85(5):056109, May 2012,   <a href="http://dx.doi.org/10.1103/PhysRevE.85.056109">doi:10.1103/PhysRevE.85.056109</a></li><li>BTER Implementation:   T. G. Kolda, A. Pinar, T. Plantenga and C. Seshadhri. <b>A Scalable   Generative Graph Model with Community Structure</b>, arXiv:1302.6636,   March 2013, <a href="http://arxiv.org/abs/1302.6636">http://arxiv.org/abs/1302.6636</a></li><li>Clustering Coefficient (<span class="monospace"><tt>ccperdeg.m</tt></span> and related MEX files):   C. Seshadhri, A. Pinar and T. G. Kolda. <b>Triadic Measures on Graphs:   The Power of Wedge Sampling</b> in Proc. 2013 SIAM International   Conference on Data Mining (SDM), May 2013,   preprint: <a href="http://arxiv.org/abs/1202.5230">http://arxiv.org/abs/1202.5230</a></li></ul></div><p class="footer"><br><a href="http://www.mathworks.com/products/matlab/">Published with MATLAB&reg; R2013a</a><br></p></div><!--
+##### SOURCE BEGIN #####
+%% BTER Guide: How to create a BTER graph that matches an existing graph
+% By the BTER Team (Sandia National Laboratories, Livermore, CA): 
+%
+% * Tamara G. Kolda, tgkolda@sandia.gov 
+% * Ali Pinar, apinar@sandia.gov
+% * Todd Plantenga, tplante@sandia.gov
+% * C. Seshadhri, scomand@sandia.gov
+%
+% April 2013
+%
+% Distributed with <index.html FEASTPACK>.
+%
+% Sandia National Laboratories is a multi-program laboratory managed and
+% operated by Sandia Corporation, a wholly owned subsidiary of Lockheed
+% Martin Corporation, for the U.S. Department of Energy's National Nuclear
+% Security Administration under contract DE-AC04-94AL85000.   
+
+%% Step 1: Load a graph
+% Some preprocessing may be needed to make the graph simple. 
+%
+%   G = G + G'; %<- Make the graph undirected
+%   G = spones(G); %<- Make the graph unweighted
+%   G = spdiags(zeros(size(G,1),1),0,G); %<- Remove self-loops
+%
+% We use an example graph from the SNAP collection which has already been
+% preprocessed and is included in the distribution.
+load('data/ca-AstroPh-simple');
+nnodes = size(G,1);
+nedges = nnz(G)/2;
+fprintf('Graph name: %s\n', graphname);
+fprintf('Number of nodes: %d\n', nnodes);
+fprintf('Number of edges: %d\n', nedges);
+
+%% Step 2: Compute the degree distribution
+% Calculate the number of nodes per degree.
+nd = accumarray(nonzeros(sum(G,2)),1);
+maxdegree = find(nd>0,1,'last');
+fprintf('Maximum degree: %d\n', maxdegree);
+
+%% Step 3: Calculate the clustering coefficient per degree
+% This can be extremely expensive, especially for large graphs. We provide
+% C code and accompanying mex interfaces to do both exact and estimated
+% calculations. The matlab function |ccperdeg| is an interface to both; see
+% below for details. The |ccperdeg| function returns the clustering
+% coefficient per degree (|ccd|) and the global clustering coefficient
+% (|gcc|). In the second case, the value of 'nsamples' is the number of
+% sample wedges per bin. 
+[ccd,gcc] = ccperdeg(G);
+fprintf('Global clustering coefficient: %.2f\n', gcc);
+
+%% Step 4: Generate BTER model
+% BTER creates two edges lists, corresponding to Phase 1 and Phase 2
+% edges, respectively.
+fprintf('Running BTER...\n');
+t1=tic; 
+[E1,E2] = bter(nd,ccd); 
+toc(t1)
+fprintf('Number of edges created by BTER: %d\n', size(E1,1) + size(E2,1));
+
+%% Step 5: Create sparse matrix representation of BTER graph
+% Converting the edge list to an adjacency matrix is often the most
+% expensive part in MATLAB. We separate this step because the edge list may
+% be sufficient for many applications.
+fprintf('Turning edge list into adjacency matrix (including dedup)...\n');
+t2=tic; 
+G_bter = bter_edges2graph(E1,E2); 
+toc(t2);
+fprintf('Number of edges in dedup''d graph: %d\n', nnz(G)/2);
+
+%% Step 6: Calculate metrics on BTER graph and compare to original
+
+% Number of nodes and edges
+nnodes_bter = size(G_bter,1);
+nedges_bter = nnz(G_bter)/2;
+fprintf('Comparative Results: %s versus BTER\n', graphname);
+fprintf('Number of nodes: %d versus %d\n', nnodes, nnodes_bter);
+fprintf('Number of edges: %d versus %d\n', nedges, nedges_bter);
+
+% Degree disttribution
+nd_bter = accumarray(nonzeros(sum(G_bter,2)),1);
+maxdegree_bter = find(nd_bter>0,1,'last');
+fprintf('Maximum degree: %d versus %d\n', maxdegree, maxdegree_bter);
+
+% Clustering coefficients
+[ccd_bter,gcc_bter] = ccperdeg(G_bter);
+fprintf('Global clustering coefficient: %.2f versus %.2f\n', gcc, gcc_bter);
+
+%% Step 7: Visualize the data
+
+% Degree distribution
+figure;
+loglog(1:length(nd),nd,'ro',1:length(nd_bter),nd_bter,'b*');
+title('Degree distribution');
+xlabel('Degree');
+ylabel('Frequency');
+legend(graphname, 'BTER');
+
+%%
+
+% Clustering coefficients
+figure;
+semilogx(1:length(ccd),ccd,'ro',1:length(ccd_bter),ccd_bter,'b*');
+title('Clutering Coefficients');
+xlabel('Degree');
+ylabel('Mean CC');
+legend(graphname, 'BTER');
+
+%% Step 7 (alternate): Visualize the results with binning
+% The data can be extremely crowded, especially for the higher degrees. We
+% also include the |bindata| function that can be used to logrithmically
+% bin the data. Type |'help bindata'| for full instructions. We make the
+% following parameter choices here:
+%
+% * |tau = 10| : The first 10 bins are singleton bins.
+% * |omega = 1.5| : Subsequent bins grow in size by a factor of 1.5.
+% * |ybinfun = @mean| : Take the average of all entries in the bin.
+% * |prebin = true| : Ensures every entry in the bin has an assigned
+% value, even if its zero. _Especially significant for last bin
+% which may not be completely specified by the inputs._
+%
+
+binparams = {'tau', 10,'omega', 1.5, 'ybinfun', @mean, 'prebin', false};
+
+%% 
+% In the binned version, the degree distibution can be non-integer and less
+% than one because its the average value for the bin.
+
+% Degree distribution
+figure;
+[xx1,yy1] = bindata([], nd, binparams{:});
+[xx2,yy2] = bindata([], nd_bter, binparams{:});
+loglog(xx1,yy1,'ro',xx2,yy2,'b*');
+title('Degree distribution (logrithmically binned with means)');
+xlabel('Degree');
+ylabel('Frequency');
+legend(graphname, 'BTER');
+
+%%
+% Clustering coefficients
+figure;
+[xx1,yy1] = bindata([], ccd, binparams{:});
+[xx2,yy2] = bindata([], ccd_bter, binparams{:});
+semilogx(xx1,yy1,'ro',xx2,yy2,'b*');
+title('Clutering Coefficients (logrithmically binned with means)');
+xlabel('Degree');
+ylabel('Mean CC');
+legend(graphname, 'BTER');
+
+%% "Blowup" option in BTER for better match to degree-1 vertices
+% In many cases, BTER underestimates the number of degree-1 nodes. This is
+% a well-understood problem, and we use the correction prescribed by Durak
+% et al. (arXiv:1210.5288, 2012). We can see that now the number of
+% degree-1 vertices is much more accurate.
+[E1_alt,E2_alt] = bter(nd,ccd,'verbose',false,'blowup',10); 
+G_alt = bter_edges2graph(E1_alt, E2_alt);
+nd_alt = accumarray(nonzeros(sum(G_alt,2)),1);
+figure;
+loglog(1:length(nd),nd,'ro',1:length(nd_bter),nd_bter,'b*');
+hold on;
+loglog(1:length(nd_alt),nd_alt,'g^','Color', [0 .7 .2]);
+title('Degree distribution');
+xlabel('Degree');
+ylabel('Frequency');
+legend(graphname, 'BTER', 'BTER with Blowup');
+
+%% Larger graphs: Deduplicating the edge list
+% It's expensive to form a sparse adjancey matrix for very large graphs. If
+% you want to remove duplicate edges in the edge list, we suggest the
+% following procedure.
+
+% Before we begin, we have to do some preprocessing to remove any loops
+% from Phase 2 (cannot occur in Phase 1), and order the vertices defining
+% the edges so that the least index is always first. Note that this step
+% can be skipped if 'swap' and 'rmloops' options area set to true when
+% running BTER. 
+
+% REPLACE_WITH_DASH_DASH- Preprocessing for Deduplication REPLACE_WITH_DASH_DASH-
+% Remove loops in Phase 2
+tf = (E2(:,1) == E2(:,2));
+E2 = E2(~tf,:);
+% Consistently order Phase 1
+tf = E1(:,1) > E1(:,2);
+tmp = E1(tf,2);
+E1(tf,2) = E1(tf,1);
+E1(tf,1) = tmp;
+% Consistently order Phase 2
+tf = E2(:,1) > E2(:,2);
+tmp = E2(tf,2);
+E2(tf,2) = E2(tf,1);
+E2(tf,1) = tmp;
+% REPLACE_WITH_DASH_DASH- Preprocessing Complete REPLACE_WITH_DASH_DASH-
+
+% First, deduplicate Phase 1, which has most of the duplication 
+E1_dedup = unique(E1,'rows');
+fprintf('Number of duplicates in Phase 1: %d\n', size(E1,1) - size(E1_dedup,1));
+
+% Next, deduplicate Phase 2, which does not have much duplication
+E2_dedup = unique(E2,'rows');
+fprintf('Number of duplicates in Phase 2: %d\n', size(E2,1) - size(E2_dedup,1));
+
+% Finally, remove any duplicates between the 2 phases.
+E_dedup = unique([E1_dedup; E2_dedup], 'rows');
+fprintf('Number of duplicates across Phasees: %d\n', ...
+    size(E1_dedup,1) + size(E2_dedup,1) - size(E_dedup,1));
+fprintf('Final number of edges: %d\n', size(E_dedup,1));
+
+%% Larger graphs: Calculating the clustering coefficients
+% For larger graphs, calculating the clustering coefficient exactly can be
+% extremely expensive. Here we compare the exact and estimated clustering
+% coefficients using the two different methods.
+
+% Load a bigger graph
+load('data/web-NotreDame-simple');
+nnodes = size(G,1);
+nedges = nnz(G)/2;
+fprintf('Graph name: %s\n', graphname);
+fprintf('Number of nodes: %d\n', nnodes);
+fprintf('Number of edges: %d\n', nedges);
+
+% Calculate the clustering coefficients _exactly_.
+tic;
+[ccd0,gcc0] = ccperdeg(G,'nsamples',0);
+t = toc;
+fprintf('      Exact GCC: %e (%f seconds to compute) \n', gcc0, t);
+
+% Calculate the clustering coefficients using wedge sampling.
+nsamples = 2000;
+tic;
+[ccd,gcc] = ccperdeg(G,'nsamples',nsamples);
+t = toc;
+fprintf('  Estimated GCC: %e (%f seconds to compute) \n', gcc, t);
+
+% Compute the bound on the error and check results.
+delta = 0.001; %<-Corresponding to 99.9% confidence.
+errorbound = sqrt(log(2/delta)/(2*nsamples));
+fprintf(' Expected error: %e (with 99.9%% confidence)\n', errorbound);
+fprintf('  Max CCD error: %e\n', max(abs(ccd-ccd0)));
+fprintf('      GCC error: %e\n', abs(gcc-gcc0));
+
+% Visualize the differences
+figure;
+e = ones(size(ccd0));
+errorbar(1:length(ccd0),ccd0,errorbound*e,errorbound*e,'b.'); 
+set(gca,'XScale','log')
+hold on;
+plot(1:length(ccd),ccd,'r*');
+xl = xlim;
+xlim([1 xl(2)]);
+ylim([-errorbound 1+errorbound]);
+title('Clutering Coefficients Calculation Comparison');
+xlabel('Degree');
+ylabel('Mean CC');
+legend('Exact', 'Wedge Sampling');
+
+
+%% References 
+%
+% * SNAP: Stanford Network Analysis Project, http://snap.stanford.edu/
+% * ca-AstroPh: Astro Physics collaboration network, SNAP,
+% http://snap.stanford.edu/data/ca-AstroPh.html 
+% * web-NotreDame: Notre Dame web graph, SNAP,
+% http://snap.stanford.edu/data/web-NotreDame.html 
+% * BTER Model: 
+%   C. Seshadhri, T. G. Kolda and A. Pinar. *Community structure and
+%   scale-free collections of Erdös-Rényi graphs*, _Physical Review E_
+%   85(5):056109, May 2012, 
+%   <http://dx.doi.org/10.1103/PhysRevE.85.056109
+%   doi:10.1103/PhysRevE.85.056109>
+% * BTER Implementation:
+%   T. G. Kolda, A. Pinar, T. Plantenga and C. Seshadhri. *A Scalable
+%   Generative Graph Model with Community Structure*, arXiv:1302.6636,
+%   March 2013, http://arxiv.org/abs/1302.6636
+% * Clustering Coefficient (|ccperdeg.m| and related MEX files):
+%   C. Seshadhri, A. Pinar and T. G. Kolda. *Triadic Measures on Graphs:
+%   The Power of Wedge Sampling* in Proc. 2013 SIAM International
+%   Conference on Data Mining (SDM), May 2013, 
+%   preprint: http://arxiv.org/abs/1202.5230
+% 
+##### SOURCE END #####
+--></body></html>

@@ -1,0 +1,356 @@
+
+<!DOCTYPE html
+  PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<html><head>
+      <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+   <!--
+This HTML was auto-generated from MATLAB code.
+To make changes, update the MATLAB code and republish this document.
+      --><title>bindata</title><meta name="generator" content="MATLAB 8.1"><link rel="schema.DC" href="http://purl.org/dc/elements/1.1/"><meta name="DC.date" content="2014-01-10"><meta name="DC.source" content="bindata.m"><style type="text/css">
+html,body,div,span,applet,object,iframe,h1,h2,h3,h4,h5,h6,p,blockquote,pre,a,abbr,acronym,address,big,cite,code,del,dfn,em,font,img,ins,kbd,q,s,samp,small,strike,strong,sub,sup,tt,var,b,u,i,center,dl,dt,dd,ol,ul,li,fieldset,form,label,legend,table,caption,tbody,tfoot,thead,tr,th,td{margin:0;padding:0;border:0;outline:0;font-size:100%;vertical-align:baseline;background:transparent}body{line-height:1}ol,ul{list-style:none}blockquote,q{quotes:none}blockquote:before,blockquote:after,q:before,q:after{content:'';content:none}:focus{outine:0}ins{text-decoration:none}del{text-decoration:line-through}table{border-collapse:collapse;border-spacing:0}
+
+html { min-height:100%; margin-bottom:1px; }
+html body { height:100%; margin:0px; font-family:Arial, Helvetica, sans-serif; font-size:10px; color:#000; line-height:140%; background:#fff none; overflow-y:scroll; }
+html body td { vertical-align:top; text-align:left; }
+
+h1 { padding:0px; margin:0px 0px 25px; font-family:Arial, Helvetica, sans-serif; font-size:1.5em; color:#d55000; line-height:100%; font-weight:normal; }
+h2 { padding:0px; margin:0px 0px 8px; font-family:Arial, Helvetica, sans-serif; font-size:1.2em; color:#000; font-weight:bold; line-height:140%; border-bottom:1px solid #d6d4d4; display:block; }
+h3 { padding:0px; margin:0px 0px 5px; font-family:Arial, Helvetica, sans-serif; font-size:1.1em; color:#000; font-weight:bold; line-height:140%; }
+
+a { color:#005fce; text-decoration:none; }
+a:hover { color:#005fce; text-decoration:underline; }
+a:visited { color:#004aa0; text-decoration:none; }
+
+p { padding:0px; margin:0px 0px 20px; }
+img { padding:0px; margin:0px 0px 20px; border:none; }
+p img, pre img, tt img, li img { margin-bottom:0px; } 
+
+ul { padding:0px; margin:0px 0px 20px 23px; list-style:square; }
+ul li { padding:0px; margin:0px 0px 7px 0px; }
+ul li ul { padding:5px 0px 0px; margin:0px 0px 7px 23px; }
+ul li ol li { list-style:decimal; }
+ol { padding:0px; margin:0px 0px 20px 0px; list-style:decimal; }
+ol li { padding:0px; margin:0px 0px 7px 23px; list-style-type:decimal; }
+ol li ol { padding:5px 0px 0px; margin:0px 0px 7px 0px; }
+ol li ol li { list-style-type:lower-alpha; }
+ol li ul { padding-top:7px; }
+ol li ul li { list-style:square; }
+
+.content { font-size:1.2em; line-height:140%; padding: 20px; }
+
+pre, tt, code { font-size:12px; }
+pre { margin:0px 0px 20px; }
+pre.error { color:red; }
+pre.codeinput { padding:10px; border:1px solid #d3d3d3; background:#f7f7f7; }
+pre.codeoutput { padding:10px 11px; margin:0px 0px 20px; color:#4c4c4c; }
+
+@media print { pre.codeinput, pre.codeoutput { word-wrap:break-word; width:100%; } }
+
+span.keyword { color:#0000FF }
+span.comment { color:#228B22 }
+span.string { color:#A020F0 }
+span.untermstring { color:#B20000 }
+span.syscmd { color:#B28C00 }
+
+.footer { width:auto; padding:10px 0px; margin:25px 0px 0px; border-top:1px dotted #878787; font-size:0.8em; line-height:140%; font-style:italic; color:#878787; text-align:left; float:none; }
+.footer p { margin:0px; }
+.footer a { color:#878787; }
+.footer a:hover { color:#878787; text-decoration:underline; }
+.footer a:visited { color:#878787; }
+
+table th { padding:7px 5px; text-align:left; vertical-align:middle; border: 1px solid #d6d4d4; font-weight:bold; }
+table td { padding:7px 5px; text-align:left; vertical-align:top; border:1px solid #d6d4d4; }
+
+
+
+
+
+  </style></head><body><div class="content"><h2>Contents</h2><div><ul><li><a href="#3">License</a></li></ul></div><pre class="codeinput"><span class="keyword">function</span> [xx,yy,bins] = bindata(x,y,varargin)
+</pre><pre class="codeinput"><span class="comment">%BINDATA Exponential data binning.</span>
+<span class="comment">%</span>
+<span class="comment">%   [XX,YY] = BINDATA(X,Y) logarithmically bins data. We assume both X and</span>
+<span class="comment">%   Y are column vectors of the same length. By default, the k-th bin is</span>
+<span class="comment">%   [2^k, 2^k-1]. The return values are defined as follows: XX(k) = 2^k is</span>
+<span class="comment">%   the "bin label" and YY(k) = sum_i { Y(i) s.t. 2^k &lt;= X(i) &lt; 2^(k-1) }</span>
+<span class="comment">%   is the "bin value".</span>
+<span class="comment">%</span>
+<span class="comment">%   [XX,YY] = BINDATA([],Y) sets X = (1:length(Y))'.</span>
+<span class="comment">%</span>
+<span class="comment">%   [XX,YY,BB] = BINDATA(...) returns the data bins, i.e., the k-th bin is</span>
+<span class="comment">%   defined by [BB(k), BB(k+1)-1]. This can be useful if the meaning of XX</span>
+<span class="comment">%   is modified by the parameters defined below.</span>
+<span class="comment">%</span>
+<span class="comment">%   [XX,YY,BB] = BINDATA(X,Y,'param',value,...) also accepts</span>
+<span class="comment">%   parameter-value pairs, as described below.</span>
+<span class="comment">%</span>
+<span class="comment">%      --- Bin Definitions ---</span>
+<span class="comment">%      The start of the k-th bin is given by</span>
+<span class="comment">%        BB(k) = k + idx0 - 1 if k &lt;= tau, else</span>
+<span class="comment">%        BB(k) = ceil((omega.^(k-tau)-1)/(omega-1)) + tau + idx0 - 1.</span>
+<span class="comment">%</span>
+<span class="comment">%      o 'omega' - Bin increase multiplier. Default: 2.</span>
+<span class="comment">%      o 'tau' - Number of singleton bins. Default: 1.</span>
+<span class="comment">%      o 'idx0' - Starting index to be binned. Default: 1.</span>
+<span class="comment">%</span>
+<span class="comment">%      --- Binning Behavior ---</span>
+<span class="comment">%      o 'bin' - Do binning? If false, returns X and Y unchanged unless X</span>
+<span class="comment">%        was empty on input, in which case it's been reset to</span>
+<span class="comment">%        (1:length(Y)). Default: true.</span>
+<span class="comment">%      o 'ybinfun' - Function for the "bin value", used to combine all the</span>
+<span class="comment">%        y-values in the same bin. Default: @sum.</span>
+<span class="comment">%      o 'xbinfun' - Function for the "bin index". By default, XX(k)=BB(k).</span>
+<span class="comment">%        If a function is specified, however, then this is used to combine</span>
+<span class="comment">%        all the values in the same bin. Specifying @mean, for instance,</span>
+<span class="comment">%        gives a weighted mean of the x-value as the bin index.</span>
+<span class="comment">%        Default: [] (indicate to use the bin starts).</span>
+<span class="comment">%</span>
+<span class="comment">%      --- Preprocessing ---</span>
+<span class="comment">%      o 'prebin' - Collect values together for same x. This has the side</span>
+<span class="comment">%        effect of ensuring the x values are dense, even for zero y values.</span>
+<span class="comment">%        Default: false.</span>
+<span class="comment">%      o 'prebinfun' - Specified function to combine values with same x.</span>
+<span class="comment">%        Default: @mean.</span>
+<span class="comment">%</span>
+<span class="comment">%      --- Postprocessing ---</span>
+<span class="comment">%      o 'nozeros' - Remove any zero yy-values (and corresponding xx) from</span>
+<span class="comment">%        the output. Default: false.</span>
+<span class="comment">%</span>
+<span class="comment">%   EXAMPLES</span>
+<span class="comment">%   y = [10 8 6 0 4]';</span>
+<span class="comment">%   [xx,yy] = bindata([],y) % Create 3 bins and gives total per bin.</span>
+<span class="comment">%   [xx,yy] = bindata([],y,'bin',false) % Returns xx = (1:5)' and yy = y.</span>
+<span class="comment">%   x = [2 3 5 5 6]';</span>
+<span class="comment">%</span>
+<span class="comment">%   See also BINLOOKUP, BINSTART.</span>
+<span class="comment">%</span>
+<span class="comment">% Tamara G. Kolda, Ali Pinar, and others, FEASTPACK v1.1, Sandia National</span>
+<span class="comment">% Laboratories, SAND2013-4136W, http://www.sandia.gov/~tgkolda/feastpack/,</span>
+<span class="comment">% January 2014</span>
+</pre><h2>License<a name="3"></a></h2><p>Copyright (c) 2014, Sandia National Laboratories All rights reserved.</p><p>Redistribution and use in source and binary forms, with or without modification, are permitted provided that the following conditions are met:</p><div><ol><li>Redistributions of source code must retain the above copyright notice, this list of conditions and the following disclaimer.</li><li>Redistributions in binary form must reproduce the above copyright notice, this list of conditions and the following disclaimer in the documentation and/or other materials provided with the distribution.</li></ol></div><p>THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.</p><p>Sandia National Laboratories is a multi-program laboratory managed and operated by Sandia Corporation, a wholly owned subsidiary of Lockheed Martin Corporation, for the U.S. Department of Energy's National Nuclear Security Administration under contract DE-AC04-94AL85000.</p><pre class="codeinput"><span class="comment">% ** Parse inputs</span>
+params = inputParser;
+params.addParamValue(<span class="string">'bin'</span>, true);
+params.addParamValue(<span class="string">'prebin'</span>, false);
+params.addParamValue(<span class="string">'prebinfun'</span>, @mean);
+params.addParamValue(<span class="string">'omega'</span>, 2);
+params.addParamValue(<span class="string">'tau'</span>, 1);
+params.addParamValue(<span class="string">'idx0'</span>, 1);
+params.addParamValue(<span class="string">'xbinfun'</span>, []);
+params.addParamValue(<span class="string">'ybinfun'</span>, @sum);
+params.addParamValue(<span class="string">'nozeros'</span>, false);
+params.parse(varargin{:});
+
+binparams = {params.Results.omega, params.Results.tau, params.Results.idx0};
+<span class="comment">% ** Check and fix empty x</span>
+<span class="keyword">if</span> isempty(x)
+    x = (1:length(y))';
+<span class="keyword">end</span>
+
+<span class="comment">% ** Make sure both x and y are column vectors</span>
+x = reshape(x,[],1);
+y = reshape(y,[],1);
+
+<span class="comment">% ** Check inputs are the same length</span>
+<span class="keyword">if</span> numel(x) ~= numel(y)
+    error(<span class="string">'Input vectors are not the same length'</span>);
+<span class="keyword">end</span>
+
+<span class="comment">% ** Check for no binning</span>
+<span class="keyword">if</span> ~params.Results.bin <span class="comment">% No binning</span>
+    xx = x;
+    yy = y;
+    bins = [];
+    <span class="keyword">return</span>;
+<span class="keyword">end</span>
+
+<span class="comment">% ** Number of bins?</span>
+nbins = binlookup(max(x), binparams{:});
+
+<span class="comment">% ** Pre-binning?</span>
+<span class="comment">% Pre-binning creates dense x and y arrays, with an entry for every</span>
+<span class="comment">% possible x-value. If there are multiple copies of x, then the default is</span>
+<span class="comment">% to take the mean of the associated y-values.</span>
+<span class="keyword">if</span> params.Results.prebin
+    xmax = binstart(nbins+1, binparams{:})-1;
+    y = accumarray(x,y,[xmax 1],params.Results.prebinfun);
+    x = (1:xmax)';
+<span class="keyword">end</span>
+
+<span class="comment">% ** Determine xx</span>
+idx = binlookup(x, binparams{:});
+<span class="keyword">if</span> isempty(params.Results.xbinfun)
+    xx = binstart((1:nbins)', binparams{:});
+<span class="keyword">else</span>
+    xx = accumarray(idx, x, [], params.Results.xbinfun);
+<span class="keyword">end</span>
+yy = accumarray(idx, y, [], params.Results.ybinfun);
+bins = binstart((1:(nbins+1))', binparams{:});
+
+<span class="comment">% ** Remove zero entries?</span>
+<span class="keyword">if</span> params.Results.nozeros
+    tf = yy &gt; 0;
+    yy = yy(tf);
+    xx = xx(tf);
+<span class="keyword">end</span>
+</pre><p class="footer"><br><a href="http://www.mathworks.com/products/matlab/">Published with MATLAB&reg; R2013a</a><br></p></div><!--
+##### SOURCE BEGIN #####
+function [xx,yy,bins] = bindata(x,y,varargin)
+%BINDATA Exponential data binning.
+%
+%   [XX,YY] = BINDATA(X,Y) logarithmically bins data. We assume both X and
+%   Y are column vectors of the same length. By default, the k-th bin is
+%   [2^k, 2^k-1]. The return values are defined as follows: XX(k) = 2^k is
+%   the "bin label" and YY(k) = sum_i { Y(i) s.t. 2^k <= X(i) < 2^(k-1) }
+%   is the "bin value".
+%
+%   [XX,YY] = BINDATA([],Y) sets X = (1:length(Y))'.
+%
+%   [XX,YY,BB] = BINDATA(...) returns the data bins, i.e., the k-th bin is
+%   defined by [BB(k), BB(k+1)-1]. This can be useful if the meaning of XX
+%   is modified by the parameters defined below.
+%
+%   [XX,YY,BB] = BINDATA(X,Y,'param',value,...) also accepts
+%   parameter-value pairs, as described below.
+%
+%      REPLACE_WITH_DASH_DASH- Bin Definitions REPLACE_WITH_DASH_DASH-
+%      The start of the k-th bin is given by 
+%        BB(k) = k + idx0 - 1 if k <= tau, else 
+%        BB(k) = ceil((omega.^(k-tau)-1)/(omega-1)) + tau + idx0 - 1.
+%
+%      o 'omega' - Bin increase multiplier. Default: 2.
+%      o 'tau' - Number of singleton bins. Default: 1.
+%      o 'idx0' - Starting index to be binned. Default: 1.
+%
+%      REPLACE_WITH_DASH_DASH- Binning Behavior REPLACE_WITH_DASH_DASH-
+%      o 'bin' - Do binning? If false, returns X and Y unchanged unless X
+%        was empty on input, in which case it's been reset to
+%        (1:length(Y)). Default: true.    
+%      o 'ybinfun' - Function for the "bin value", used to combine all the
+%        y-values in the same bin. Default: @sum. 
+%      o 'xbinfun' - Function for the "bin index". By default, XX(k)=BB(k).
+%        If a function is specified, however, then this is used to combine
+%        all the values in the same bin. Specifying @mean, for instance,
+%        gives a weighted mean of the x-value as the bin index. 
+%        Default: [] (indicate to use the bin starts).
+% 
+%      REPLACE_WITH_DASH_DASH- Preprocessing REPLACE_WITH_DASH_DASH-
+%      o 'prebin' - Collect values together for same x. This has the side
+%        effect of ensuring the x values are dense, even for zero y values.
+%        Default: false.  
+%      o 'prebinfun' - Specified function to combine values with same x.
+%        Default: @mean. 
+%
+%      REPLACE_WITH_DASH_DASH- Postprocessing REPLACE_WITH_DASH_DASH-
+%      o 'nozeros' - Remove any zero yy-values (and corresponding xx) from
+%        the output. Default: false. 
+%
+%   EXAMPLES
+%   y = [10 8 6 0 4]';
+%   [xx,yy] = bindata([],y) % Create 3 bins and gives total per bin.
+%   [xx,yy] = bindata([],y,'bin',false) % Returns xx = (1:5)' and yy = y.
+%   x = [2 3 5 5 6]'; 
+% 
+%   See also BINLOOKUP, BINSTART.
+%
+% Tamara G. Kolda, Ali Pinar, and others, FEASTPACK v1.1, Sandia National
+% Laboratories, SAND2013-4136W, http://www.sandia.gov/~tgkolda/feastpack/,
+% January 2014  
+
+%% License
+% Copyright (c) 2014, Sandia National Laboratories
+% All rights reserved.
+%
+% Redistribution and use in source and binary forms, with or without
+% modification, are permitted provided that the following conditions are
+% met:  
+%
+% # Redistributions of source code must retain the above copyright notice,
+% this list of conditions and the following disclaimer. 
+% # Redistributions in binary form must reproduce the above copyright
+% notice, this list of conditions and the following disclaimer in the
+% documentation and/or other materials provided with the distribution.  
+%
+% THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS
+% IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO,
+% THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR
+% PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR
+% CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL,
+% EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO,
+% PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR
+% PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF
+% LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING
+% NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
+% SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.          
+%
+%
+% Sandia National Laboratories is a multi-program laboratory managed and
+% operated by Sandia Corporation, a wholly owned subsidiary of Lockheed
+% Martin Corporation, for the U.S. Department of Energy's National Nuclear
+% Security Administration under contract DE-AC04-94AL85000. 
+
+% ** Parse inputs
+params = inputParser;
+params.addParamValue('bin', true);
+params.addParamValue('prebin', false);
+params.addParamValue('prebinfun', @mean);
+params.addParamValue('omega', 2);
+params.addParamValue('tau', 1);
+params.addParamValue('idx0', 1);
+params.addParamValue('xbinfun', []);
+params.addParamValue('ybinfun', @sum);
+params.addParamValue('nozeros', false);
+params.parse(varargin{:});
+
+binparams = {params.Results.omega, params.Results.tau, params.Results.idx0};
+% ** Check and fix empty x
+if isempty(x)
+    x = (1:length(y))';
+end
+
+% ** Make sure both x and y are column vectors
+x = reshape(x,[],1);
+y = reshape(y,[],1);
+
+% ** Check inputs are the same length
+if numel(x) ~= numel(y)
+    error('Input vectors are not the same length');
+end
+
+% ** Check for no binning
+if ~params.Results.bin % No binning
+    xx = x;
+    yy = y;
+    bins = [];
+    return;
+end
+
+% ** Number of bins?
+nbins = binlookup(max(x), binparams{:});
+
+% ** Pre-binning?
+% Pre-binning creates dense x and y arrays, with an entry for every
+% possible x-value. If there are multiple copies of x, then the default is
+% to take the mean of the associated y-values.
+if params.Results.prebin
+    xmax = binstart(nbins+1, binparams{:})-1;  
+    y = accumarray(x,y,[xmax 1],params.Results.prebinfun);
+    x = (1:xmax)';
+end
+
+% ** Determine xx
+idx = binlookup(x, binparams{:});
+if isempty(params.Results.xbinfun)
+    xx = binstart((1:nbins)', binparams{:});
+else
+    xx = accumarray(idx, x, [], params.Results.xbinfun);
+end
+yy = accumarray(idx, y, [], params.Results.ybinfun);
+bins = binstart((1:(nbins+1))', binparams{:});
+
+% ** Remove zero entries?
+if params.Results.nozeros
+    tf = yy > 0;
+    yy = yy(tf);
+    xx = xx(tf);
+end
+##### SOURCE END #####
+--></body></html>

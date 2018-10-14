@@ -1,0 +1,403 @@
+
+<!DOCTYPE html
+  PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<html><head>
+      <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+   <!--
+This HTML was auto-generated from MATLAB code.
+To make changes, update the MATLAB code and republish this document.
+      --><title>degdist_param_search</title><meta name="generator" content="MATLAB 8.1"><link rel="schema.DC" href="http://purl.org/dc/elements/1.1/"><meta name="DC.date" content="2014-01-10"><meta name="DC.source" content="degdist_param_search.m"><style type="text/css">
+html,body,div,span,applet,object,iframe,h1,h2,h3,h4,h5,h6,p,blockquote,pre,a,abbr,acronym,address,big,cite,code,del,dfn,em,font,img,ins,kbd,q,s,samp,small,strike,strong,sub,sup,tt,var,b,u,i,center,dl,dt,dd,ol,ul,li,fieldset,form,label,legend,table,caption,tbody,tfoot,thead,tr,th,td{margin:0;padding:0;border:0;outline:0;font-size:100%;vertical-align:baseline;background:transparent}body{line-height:1}ol,ul{list-style:none}blockquote,q{quotes:none}blockquote:before,blockquote:after,q:before,q:after{content:'';content:none}:focus{outine:0}ins{text-decoration:none}del{text-decoration:line-through}table{border-collapse:collapse;border-spacing:0}
+
+html { min-height:100%; margin-bottom:1px; }
+html body { height:100%; margin:0px; font-family:Arial, Helvetica, sans-serif; font-size:10px; color:#000; line-height:140%; background:#fff none; overflow-y:scroll; }
+html body td { vertical-align:top; text-align:left; }
+
+h1 { padding:0px; margin:0px 0px 25px; font-family:Arial, Helvetica, sans-serif; font-size:1.5em; color:#d55000; line-height:100%; font-weight:normal; }
+h2 { padding:0px; margin:0px 0px 8px; font-family:Arial, Helvetica, sans-serif; font-size:1.2em; color:#000; font-weight:bold; line-height:140%; border-bottom:1px solid #d6d4d4; display:block; }
+h3 { padding:0px; margin:0px 0px 5px; font-family:Arial, Helvetica, sans-serif; font-size:1.1em; color:#000; font-weight:bold; line-height:140%; }
+
+a { color:#005fce; text-decoration:none; }
+a:hover { color:#005fce; text-decoration:underline; }
+a:visited { color:#004aa0; text-decoration:none; }
+
+p { padding:0px; margin:0px 0px 20px; }
+img { padding:0px; margin:0px 0px 20px; border:none; }
+p img, pre img, tt img, li img { margin-bottom:0px; } 
+
+ul { padding:0px; margin:0px 0px 20px 23px; list-style:square; }
+ul li { padding:0px; margin:0px 0px 7px 0px; }
+ul li ul { padding:5px 0px 0px; margin:0px 0px 7px 23px; }
+ul li ol li { list-style:decimal; }
+ol { padding:0px; margin:0px 0px 20px 0px; list-style:decimal; }
+ol li { padding:0px; margin:0px 0px 7px 23px; list-style-type:decimal; }
+ol li ol { padding:5px 0px 0px; margin:0px 0px 7px 0px; }
+ol li ol li { list-style-type:lower-alpha; }
+ol li ul { padding-top:7px; }
+ol li ul li { list-style:square; }
+
+.content { font-size:1.2em; line-height:140%; padding: 20px; }
+
+pre, tt, code { font-size:12px; }
+pre { margin:0px 0px 20px; }
+pre.error { color:red; }
+pre.codeinput { padding:10px; border:1px solid #d3d3d3; background:#f7f7f7; }
+pre.codeoutput { padding:10px 11px; margin:0px 0px 20px; color:#4c4c4c; }
+
+@media print { pre.codeinput, pre.codeoutput { word-wrap:break-word; width:100%; } }
+
+span.keyword { color:#0000FF }
+span.comment { color:#228B22 }
+span.string { color:#A020F0 }
+span.untermstring { color:#B20000 }
+span.syscmd { color:#B28C00 }
+
+.footer { width:auto; padding:10px 0px; margin:25px 0px 0px; border-top:1px dotted #878787; font-size:0.8em; line-height:140%; font-style:italic; color:#878787; text-align:left; float:none; }
+.footer p { margin:0px; }
+.footer a { color:#878787; }
+.footer a:hover { color:#878787; text-decoration:underline; }
+.footer a:visited { color:#878787; }
+
+table th { padding:7px 5px; text-align:left; vertical-align:middle; border: 1px solid #d6d4d4; font-weight:bold; }
+table td { padding:7px 5px; text-align:left; vertical-align:top; border:1px solid #d6d4d4; }
+
+
+
+
+
+  </style></head><body><div class="content"><h2>Contents</h2><div><ul><li><a href="#3">License</a></li></ul></div><pre class="codeinput"><span class="keyword">function</span> [p1,p2] = degdist_param_search(avgdeg,maxdeg,varargin)
+</pre><pre class="codeinput"><span class="comment">%DEGDIST_PARAM_SEARCH Find parameters for "ideal" degree distribution.</span>
+<span class="comment">%</span>
+<span class="comment">%   [A,B] = DEGDIST_PARAM_SEARCH(AVG,BND) will attempt to find ideal</span>
+<span class="comment">%   parameters for generating a discrete generalized log-normal</span>
+<span class="comment">%   distribution with the expected average degree (AVG) and maximum degree</span>
+<span class="comment">%   bound (BND) with probability less than 1e-10.</span>
+<span class="comment">%</span>
+<span class="comment">%   G = DEGDIST_PARAM_SEARCH(AVG,BND,'type','dpl') is the same as above</span>
+<span class="comment">%   except that it will attempt to find the ideal parameter for generating</span>
+<span class="comment">%   a discrete power law distribution.</span>
+<span class="comment">%</span>
+<span class="comment">%   Optional Parameters:</span>
+<span class="comment">%   o 'type' - Type of degree distribution. Choices are discrete</span>
+<span class="comment">%        generalized log normal ('dgln') or discrete power law ('dpl').</span>
+<span class="comment">%   o 'maxdeg_prbnd' - Ideally, the probability of a node with degree BND</span>
+<span class="comment">%        (the maximum possible) is less than this bound. Default: 1e-10.</span>
+<span class="comment">%   o 'fminsearch_opts' - The options passed to the function fminsearch.</span>
+<span class="comment">%        Default: optimset('TolFun', 1e-4, 'TolX', 1e-4).</span>
+<span class="comment">%   o 'verbose' - True to print out details of the progress of the search.</span>
+<span class="comment">%        Default: true.</span>
+<span class="comment">%</span>
+<span class="comment">%   See also GENDEGDIST, DGLNPDF, DPLPDF.</span>
+<span class="comment">%</span>
+<span class="comment">% Tamara G. Kolda, Ali Pinar, and others, FEASTPACK v1.1, Sandia National</span>
+<span class="comment">% Laboratories, SAND2013-4136W, http://www.sandia.gov/~tgkolda/feastpack/,</span>
+<span class="comment">% January 2014</span>
+</pre><h2>License<a name="3"></a></h2><p>Copyright (c) 2014, Sandia National Laboratories All rights reserved.</p><p>Redistribution and use in source and binary forms, with or without modification, are permitted provided that the following conditions are met:</p><div><ol><li>Redistributions of source code must retain the above copyright notice, this list of conditions and the following disclaimer.</li><li>Redistributions in binary form must reproduce the above copyright notice, this list of conditions and the following disclaimer in the documentation and/or other materials provided with the distribution.</li></ol></div><p>THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.</p><p>Sandia National Laboratories is a multi-program laboratory managed and operated by Sandia Corporation, a wholly owned subsidiary of Lockheed Martin Corporation, for the U.S. Department of Energy's National Nuclear Security Administration under contract DE-AC04-94AL85000.</p><pre class="codeinput">params = inputParser;
+params.addParamValue(<span class="string">'maxdeg_prbnd'</span>, 1e-10);
+params.addParamValue(<span class="string">'fminsearch_opts'</span>, optimset(<span class="string">'TolFun'</span>, 1e-4, <span class="string">'TolX'</span>, 1e-4));
+params.addParamValue(<span class="string">'type'</span>,<span class="string">'dgln'</span>);
+params.addParamValue(<span class="string">'verbose'</span>,true);
+params.parse(varargin{:});
+
+options = params.Results.fminsearch_opts;
+bnd = params.Results.maxdeg_prbnd;
+type = params.Results.type;
+verbose = params.Results.verbose;
+
+<span class="keyword">if</span> strcmp(type,<span class="string">'dgln'</span>)
+    fhandle = @(x) dglnobjfunc(x(1), x(2), maxdeg, bnd, avgdeg, verbose);
+    [xstar,fstar,exitflag] = fminsearch(fhandle, [2 2], options);
+    p1 = xstar(1);
+    p2 = xstar(2);
+<span class="keyword">elseif</span> strcmp(type,<span class="string">'dpl'</span>)
+    fhandle = @(x) dplobjfunc(x, maxdeg, bnd, avgdeg, verbose);
+    [xstar,fstar,exitflag] = fminsearch(fhandle, 2, options);
+    p1 = xstar;
+    p2 = 0;
+<span class="keyword">else</span>
+    error(<span class="string">'Invalid type'</span>);
+<span class="keyword">end</span>
+
+<span class="keyword">if</span> ((exitflag ~= 1) || (fstar &gt; 0.01))
+    warning(<span class="string">'Could not find ideal solution. F(X)=%e, Exit Flag = %d.\n'</span>, fstar, exitflag);
+<span class="keyword">end</span>
+</pre><pre class="codeinput"><span class="keyword">function</span> y = dglnobjfunc(alpha,beta,maxdeg,bnd,avgdeg,verbose)
+<span class="comment">%DGLNOBJFUNC Function to evaluate degree distribution</span>
+<span class="comment">%</span>
+<span class="comment">%    Y = DGLNOBJFUNC(ALPHA,BETA,MEXDEG,BND,AVGDEG,BND) computes a score for</span>
+<span class="comment">%    the DGLN degree distribution with MAXDEG and parameters ALPHA and</span>
+<span class="comment">%    BETA. The goal is that the final degree distribution should have an</span>
+<span class="comment">%    average degree of AVGDEG and the probability of obtaining the maximum</span>
+<span class="comment">%    degree should be less than BND. A perfect match would have a score of</span>
+<span class="comment">%    zero.</span>
+<span class="comment">%</span>
+<span class="comment">%    Y = DGLNOBJFUNC(...,VERBOSE) also indicates whether or not the function</span>
+<span class="comment">%    should print anything. By default, VERBOSE = true.</span>
+<span class="comment">%</span>
+<span class="comment">%T. Kolda, November 2012.</span>
+
+<span class="comment">% ** Input checking</span>
+<span class="keyword">if</span> ~exist(<span class="string">'verbose'</span>,<span class="string">'var'</span>)
+    verbose = true;
+<span class="keyword">end</span>
+
+<span class="comment">% ** Find maximum expected degree</span>
+<span class="comment">% We want to find x such that P(random vertex has degree &gt; x) &lt; bnd.</span>
+p = dglnpdf(maxdeg,alpha,beta);
+
+<span class="comment">% Penalty should grow quickly!</span>
+<span class="keyword">if</span> p(end) &gt; bnd
+    y1 = (exp(1+p(end)-bnd))^2 - 1;
+<span class="keyword">else</span>
+    y1 = 0;
+<span class="keyword">end</span>
+
+<span class="comment">% ** Find expected average degree</span>
+a = ((1:maxdeg)*p); <span class="comment">% Compute average degree</span>
+y2 = (a-avgdeg)^2;
+
+<span class="comment">% ** Sum the two values</span>
+y = y1+y2;
+
+<span class="comment">% ** Optional printing</span>
+
+<span class="keyword">if</span> verbose
+    fprintf(<span class="string">'alpha=%.3f, beta=%.3f, maxdeg=%d, p(maxdeg)=%e, avgdeg=%.1f, y=%.2f\n'</span>, <span class="keyword">...</span>
+        alpha, beta, maxdeg, p(end), a, y);
+<span class="keyword">end</span>
+
+<span class="keyword">function</span> y = dplobjfunc(gamma,maxdeg,bnd,avgdeg,verbose)
+<span class="comment">%DPLOBJFUNC Function to evaluate degree distribution</span>
+<span class="comment">%</span>
+<span class="comment">%    Y = DPLOBJFUNC(GAMMA,MEXDEG,BND,AVGDEG,BND) computes a score for</span>
+<span class="comment">%    the powerlaw degree distribution with MAXDEG and parameter GAMMA. The</span>
+<span class="comment">%    goal is that the final degree distribution should have an average</span>
+<span class="comment">%    degree of AVGDEG and the probability of obtaining the maximum degree</span>
+<span class="comment">%    should be less than BND. A perfect match would have a score of zero.</span>
+<span class="comment">%</span>
+<span class="comment">%    Y = DPLOBJFUNC(...,VERBOSE) also indicates whether or not the function</span>
+<span class="comment">%    should print anything. By default, VERBOSE = true.</span>
+<span class="comment">%</span>
+<span class="comment">%T. G. Kolda and others, Sandia National Laboratories, November 2012.</span>
+
+<span class="comment">% Sandia National Laboratories is a multi-program laboratory managed and</span>
+<span class="comment">% operated by Sandia Corporation, a wholly owned subsidiary of Lockheed</span>
+<span class="comment">% Martin Corporation, for the U.S. Department of Energy's National Nuclear</span>
+<span class="comment">% Security Administration under contract DE-AC04-94AL85000.</span>
+
+<span class="comment">% ** Input checking</span>
+<span class="keyword">if</span> ~exist(<span class="string">'verbose'</span>,<span class="string">'var'</span>)
+    verbose = true;
+<span class="keyword">end</span>
+
+<span class="comment">% ** Find maximum expected degree</span>
+<span class="comment">% We want to find x such that P(random vertex has degree &gt; x) &lt; bnd.</span>
+p = dplpdf(maxdeg,gamma);
+
+<span class="comment">% Penalty should grow quickly!</span>
+<span class="keyword">if</span> p(end) &gt; bnd
+    y1 = (exp(1+p(end)-bnd))^2 - 1;
+<span class="keyword">else</span>
+    y1 = 0;
+<span class="keyword">end</span>
+
+<span class="comment">% ** Find expected average degree</span>
+a = ((1:maxdeg)*p); <span class="comment">% Compute average degree</span>
+y2 = (a-avgdeg)^2;
+
+<span class="comment">% ** Sum the two values</span>
+y = y1+y2;
+
+<span class="comment">% ** Optional printing</span>
+
+<span class="keyword">if</span> verbose
+    fprintf(<span class="string">'gamma=%.3f, maxdeg=%d, p(maxdeg)=%e, avgdeg=%.1f, y=%.2f\n'</span>, <span class="keyword">...</span>
+        gamma, maxdeg, p(end), a, y);
+<span class="keyword">end</span>
+</pre><p class="footer"><br><a href="http://www.mathworks.com/products/matlab/">Published with MATLAB&reg; R2013a</a><br></p></div><!--
+##### SOURCE BEGIN #####
+function [p1,p2] = degdist_param_search(avgdeg,maxdeg,varargin)
+%DEGDIST_PARAM_SEARCH Find parameters for "ideal" degree distribution.
+% 
+%   [A,B] = DEGDIST_PARAM_SEARCH(AVG,BND) will attempt to find ideal
+%   parameters for generating a discrete generalized log-normal
+%   distribution with the expected average degree (AVG) and maximum degree
+%   bound (BND) with probability less than 1e-10.
+%
+%   G = DEGDIST_PARAM_SEARCH(AVG,BND,'type','dpl') is the same as above
+%   except that it will attempt to find the ideal parameter for generating
+%   a discrete power law distribution.
+%
+%   Optional Parameters:
+%   o 'type' - Type of degree distribution. Choices are discrete
+%        generalized log normal ('dgln') or discrete power law ('dpl'). 
+%   o 'maxdeg_prbnd' - Ideally, the probability of a node with degree BND
+%        (the maximum possible) is less than this bound. Default: 1e-10.
+%   o 'fminsearch_opts' - The options passed to the function fminsearch.
+%        Default: optimset('TolFun', 1e-4, 'TolX', 1e-4).
+%   o 'verbose' - True to print out details of the progress of the search.
+%        Default: true.
+%
+%   See also GENDEGDIST, DGLNPDF, DPLPDF.
+%
+% Tamara G. Kolda, Ali Pinar, and others, FEASTPACK v1.1, Sandia National
+% Laboratories, SAND2013-4136W, http://www.sandia.gov/~tgkolda/feastpack/,
+% January 2014  
+
+%% License
+% Copyright (c) 2014, Sandia National Laboratories
+% All rights reserved.
+%
+% Redistribution and use in source and binary forms, with or without
+% modification, are permitted provided that the following conditions are
+% met:  
+%
+% # Redistributions of source code must retain the above copyright notice,
+% this list of conditions and the following disclaimer. 
+% # Redistributions in binary form must reproduce the above copyright
+% notice, this list of conditions and the following disclaimer in the
+% documentation and/or other materials provided with the distribution.  
+%
+% THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS
+% IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO,
+% THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR
+% PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR
+% CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL,
+% EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO,
+% PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR
+% PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF
+% LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING
+% NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
+% SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.          
+%
+%
+% Sandia National Laboratories is a multi-program laboratory managed and
+% operated by Sandia Corporation, a wholly owned subsidiary of Lockheed
+% Martin Corporation, for the U.S. Department of Energy's National Nuclear
+% Security Administration under contract DE-AC04-94AL85000. 
+
+params = inputParser;
+params.addParamValue('maxdeg_prbnd', 1e-10);
+params.addParamValue('fminsearch_opts', optimset('TolFun', 1e-4, 'TolX', 1e-4));
+params.addParamValue('type','dgln');
+params.addParamValue('verbose',true);
+params.parse(varargin{:});
+
+options = params.Results.fminsearch_opts;
+bnd = params.Results.maxdeg_prbnd;
+type = params.Results.type;
+verbose = params.Results.verbose;
+
+if strcmp(type,'dgln')
+    fhandle = @(x) dglnobjfunc(x(1), x(2), maxdeg, bnd, avgdeg, verbose);
+    [xstar,fstar,exitflag] = fminsearch(fhandle, [2 2], options);
+    p1 = xstar(1);
+    p2 = xstar(2);
+elseif strcmp(type,'dpl')
+    fhandle = @(x) dplobjfunc(x, maxdeg, bnd, avgdeg, verbose);
+    [xstar,fstar,exitflag] = fminsearch(fhandle, 2, options);
+    p1 = xstar;
+    p2 = 0;
+else
+    error('Invalid type');
+end
+
+if ((exitflag ~= 1) || (fstar > 0.01))
+    warning('Could not find ideal solution. F(X)=%e, Exit Flag = %d.\n', fstar, exitflag);
+end
+
+function y = dglnobjfunc(alpha,beta,maxdeg,bnd,avgdeg,verbose)
+%DGLNOBJFUNC Function to evaluate degree distribution
+%
+%    Y = DGLNOBJFUNC(ALPHA,BETA,MEXDEG,BND,AVGDEG,BND) computes a score for
+%    the DGLN degree distribution with MAXDEG and parameters ALPHA and
+%    BETA. The goal is that the final degree distribution should have an
+%    average degree of AVGDEG and the probability of obtaining the maximum
+%    degree should be less than BND. A perfect match would have a score of
+%    zero.  
+%
+%    Y = DGLNOBJFUNC(...,VERBOSE) also indicates whether or not the function
+%    should print anything. By default, VERBOSE = true.
+%
+%T. Kolda, November 2012.
+
+% ** Input checking
+if ~exist('verbose','var')
+    verbose = true;
+end
+
+% ** Find maximum expected degree
+% We want to find x such that P(random vertex has degree > x) < bnd.
+p = dglnpdf(maxdeg,alpha,beta);
+
+% Penalty should grow quickly!
+if p(end) > bnd 
+    y1 = (exp(1+p(end)-bnd))^2 - 1;
+else
+    y1 = 0;
+end
+
+% ** Find expected average degree
+a = ((1:maxdeg)*p); % Compute average degree
+y2 = (a-avgdeg)^2;
+
+% ** Sum the two values
+y = y1+y2;
+
+% ** Optional printing
+
+if verbose
+    fprintf('alpha=%.3f, beta=%.3f, maxdeg=%d, p(maxdeg)=%e, avgdeg=%.1f, y=%.2f\n', ...
+        alpha, beta, maxdeg, p(end), a, y);
+end
+
+function y = dplobjfunc(gamma,maxdeg,bnd,avgdeg,verbose)
+%DPLOBJFUNC Function to evaluate degree distribution
+%
+%    Y = DPLOBJFUNC(GAMMA,MEXDEG,BND,AVGDEG,BND) computes a score for
+%    the powerlaw degree distribution with MAXDEG and parameter GAMMA. The
+%    goal is that the final degree distribution should have an average
+%    degree of AVGDEG and the probability of obtaining the maximum degree
+%    should be less than BND. A perfect match would have a score of zero.  
+%
+%    Y = DPLOBJFUNC(...,VERBOSE) also indicates whether or not the function
+%    should print anything. By default, VERBOSE = true.
+%
+%T. G. Kolda and others, Sandia National Laboratories, November 2012.
+
+% Sandia National Laboratories is a multi-program laboratory managed and
+% operated by Sandia Corporation, a wholly owned subsidiary of Lockheed
+% Martin Corporation, for the U.S. Department of Energy's National Nuclear
+% Security Administration under contract DE-AC04-94AL85000. 
+
+% ** Input checking
+if ~exist('verbose','var')
+    verbose = true;
+end
+
+% ** Find maximum expected degree
+% We want to find x such that P(random vertex has degree > x) < bnd.
+p = dplpdf(maxdeg,gamma);
+
+% Penalty should grow quickly!
+if p(end) > bnd 
+    y1 = (exp(1+p(end)-bnd))^2 - 1;
+else
+    y1 = 0;
+end
+
+% ** Find expected average degree
+a = ((1:maxdeg)*p); % Compute average degree
+y2 = (a-avgdeg)^2;
+
+% ** Sum the two values
+y = y1+y2;
+
+% ** Optional printing
+
+if verbose
+    fprintf('gamma=%.3f, maxdeg=%d, p(maxdeg)=%e, avgdeg=%.1f, y=%.2f\n', ...
+        gamma, maxdeg, p(end), a, y);
+end
+##### SOURCE END #####
+--></body></html>

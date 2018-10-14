@@ -1,0 +1,309 @@
+
+<!DOCTYPE html
+  PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<html><head>
+      <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+   <!--
+This HTML was auto-generated from MATLAB code.
+To make changes, update the MATLAB code and republish this document.
+      --><title>ccperdeg</title><meta name="generator" content="MATLAB 8.1"><link rel="schema.DC" href="http://purl.org/dc/elements/1.1/"><meta name="DC.date" content="2014-01-10"><meta name="DC.source" content="ccperdeg.m"><style type="text/css">
+html,body,div,span,applet,object,iframe,h1,h2,h3,h4,h5,h6,p,blockquote,pre,a,abbr,acronym,address,big,cite,code,del,dfn,em,font,img,ins,kbd,q,s,samp,small,strike,strong,sub,sup,tt,var,b,u,i,center,dl,dt,dd,ol,ul,li,fieldset,form,label,legend,table,caption,tbody,tfoot,thead,tr,th,td{margin:0;padding:0;border:0;outline:0;font-size:100%;vertical-align:baseline;background:transparent}body{line-height:1}ol,ul{list-style:none}blockquote,q{quotes:none}blockquote:before,blockquote:after,q:before,q:after{content:'';content:none}:focus{outine:0}ins{text-decoration:none}del{text-decoration:line-through}table{border-collapse:collapse;border-spacing:0}
+
+html { min-height:100%; margin-bottom:1px; }
+html body { height:100%; margin:0px; font-family:Arial, Helvetica, sans-serif; font-size:10px; color:#000; line-height:140%; background:#fff none; overflow-y:scroll; }
+html body td { vertical-align:top; text-align:left; }
+
+h1 { padding:0px; margin:0px 0px 25px; font-family:Arial, Helvetica, sans-serif; font-size:1.5em; color:#d55000; line-height:100%; font-weight:normal; }
+h2 { padding:0px; margin:0px 0px 8px; font-family:Arial, Helvetica, sans-serif; font-size:1.2em; color:#000; font-weight:bold; line-height:140%; border-bottom:1px solid #d6d4d4; display:block; }
+h3 { padding:0px; margin:0px 0px 5px; font-family:Arial, Helvetica, sans-serif; font-size:1.1em; color:#000; font-weight:bold; line-height:140%; }
+
+a { color:#005fce; text-decoration:none; }
+a:hover { color:#005fce; text-decoration:underline; }
+a:visited { color:#004aa0; text-decoration:none; }
+
+p { padding:0px; margin:0px 0px 20px; }
+img { padding:0px; margin:0px 0px 20px; border:none; }
+p img, pre img, tt img, li img { margin-bottom:0px; } 
+
+ul { padding:0px; margin:0px 0px 20px 23px; list-style:square; }
+ul li { padding:0px; margin:0px 0px 7px 0px; }
+ul li ul { padding:5px 0px 0px; margin:0px 0px 7px 23px; }
+ul li ol li { list-style:decimal; }
+ol { padding:0px; margin:0px 0px 20px 0px; list-style:decimal; }
+ol li { padding:0px; margin:0px 0px 7px 23px; list-style-type:decimal; }
+ol li ol { padding:5px 0px 0px; margin:0px 0px 7px 0px; }
+ol li ol li { list-style-type:lower-alpha; }
+ol li ul { padding-top:7px; }
+ol li ul li { list-style:square; }
+
+.content { font-size:1.2em; line-height:140%; padding: 20px; }
+
+pre, tt, code { font-size:12px; }
+pre { margin:0px 0px 20px; }
+pre.error { color:red; }
+pre.codeinput { padding:10px; border:1px solid #d3d3d3; background:#f7f7f7; }
+pre.codeoutput { padding:10px 11px; margin:0px 0px 20px; color:#4c4c4c; }
+
+@media print { pre.codeinput, pre.codeoutput { word-wrap:break-word; width:100%; } }
+
+span.keyword { color:#0000FF }
+span.comment { color:#228B22 }
+span.string { color:#A020F0 }
+span.untermstring { color:#B20000 }
+span.syscmd { color:#B28C00 }
+
+.footer { width:auto; padding:10px 0px; margin:25px 0px 0px; border-top:1px dotted #878787; font-size:0.8em; line-height:140%; font-style:italic; color:#878787; text-align:left; float:none; }
+.footer p { margin:0px; }
+.footer a { color:#878787; }
+.footer a:hover { color:#878787; text-decoration:underline; }
+.footer a:visited { color:#878787; }
+
+table th { padding:7px 5px; text-align:left; vertical-align:middle; border: 1px solid #d6d4d4; font-weight:bold; }
+table td { padding:7px 5px; text-align:left; vertical-align:top; border:1px solid #d6d4d4; }
+
+
+
+
+
+  </style></head><body><div class="content"><h2>Contents</h2><div><ul><li><a href="#3">License</a></li></ul></div><pre class="codeinput"><span class="keyword">function</span> [cd,gcc,info] = ccperdeg(G,varargin)
+</pre><pre class="codeinput"><span class="comment">%CCPERDEG Mean clustering coefficient per degree</span>
+<span class="comment">%</span>
+<span class="comment">%   CD = CCPERDEG(G) computes the per-degree clustering coefficient, i.e.,</span>
+<span class="comment">%   CD(d) is the mean clustering coefficient for nodes of degree d. If bins</span>
+<span class="comment">%   are used, CD(d) returns the clustering coefficient for the bin</span>
+<span class="comment">%   containing degree d.</span>
+<span class="comment">%</span>
+<span class="comment">%   [CD,GCC] = CCPERDEG(G) also returns the global clustering coefficient.</span>
+<span class="comment">%</span>
+<span class="comment">%   [CD,GCC,INFO] = CCPERDEG(G) also returns additional information.</span>
+<span class="comment">%</span>
+<span class="comment">%   [...] = CCPERDEG(G,'param',value accepts parameter-value pairs:</span>
+<span class="comment">%</span>
+<span class="comment">%   - 'nsamples'  - Number of samples to use. Set to zero for exact</span>
+<span class="comment">%                   calcuation. Default: 0</span>
+<span class="comment">%   - 'bins'      - Specify the degree bins for binned data. Default: []</span>
+<span class="comment">%   - 'tau'       - Specify tau-value for binning. Default: []</span>
+<span class="comment">%   - 'omega'     - Specify omega-value for binning. Default: []</span>
+<span class="comment">%   - 'matlabbgl' - Specify use of MATLAB-BGL clusteringcoefficients</span>
+<span class="comment">%                   function rather than included code. Default: false</span>
+<span class="comment">%</span>
+<span class="comment">%   Note that the 'bins' parameters overrides the 'tau' and 'omega'</span>
+<span class="comment">%   specifications. Otherwise, both 'tau' and 'omega' must be specified to</span>
+<span class="comment">%   create bins.</span>
+<span class="comment">%</span>
+<span class="comment">%   See also TRICNT, BINDATA.</span>
+<span class="comment">%</span>
+<span class="comment">% Tamara G. Kolda, Ali Pinar, and others, FEASTPACK v1.1, Sandia National</span>
+<span class="comment">% Laboratories, SAND2013-4136W, http://www.sandia.gov/~tgkolda/feastpack/,</span>
+<span class="comment">% January 2014</span>
+</pre><h2>License<a name="3"></a></h2><p>Copyright (c) 2014, Sandia National Laboratories All rights reserved.</p><p>Redistribution and use in source and binary forms, with or without modification, are permitted provided that the following conditions are met:</p><div><ol><li>Redistributions of source code must retain the above copyright notice, this list of conditions and the following disclaimer.</li><li>Redistributions in binary form must reproduce the above copyright notice, this list of conditions and the following disclaimer in the documentation and/or other materials provided with the distribution.</li></ol></div><p>THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.</p><p>Sandia National Laboratories is a multi-program laboratory managed and operated by Sandia Corporation, a wholly owned subsidiary of Lockheed Martin Corporation, for the U.S. Department of Energy's National Nuclear Security Administration under contract DE-AC04-94AL85000.</p><pre class="codeinput"><span class="comment">% ** Process inputs</span>
+params = inputParser;
+params.addParamValue(<span class="string">'nsamples'</span>, 0);
+params.addParamValue(<span class="string">'bins'</span>,[]);
+params.addParamValue(<span class="string">'tau'</span>, []);
+params.addParamValue(<span class="string">'omega'</span>, []);
+params.addParamValue(<span class="string">'matlabbgl'</span>, false);
+params.parse(varargin{:});
+
+nsamples = params.Results.nsamples;
+bins = params.Results.bins;
+tau = params.Results.tau;
+omega = params.Results.omega;
+matlabbgl = params.Results.matlabbgl;
+
+
+<span class="comment">% ** Create bins</span>
+d = full(sum(G,2));
+maxd = max(d);
+
+<span class="keyword">if</span> isempty(bins)
+    <span class="keyword">if</span> isempty(omega) || isempty(tau)
+        bins = (1:(maxd+1))';
+    <span class="keyword">else</span>
+        nbins = binlookup(maxd+1,omega,tau);
+        bins = binstart((1:(nbins+1))',omega,tau);
+    <span class="keyword">end</span>
+<span class="keyword">end</span>
+
+<span class="comment">% **</span>
+<span class="keyword">if</span> nsamples == 0
+
+    [t,d,w] = tricnt(G,d,matlabbgl);
+    [~,binId] = histc(d,bins);
+    tf = binId &gt; 0;
+    binWedges = accumarray(binId(tf),w(tf));
+    nbins = length(binWedges);
+    binTriangles = accumarray(binId(tf),t(tf),[nbins 1]);
+    cdb = binTriangles ./ max(1,binWedges);
+    gcc = sum(t)/sum(w);
+
+<span class="keyword">else</span>
+   cdb = ccperdegest(G,bins,nsamples);
+   [~,binId] = histc(d,bins);
+   tf = binId &gt; 0;
+   w = d.*(d-1)/2;
+   binWedges = accumarray(binId(tf),w(tf),size(cdb));
+   gcc = (binWedges'*cdb) / sum(binWedges);
+   t = [];
+   binTriangles = [];
+<span class="keyword">end</span>
+
+[~,binId] = histc(1:maxd,bins);
+cd(1:maxd,1) = cdb(binId);
+
+<span class="comment">% Shorten the bins array to be the same length as cdb</span>
+idx = find(cdb &gt; 0, 1, <span class="string">'last'</span>);
+cdb = cdb(1:idx);
+bins = bins(1:idx);
+
+
+<span class="comment">% Create info</span>
+info.nsamples = nsamples;
+info.gcc = gcc;
+info.bins = bins;
+info.cc_per_bin = cdb;
+info.deg_per_vertex = d;
+info.wedges_per_vertex = w;
+info.tris_per_vertex = t;
+info.wedges_per_bin = binWedges;
+info.tris_per_bin = binTriangles;
+</pre><p class="footer"><br><a href="http://www.mathworks.com/products/matlab/">Published with MATLAB&reg; R2013a</a><br></p></div><!--
+##### SOURCE BEGIN #####
+function [cd,gcc,info] = ccperdeg(G,varargin)
+%CCPERDEG Mean clustering coefficient per degree
+%
+%   CD = CCPERDEG(G) computes the per-degree clustering coefficient, i.e.,
+%   CD(d) is the mean clustering coefficient for nodes of degree d. If bins
+%   are used, CD(d) returns the clustering coefficient for the bin
+%   containing degree d.
+%   
+%   [CD,GCC] = CCPERDEG(G) also returns the global clustering coefficient.
+%
+%   [CD,GCC,INFO] = CCPERDEG(G) also returns additional information.
+%
+%   [...] = CCPERDEG(G,'param',value accepts parameter-value pairs:
+%
+%   - 'nsamples'  - Number of samples to use. Set to zero for exact
+%                   calcuation. Default: 0
+%   - 'bins'      - Specify the degree bins for binned data. Default: []
+%   - 'tau'       - Specify tau-value for binning. Default: []
+%   - 'omega'     - Specify omega-value for binning. Default: []
+%   - 'matlabbgl' - Specify use of MATLAB-BGL clusteringcoefficients
+%                   function rather than included code. Default: false
+%
+%   Note that the 'bins' parameters overrides the 'tau' and 'omega'
+%   specifications. Otherwise, both 'tau' and 'omega' must be specified to
+%   create bins.
+%
+%   See also TRICNT, BINDATA.
+%
+% Tamara G. Kolda, Ali Pinar, and others, FEASTPACK v1.1, Sandia National
+% Laboratories, SAND2013-4136W, http://www.sandia.gov/~tgkolda/feastpack/,
+% January 2014  
+
+%% License
+% Copyright (c) 2014, Sandia National Laboratories
+% All rights reserved.
+%
+% Redistribution and use in source and binary forms, with or without
+% modification, are permitted provided that the following conditions are
+% met:  
+%
+% # Redistributions of source code must retain the above copyright notice,
+% this list of conditions and the following disclaimer. 
+% # Redistributions in binary form must reproduce the above copyright
+% notice, this list of conditions and the following disclaimer in the
+% documentation and/or other materials provided with the distribution.  
+%
+% THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS
+% IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO,
+% THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR
+% PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR
+% CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL,
+% EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO,
+% PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR
+% PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF
+% LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING
+% NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
+% SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.          
+%
+%
+% Sandia National Laboratories is a multi-program laboratory managed and
+% operated by Sandia Corporation, a wholly owned subsidiary of Lockheed
+% Martin Corporation, for the U.S. Department of Energy's National Nuclear
+% Security Administration under contract DE-AC04-94AL85000. 
+
+% ** Process inputs
+params = inputParser;
+params.addParamValue('nsamples', 0);
+params.addParamValue('bins',[]);
+params.addParamValue('tau', []);
+params.addParamValue('omega', []);
+params.addParamValue('matlabbgl', false);
+params.parse(varargin{:});
+
+nsamples = params.Results.nsamples;
+bins = params.Results.bins;
+tau = params.Results.tau;
+omega = params.Results.omega;
+matlabbgl = params.Results.matlabbgl;
+
+
+% ** Create bins
+d = full(sum(G,2));
+maxd = max(d);
+
+if isempty(bins)
+    if isempty(omega) || isempty(tau)
+        bins = (1:(maxd+1))';
+    else
+        nbins = binlookup(maxd+1,omega,tau); 
+        bins = binstart((1:(nbins+1))',omega,tau);
+    end
+end
+
+% **
+if nsamples == 0
+    
+    [t,d,w] = tricnt(G,d,matlabbgl);             
+    [~,binId] = histc(d,bins);
+    tf = binId > 0;
+    binWedges = accumarray(binId(tf),w(tf));
+    nbins = length(binWedges);
+    binTriangles = accumarray(binId(tf),t(tf),[nbins 1]);
+    cdb = binTriangles ./ max(1,binWedges);   
+    gcc = sum(t)/sum(w);
+
+else    
+   cdb = ccperdegest(G,bins,nsamples); 
+   [~,binId] = histc(d,bins);
+   tf = binId > 0;
+   w = d.*(d-1)/2;
+   binWedges = accumarray(binId(tf),w(tf),size(cdb));
+   gcc = (binWedges'*cdb) / sum(binWedges);
+   t = [];
+   binTriangles = [];
+end
+
+[~,binId] = histc(1:maxd,bins);
+cd(1:maxd,1) = cdb(binId);
+
+% Shorten the bins array to be the same length as cdb
+idx = find(cdb > 0, 1, 'last');
+cdb = cdb(1:idx);
+bins = bins(1:idx);
+
+
+% Create info
+info.nsamples = nsamples;
+info.gcc = gcc;
+info.bins = bins;
+info.cc_per_bin = cdb;
+info.deg_per_vertex = d;
+info.wedges_per_vertex = w;
+info.tris_per_vertex = t;
+info.wedges_per_bin = binWedges;
+info.tris_per_bin = binTriangles;
+
+##### SOURCE END #####
+--></body></html>

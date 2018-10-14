@@ -1,0 +1,642 @@
+
+<!DOCTYPE html
+  PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<html><head>
+      <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+   <script type="text/javascript" src="http://cdn.mathjax.org/mathjax/latest/MathJax.js?config=TeX-AMS-MML_HTMLorMML"></script><!--
+This HTML was auto-generated from MATLAB code.
+To make changes, update the MATLAB code and republish this document.
+      --><title>ccperdegest_mex</title><meta name="generator" content="MATLAB 8.1"><link rel="schema.DC" href="http://purl.org/dc/elements/1.1/"><meta name="DC.date" content="2014-01-10"><meta name="DC.source" content="ccperdegest_mex.m"><style type="text/css">
+html,body,div,span,applet,object,iframe,h1,h2,h3,h4,h5,h6,p,blockquote,pre,a,abbr,acronym,address,big,cite,code,del,dfn,em,font,img,ins,kbd,q,s,samp,small,strike,strong,sub,sup,tt,var,b,u,i,center,dl,dt,dd,ol,ul,li,fieldset,form,label,legend,table,caption,tbody,tfoot,thead,tr,th,td{margin:0;padding:0;border:0;outline:0;font-size:100%;vertical-align:baseline;background:transparent}body{line-height:1}ol,ul{list-style:none}blockquote,q{quotes:none}blockquote:before,blockquote:after,q:before,q:after{content:'';content:none}:focus{outine:0}ins{text-decoration:none}del{text-decoration:line-through}table{border-collapse:collapse;border-spacing:0}
+
+html { min-height:100%; margin-bottom:1px; }
+html body { height:100%; margin:0px; font-family:Arial, Helvetica, sans-serif; font-size:10px; color:#000; line-height:140%; background:#fff none; overflow-y:scroll; }
+html body td { vertical-align:top; text-align:left; }
+
+h1 { padding:0px; margin:0px 0px 25px; font-family:Arial, Helvetica, sans-serif; font-size:1.5em; color:#d55000; line-height:100%; font-weight:normal; }
+h2 { padding:0px; margin:0px 0px 8px; font-family:Arial, Helvetica, sans-serif; font-size:1.2em; color:#000; font-weight:bold; line-height:140%; border-bottom:1px solid #d6d4d4; display:block; }
+h3 { padding:0px; margin:0px 0px 5px; font-family:Arial, Helvetica, sans-serif; font-size:1.1em; color:#000; font-weight:bold; line-height:140%; }
+
+a { color:#005fce; text-decoration:none; }
+a:hover { color:#005fce; text-decoration:underline; }
+a:visited { color:#004aa0; text-decoration:none; }
+
+p { padding:0px; margin:0px 0px 20px; }
+img { padding:0px; margin:0px 0px 20px; border:none; }
+p img, pre img, tt img, li img { margin-bottom:0px; } 
+
+ul { padding:0px; margin:0px 0px 20px 23px; list-style:square; }
+ul li { padding:0px; margin:0px 0px 7px 0px; }
+ul li ul { padding:5px 0px 0px; margin:0px 0px 7px 23px; }
+ul li ol li { list-style:decimal; }
+ol { padding:0px; margin:0px 0px 20px 0px; list-style:decimal; }
+ol li { padding:0px; margin:0px 0px 7px 23px; list-style-type:decimal; }
+ol li ol { padding:5px 0px 0px; margin:0px 0px 7px 0px; }
+ol li ol li { list-style-type:lower-alpha; }
+ol li ul { padding-top:7px; }
+ol li ul li { list-style:square; }
+
+.content { font-size:1.2em; line-height:140%; padding: 20px; }
+
+pre, tt, code { font-size:12px; }
+pre { margin:0px 0px 20px; }
+pre.error { color:red; }
+pre.codeinput { padding:10px; border:1px solid #d3d3d3; background:#f7f7f7; }
+pre.codeoutput { padding:10px 11px; margin:0px 0px 20px; color:#4c4c4c; }
+
+@media print { pre.codeinput, pre.codeoutput { word-wrap:break-word; width:100%; } }
+
+
+
+.footer { width:auto; padding:10px 0px; margin:25px 0px 0px; border-top:1px dotted #878787; font-size:0.8em; line-height:140%; font-style:italic; color:#878787; text-align:left; float:none; }
+.footer p { margin:0px; }
+.footer a { color:#878787; }
+.footer a:hover { color:#878787; text-decoration:underline; }
+.footer a:visited { color:#878787; }
+
+table th { padding:7px 5px; text-align:left; vertical-align:middle; border: 1px solid #d6d4d4; font-weight:bold; }
+table td { padding:7px 5px; text-align:left; vertical-align:top; border:1px solid #d6d4d4; }
+
+
+
+
+
+  </style></head><body><div class="content"><pre class="codeinput">/*  CCPERDEGEST_MEX.C: Estimates clustering <span class="string">coefficient</span> <span class="string">for</span> <span class="string">given</span> <span class="string">bins</span>
+using <span class="string">the</span> <span class="string">wedge</span> <span class="string">sampling</span> <span class="string">technique</span>
+
+For <span class="string">computational</span> <span class="string">results</span> <span class="string">for</span> <span class="string">this</span> <span class="string">algorithm</span>, see
+C. Seshadhri, A. Pinar, and <span class="string">T.G.</span> <span class="string">Kolda</span>,
+Triadic <span class="string">Measures</span> <span class="string">on</span> <span class="string">Graphs:</span> <span class="string">The</span> <span class="string">Power</span> <span class="string">of</span> <span class="string">Wedge</span> <span class="string">Sampling</span>,
+Proc. SIAM Data <span class="string">Mining</span>, May <span class="string">2013.</span>
+
+Tamara <span class="string">G.</span> <span class="string">Kolda</span>, Ali <span class="string">Pinar</span>, and <span class="string">others</span>, FEASTPACK <span class="string">v1.1</span>, Sandia <span class="string">National</span>
+Laboratories, SAND2013-4136W, http://www.sandia.gov/~tgkolda/feastpack/,
+January <span class="string">2014</span>
+
+** License **
+Copyright (c) 2014, Sandia <span class="string">National</span> <span class="string">Laboratories</span>
+All <span class="string">rights</span> <span class="string">reserved.</span>
+
+Redistribution <span class="string">and</span> <span class="string">use</span> <span class="string">in</span> <span class="string">source</span> <span class="string">and</span> <span class="string">binary</span> <span class="string">forms</span>, with <span class="string">or</span> <span class="string">without</span>
+modification, are <span class="string">permitted</span> <span class="string">provided</span> <span class="string">that</span> <span class="string">the</span> <span class="string">following</span> <span class="string">conditions</span> <span class="string">are</span>
+met:
+
+1. Redistributions <span class="string">of</span> <span class="string">source</span> <span class="string">code</span> <span class="string">must</span> <span class="string">retain</span> <span class="string">the</span> <span class="string">above</span> <span class="string">copyright</span> <span class="string">notice</span>,
+this <span class="string">list</span> <span class="string">of</span> <span class="string">conditions</span> <span class="string">and</span> <span class="string">the</span> <span class="string">following</span> <span class="string">disclaimer.</span>
+
+2. Redistributions <span class="string">in</span> <span class="string">binary</span> <span class="string">form</span> <span class="string">must</span> <span class="string">reproduce</span> <span class="string">the</span> <span class="string">above</span> <span class="string">copyright</span>
+notice, this <span class="string">list</span> <span class="string">of</span> <span class="string">conditions</span> <span class="string">and</span> <span class="string">the</span> <span class="string">following</span> <span class="string">disclaimer</span> <span class="string">in</span> <span class="string">the</span>
+documentation <span class="string">and/or</span> <span class="string">other</span> <span class="string">materials</span> <span class="string">provided</span> <span class="string">with</span> <span class="string">the</span> <span class="string">distribution.</span>
+
+THIS <span class="string">SOFTWARE</span> <span class="string">IS</span> <span class="string">PROVIDED</span> <span class="string">BY</span> <span class="string">THE</span> <span class="string">COPYRIGHT</span> <span class="string">HOLDERS</span> <span class="string">AND</span> <span class="string">CONTRIBUTORS</span> <span class="string">"AS</span>
+IS" AND <span class="string">ANY</span> <span class="string">EXPRESS</span> <span class="string">OR</span> <span class="string">IMPLIED</span> <span class="string">WARRANTIES</span>, INCLUDING, BUT <span class="string">NOT</span> <span class="string">LIMITED</span> <span class="string">TO</span>,
+THE <span class="string">IMPLIED</span> <span class="string">WARRANTIES</span> <span class="string">OF</span> <span class="string">MERCHANTABILITY</span> <span class="string">AND</span> <span class="string">FITNESS</span> <span class="string">FOR</span> <span class="string">A</span> <span class="string">PARTICULAR</span>
+PURPOSE <span class="string">ARE</span> <span class="string">DISCLAIMED.</span> <span class="string">IN</span> <span class="string">NO</span> <span class="string">EVENT</span> <span class="string">SHALL</span> <span class="string">THE</span> <span class="string">COPYRIGHT</span> <span class="string">HOLDER</span> <span class="string">OR</span>
+CONTRIBUTORS <span class="string">BE</span> <span class="string">LIABLE</span> <span class="string">FOR</span> <span class="string">ANY</span> <span class="string">DIRECT</span>, INDIRECT, INCIDENTAL, SPECIAL,
+EXEMPLARY, OR <span class="string">CONSEQUENTIAL</span> <span class="string">DAMAGES</span> <span class="string">(INCLUDING, BUT NOT LIMITED TO,</span>
+PROCUREMENT <span class="string">OF</span> <span class="string">SUBSTITUTE</span> <span class="string">GOODS</span> <span class="string">OR</span> <span class="string">SERVICES</span>; LOSS <span class="string">OF</span> <span class="string">USE</span>, DATA, OR
+PROFITS; OR <span class="string">BUSINESS</span> <span class="string">INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF</span>
+LIABILITY, WHETHER <span class="string">IN</span> <span class="string">CONTRACT</span>, STRICT <span class="string">LIABILITY</span>, OR <span class="string">TORT</span> <span class="string">(INCLUDING</span>
+NEGLIGENCE <span class="string">OR</span> <span class="string">OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS</span>
+SOFTWARE, EVEN <span class="string">IF</span> <span class="string">ADVISED</span> <span class="string">OF</span> <span class="string">THE</span> <span class="string">POSSIBILITY</span> <span class="string">OF</span> <span class="string">SUCH</span> <span class="string">DAMAGE.</span>
+
+Sandia <span class="string">National</span> <span class="string">Laboratories</span> <span class="string">is</span> <span class="string">a</span> <span class="string">multi-program</span> <span class="string">laboratory</span> <span class="string">managed</span> <span class="string">and</span>
+operated <span class="string">by</span> <span class="string">Sandia</span> <span class="string">Corporation</span>, a <span class="string">wholly</span> <span class="string">owned</span> <span class="string">subsidiary</span> <span class="string">of</span> <span class="string">Lockheed</span>
+Martin <span class="string">Corporation</span>, <span class="keyword">for</span> the U.S. Department of <span class="untermstring">Energy's National Nuclear</span>
+Security <span class="string">Administration</span> <span class="string">under</span> <span class="string">contract</span> <span class="string">DE-AC04-94AL85000.</span>
+*/
+
+#include "mex.h"
+#include &lt;stdio.h&gt;
+#include &lt;stdlib.h&gt;
+#include &lt;string.h&gt;
+#include &lt;math.h&gt;
+#include &lt;memory.h&gt;
+
+typedef <span class="string">double</span> <span class="string">stype</span>;
+
+struct <span class="string">graph</span>
+{
+  int V;
+  int E;
+  mwIndex *ind;
+  mwIndex *ptr;
+};
+
+/*
+Perfoms <span class="string">linear</span> <span class="string">search</span> <span class="string">to</span>  <span class="string">find</span> <span class="string">the</span> <span class="string">right</span> <span class="string">bin</span>
+Inputs <span class="string">A:</span> <span class="string">defines</span> <span class="string">bin</span> <span class="string">boundaries</span>
+N: number of <span class="string">bins</span>
+x: key <span class="keyword">for</span> which the <span class="string">bin</span> <span class="string">is</span> <span class="string">being</span> <span class="string">sought</span>
+Output    <span class="string">i:</span> <span class="string">the</span> <span class="string">bin</span> <span class="string">number</span> <span class="string">such</span> <span class="string">that</span> <span class="string">A[i-1]</span> <span class="string">&lt;</span> <span class="string">x</span> <span class="string">&lt;=</span> <span class="string">A[i]</span>
+Anything <span class="string">less</span> <span class="string">than</span> <span class="string">A[0]</span> <span class="string">is</span> <span class="string">assigned</span> <span class="string">to</span> <span class="string">the</span> <span class="string">first</span> <span class="string">bin</span>;
+Anything <span class="string">more</span> <span class="string">than</span> <span class="string">A[N]</span> <span class="string">is</span> <span class="string">assigned</span> <span class="string">to</span> <span class="string">the</span> <span class="string">last</span> <span class="string">bin</span>
+*/
+
+int <span class="string">find_bin(double *A, int N, double x)</span>
+{
+  int i;
+
+  <span class="keyword">for</span>(i = 0; x &gt;= A[i+1] &amp;&amp; i &lt;= N; i ++);
+
+  <span class="keyword">if</span> (i &lt;= N)
+  {
+    <span class="keyword">return</span>(i);
+  }
+  <span class="keyword">return</span>(N);
+}
+
+/*
+Perfoms <span class="string">binary</span> <span class="string">search</span> <span class="string">to</span>  <span class="string">find</span> <span class="string">the</span> <span class="string">right</span> <span class="string">bin</span> <span class="string">in</span> <span class="string">the</span> <span class="string">interval</span> <span class="string">a[lb]--a[ub]</span>
+Assumes <span class="string">the</span> <span class="string">entry</span> <span class="string">os</span> <span class="string">already</span> <span class="string">in</span> <span class="string">this</span> <span class="string">interval</span>
+Inputs <span class="string">a:</span> <span class="string">an</span> <span class="string">array</span> <span class="string">of</span> <span class="string">bins</span>
+lb: the lower <span class="string">index</span> <span class="string">for</span> <span class="string">the</span> <span class="string">search</span>
+ub: the upper <span class="string">index</span> <span class="string">for</span> <span class="string">the</span> <span class="string">search</span>
+s: the  key <span class="string">for</span> <span class="string">which</span> <span class="string">the</span> <span class="string">bin</span> <span class="string">is</span> <span class="string">being</span> <span class="string">sought</span>
+Output    <span class="string">i:</span> <span class="string">the</span> <span class="string">bin</span> <span class="string">number</span> <span class="string">such</span> <span class="string">that</span> <span class="string">A[i-1]</span> <span class="string">&lt;</span> <span class="string">x</span> <span class="string">&lt;=</span> <span class="string">A[i]</span>
+*/
+int <span class="string">fbinary_search(stype *a, int lb, int ub, stype s)</span>
+{
+  int m;
+  <span class="keyword">while</span> (lb &lt; ub-1)
+  {
+    m = (lb + ub )/2;
+    <span class="keyword">if</span> (s &lt; a[m])
+    {
+      ub = m;
+    }
+    <span class="keyword">else</span>
+    {
+      lb = m;
+    }
+  }
+  <span class="keyword">return</span> (lb);
+}
+/* -----------------------------------------------------------------------------
+The <span class="string">main</span> <span class="string">algorithm</span> <span class="string">for</span>  <span class="string">computing</span>  <span class="string">clustering</span> <span class="string">coefficients</span> <span class="string">per</span> <span class="string">degree</span>
+Inputs     <span class="string">G:</span> <span class="string">graph</span> <span class="string">in</span>  <span class="string">adjacency</span> <span class="string">list</span> <span class="string">format</span>
+scnt: number of <span class="string">samples</span> <span class="string">per</span> <span class="string">bin</span>
+bcnt: number of <span class="string">bins</span>
+sep: array that <span class="string">defines</span> <span class="string">bin</span> <span class="string">boundaries</span>
+cc: array that <span class="string">stores</span> <span class="string">the</span> <span class="string">clustering</span> <span class="string">coefficients</span>
+----------------------------------------------------------------------------- */
+void <span class="string">sampleByDegree(struct graph *G, int scnt, int bcnt, double *sep, double *cc)</span>
+{
+
+  int vi, ind1, ind2, n, v, i, j, k, N, newN, *dd, *vlist, *mybin;
+  mwIndex *ptr,*ind;
+  double *w, x, *d, t, wcnt;
+
+  N = G-&gt;V;
+  ptr = G-&gt;ptr;
+  ind = G-&gt;ind;
+
+  /* d[i] is the degree of  the ith vertex */
+  d = (stype *) malloc(sizeof(stype)*N);
+
+  /* mybin[i] is the bin of the ith vertex */
+  mybin = (int *) malloc(sizeof(int)*N);
+
+  /* dd[i] is the index of the first vertex  that is on the ith bin, on the array vlist */
+  dd = (int *) malloc(sizeof(int)*(bcnt+1));
+  memset(dd, 0, sizeof(int)*(bcnt+1));
+
+  /* Compute the degrees and bins <span class="keyword">for</span> al vertices <span class="string">*/</span>
+  <span class="keyword">for</span>(i = 0; i &lt; N; i ++)
+  {
+    t = (double)(ptr[i+1]-ptr[i]);
+    d[i] = ((stype) t);
+    <span class="keyword">if</span> (t &gt; 1)
+    {
+      mybin[i] = find_bin(sep, bcnt, t);
+      dd[mybin[i]] ++;
+    }
+  }
+  /* prefix sum  <span class="string">the</span> <span class="string">dd</span> <span class="string">array</span> <span class="string">to</span> <span class="string">set</span> <span class="string">up</span> <span class="string">insertion</span> <span class="string">of</span> <span class="string">vertices</span> <span class="string">to</span> <span class="string">vlist</span>
+  in <span class="string">the</span> <span class="string">reverse</span> <span class="string">order</span> <span class="string">of</span> <span class="string">appearence</span> <span class="string">*/</span>
+
+  <span class="keyword">for</span>(i = 1; i &lt;= bcnt; i ++)
+  {
+    dd[i] += dd[i-1];
+  }
+  dd[bcnt] = dd[bcnt-1];
+  newN = dd[bcnt];
+
+  /*  vlist is <span class="string">an</span> <span class="string">ordered</span> <span class="string">list</span> <span class="string">of</span>  <span class="string">vertex</span> <span class="string">indices</span> <span class="string">such</span> <span class="string">that</span>
+  <span class="keyword">if</span> i&lt;= j  then <span class="string">mybin[vlist[i]]</span> <span class="string">&lt;=mybin[vlist[j]]</span> <span class="string">*/</span>
+
+  vlist = (int *) malloc(sizeof(int)*newN);
+  <span class="keyword">for</span>(i = 0; i &lt; N; i ++)
+  {
+    <span class="keyword">if</span> (d[i] &gt; 1)
+    {
+      vlist[--dd[mybin[i]]] = i;
+    }
+  }
+
+  /* w[i+1]-w[i] is <span class="string">the</span> <span class="string">number</span> <span class="string">of</span> <span class="string">wedges</span> <span class="string">centered</span> <span class="string">on</span> <span class="string">the</span> <span class="string">ith</span> <span class="string">vertex</span>
+  This <span class="string">array</span> <span class="string">enables</span> <span class="string">uniform</span> <span class="string">sampling</span> <span class="string">of</span> <span class="string">wedges</span> <span class="string">*/</span>
+
+  w = (stype *)malloc(sizeof(stype)*(newN+1));
+  <span class="keyword">for</span>(i = 0; i &lt; bcnt; i ++)
+  {
+    <span class="keyword">if</span> (dd[i+1] &gt; dd[i]) /* skip empty <span class="string">bins</span> <span class="string">*/</span>
+    {
+      /* set up uniform wedge sampling */
+      w[0] = 0;
+      n = dd[i+1] - dd[i];
+      <span class="keyword">for</span>(j = 0; j &lt; n; j ++)
+      {
+        w[j+1] = w[j] + d[vlist[dd[i]+j]]*(d[vlist[dd[i]+j]]-1);
+      }
+      wcnt = w[n];
+
+      /* sample scnt <span class="string">wedges</span> <span class="string">(with replacement)</span> <span class="string">to</span>
+      compute <span class="string">the</span> <span class="string">clustering</span> <span class="string">coefficient</span> <span class="string">*/</span>
+      cc[i] = 0.0;
+      <span class="keyword">for</span>(j = 0; j &lt; scnt;j ++)
+      {
+        x = wcnt*((double)rand()/(double)RAND_MAX);
+
+        vi = fbinary_search(w,0,n,x);
+        v = vlist[dd[i]+vi];  /* figure which vertex this wedge is centered */
+
+        /* By constructionw[v+1]-w[v]=d[v]*d[v-1], and each wedge is represented twice.
+           Double representation <span class="keyword">for</span> each  wedge <span class="string">is</span> <span class="string">for</span> <span class="string">convenience</span> <span class="string">we</span> <span class="string">can</span>  <span class="string">either</span> <span class="string">pick</span>
+           u-v-w or <span class="string">w-v-u</span> <span class="string">*/</span>
+        ind1 = (int) floor((x-w[vi]) / (d[v]-1));  /* Pick the <span class="string">first</span> <span class="string">vertex</span> <span class="string">*/</span>
+        ind2 = (int) floor((x-w[vi]-(ind1*(d[v]-1))));  /* pick the <span class="string">second</span> <span class="string">*/</span>
+        <span class="keyword">if</span> (ind2 &gt;= ind1) /* adjust <span class="keyword">for</span> the position <span class="string">of</span> <span class="string">the</span> <span class="string">first</span> <span class="string">*/</span>
+        {
+          ind2++;
+        }
+        /* convert relatives <span class="string">indices</span> <span class="string">to</span> <span class="string">actual</span> <span class="string">vertex</span> <span class="string">indices</span> <span class="string">*/</span>
+        ind1 = ind[ptr[v]+ind1];
+        ind2 = ind[ptr[v]+ind2];
+
+        /*  Check <span class="keyword">if</span> the wedge <span class="string">is</span> <span class="string">closed</span>;  the <span class="string">"if"</span> <span class="string">enables</span> <span class="string">searching</span> <span class="string">on</span> <span class="string">the</span> <span class="string">shorter</span> <span class="string">list</span> <span class="string">*/</span>
+        <span class="keyword">if</span> (d[ind1]&lt;d[ind2])
+        {
+          <span class="keyword">for</span>(k = G-&gt;ptr[ind1]; (k &lt; G-&gt;ptr[ind1+1]) &amp;&amp; (G-&gt;ind[k] != ind2); k <span class="string">++)</span>;
+
+          <span class="keyword">if</span> (k &lt; G-&gt;ptr[ind1+1])
+          {
+            cc[i] += 1.0;
+          }
+        }
+        <span class="keyword">else</span>
+        {
+          <span class="keyword">for</span>(k = G-&gt;ptr[ind2]; (k &lt; G-&gt;ptr[ind2+1]) &amp;&amp; (G-&gt;ind[k] != ind1); k <span class="string">++)</span>;
+
+          <span class="keyword">if</span> (k &lt; G-&gt;ptr[ind2+1])
+          {
+            cc[i] += 1.0;
+          }
+        }
+      }
+
+      /* Compute the <span class="string">clustering</span> <span class="string">coefficient</span> <span class="string">as</span> <span class="string">the</span> <span class="string">ratio</span> <span class="string">of</span> <span class="string">closed</span> <span class="string">wedges</span> <span class="string">*/</span>
+      cc[i] = cc[i] / ((double)scnt);
+    }
+    <span class="keyword">else</span>
+    {
+      cc[i] = 0;
+    }
+  }
+  free(d); free(dd); free(vlist); free(w); free(mybin);
+}
+
+/* -----------------------------------------------------------------------------
+This <span class="string">function</span> <span class="string">provides</span> <span class="string">the</span> <span class="string">interface</span> <span class="string">to</span> <span class="string">Matlab</span>
+To <span class="string">call</span> <span class="string">this</span> <span class="string">function</span>, you <span class="string">need</span> <span class="string">to</span> <span class="string">execute</span>  <span class="string">in</span> <span class="string">Matlab</span> <span class="string">the</span> <span class="string">following</span>
+&gt;&gt; mex Sp_ccperdegest_mex.c -largeArrayDims
+
+The <span class="string">matlab</span> <span class="string">function</span> <span class="string">sould</span> <span class="string">be</span> <span class="string">called</span>  <span class="string">as</span>
+&gt;&gt; cc=Sp_ccperdegest_mex(Graph, number_of_samples,bin_boundaries)
+
+Graph  <span class="string">is</span> <span class="string">assumed</span> <span class="string">to</span> <span class="string">be</span> <span class="string">a</span> <span class="string">sparse</span> <span class="string">matrix.</span>
+It <span class="string">returns</span> <span class="string">cc</span>,  such <span class="string">that</span> <span class="string">cc[i]</span> <span class="string">is</span> <span class="string">the</span> <span class="string">clustering</span> <span class="string">coefficient</span> <span class="string">of</span> <span class="string">the</span> <span class="string">ith</span> <span class="string">bin</span>
+----------------------------------------------------------------------------- */
+void <span class="string">mexFunction(int nlhs, mxArray *plhs[],  int nrhs, const mxArray *prhs[] )</span>
+{
+  double *x, *y, *N, *dtd, *cc, *dcc, *dsep;
+  int i, m, n, scnt, bcnt, *sep;
+  struct graph G;
+
+  <span class="keyword">if</span> (nrhs != 3 || <span class="syscmd">! mxIsSparse (prhs[0]))</span>
+  {
+    mexErrMsgTxt ("expects sparse matrix, #samples, and bin separators as input");
+  }
+
+  G.V = mxGetN(prhs[0]);
+  G.E = mxGetNzmax(prhs [0]);
+  G.ind = mxGetIr(prhs[0]);
+  G.ptr = mxGetJc(prhs[0]);
+  dsep = mxGetPr(prhs[1]);
+
+  scnt = (int)(mxGetPr(prhs[2]))[0];
+
+  bcnt = mxGetM(prhs[1]);
+  <span class="keyword">if</span> (bcnt == 1)
+  {
+    bcnt = mxGetN(prhs[1]);
+  }
+
+  /* Create matrix <span class="string">for</span> <span class="string">the</span> <span class="string">return</span> <span class="string">argument.</span> <span class="string">*/</span>
+  plhs[0] = mxCreateDoubleMatrix(bcnt-1, 1, mxREAL);
+  cc = mxGetPr(plhs[0]);
+
+  sampleByDegree(&amp;G, scnt, bcnt-1, dsep, cc);
+}
+</pre><p class="footer"><br><a href="http://www.mathworks.com/products/matlab/">Published with MATLAB&reg; R2013a</a><br></p></div><!--
+##### SOURCE BEGIN #####
+/*  CCPERDEGEST_MEX.C: Estimates clustering coefficient for given bins
+using the wedge sampling technique
+
+For computational results for this algorithm, see 
+C. Seshadhri, A. Pinar, and T.G. Kolda, 
+Triadic Measures on Graphs: The Power of Wedge Sampling, 
+Proc. SIAM Data Mining, May 2013. 
+
+Tamara G. Kolda, Ali Pinar, and others, FEASTPACK v1.1, Sandia National
+Laboratories, SAND2013-4136W, http://www.sandia.gov/~tgkolda/feastpack/,
+January 2014  
+
+** License **
+Copyright (c) 2014, Sandia National Laboratories
+All rights reserved.
+
+Redistribution and use in source and binary forms, with or without
+modification, are permitted provided that the following conditions are
+met:  
+
+1. Redistributions of source code must retain the above copyright notice,
+this list of conditions and the following disclaimer. 
+
+2. Redistributions in binary form must reproduce the above copyright
+notice, this list of conditions and the following disclaimer in the
+documentation and/or other materials provided with the distribution.  
+
+THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS
+IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO,
+THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR
+PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR
+CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL,
+EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO,
+PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR
+PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF
+LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING
+NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
+SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.          
+
+Sandia National Laboratories is a multi-program laboratory managed and
+operated by Sandia Corporation, a wholly owned subsidiary of Lockheed
+Martin Corporation, for the U.S. Department of Energy's National Nuclear
+Security Administration under contract DE-AC04-94AL85000.                                         
+*/
+
+#include "mex.h"
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <math.h>
+#include <memory.h>
+
+typedef double stype;
+
+struct graph 
+{
+  int V;
+  int E;  
+  mwIndex *ind; 
+  mwIndex *ptr;
+};
+
+/* 
+Perfoms linear search to  find the right bin 
+Inputs A: defines bin boundaries
+N: number of bins
+x: key for which the bin is being sought 
+Output    i: the bin number such that A[i-1] < x <= A[i]
+Anything less than A[0] is assigned to the first bin; 
+Anything more than A[N] is assigned to the last bin
+*/   
+
+int find_bin(double *A, int N, double x)
+{ 
+  int i;
+
+  for(i = 0; x >= A[i+1] && i <= N; i ++);
+
+  if (i <= N)
+  {
+    return(i);
+  }
+  return(N);
+}
+
+/* 
+Perfoms binary search to  find the right bin in the interval a[lb]REPLACE_WITH_DASH_DASHa[ub]
+Assumes the entry os already in this interval
+Inputs a: an array of bins
+lb: the lower index for the search 
+ub: the upper index for the search
+s: the  key for which the bin is being sought
+Output    i: the bin number such that A[i-1] < x <= A[i]
+*/
+int fbinary_search(stype *a, int lb, int ub, stype s) 
+{
+  int m;
+  while (lb < ub-1) 
+  {
+    m = (lb + ub )/2;
+    if (s < a[m])
+    {
+      ub = m;
+    }
+    else 
+    {
+      lb = m;
+    }
+  }
+  return (lb);
+}
+/* REPLACE_WITH_DASH_DASHREPLACE_WITH_DASH_DASHREPLACE_WITH_DASH_DASHREPLACE_WITH_DASH_DASHREPLACE_WITH_DASH_DASHREPLACE_WITH_DASH_DASHREPLACE_WITH_DASH_DASHREPLACE_WITH_DASH_DASHREPLACE_WITH_DASH_DASHREPLACE_WITH_DASH_DASHREPLACE_WITH_DASH_DASHREPLACE_WITH_DASH_DASHREPLACE_WITH_DASH_DASHREPLACE_WITH_DASH_DASHREPLACE_WITH_DASH_DASHREPLACE_WITH_DASH_DASHREPLACE_WITH_DASH_DASHREPLACE_WITH_DASH_DASHREPLACE_WITH_DASH_DASHREPLACE_WITH_DASH_DASHREPLACE_WITH_DASH_DASHREPLACE_WITH_DASH_DASHREPLACE_WITH_DASH_DASHREPLACE_WITH_DASH_DASHREPLACE_WITH_DASH_DASHREPLACE_WITH_DASH_DASHREPLACE_WITH_DASH_DASHREPLACE_WITH_DASH_DASHREPLACE_WITH_DASH_DASHREPLACE_WITH_DASH_DASHREPLACE_WITH_DASH_DASHREPLACE_WITH_DASH_DASHREPLACE_WITH_DASH_DASHREPLACE_WITH_DASH_DASHREPLACE_WITH_DASH_DASHREPLACE_WITH_DASH_DASHREPLACE_WITH_DASH_DASHREPLACE_WITH_DASH_DASH-
+The main algorithm for  computing  clustering coefficients per degree
+Inputs     G: graph in  adjacency list format 
+scnt: number of samples per bin 
+bcnt: number of bins 
+sep: array that defines bin boundaries
+cc: array that stores the clustering coefficients
+REPLACE_WITH_DASH_DASHREPLACE_WITH_DASH_DASHREPLACE_WITH_DASH_DASHREPLACE_WITH_DASH_DASHREPLACE_WITH_DASH_DASHREPLACE_WITH_DASH_DASHREPLACE_WITH_DASH_DASHREPLACE_WITH_DASH_DASHREPLACE_WITH_DASH_DASHREPLACE_WITH_DASH_DASHREPLACE_WITH_DASH_DASHREPLACE_WITH_DASH_DASHREPLACE_WITH_DASH_DASHREPLACE_WITH_DASH_DASHREPLACE_WITH_DASH_DASHREPLACE_WITH_DASH_DASHREPLACE_WITH_DASH_DASHREPLACE_WITH_DASH_DASHREPLACE_WITH_DASH_DASHREPLACE_WITH_DASH_DASHREPLACE_WITH_DASH_DASHREPLACE_WITH_DASH_DASHREPLACE_WITH_DASH_DASHREPLACE_WITH_DASH_DASHREPLACE_WITH_DASH_DASHREPLACE_WITH_DASH_DASHREPLACE_WITH_DASH_DASHREPLACE_WITH_DASH_DASHREPLACE_WITH_DASH_DASHREPLACE_WITH_DASH_DASHREPLACE_WITH_DASH_DASHREPLACE_WITH_DASH_DASHREPLACE_WITH_DASH_DASHREPLACE_WITH_DASH_DASHREPLACE_WITH_DASH_DASHREPLACE_WITH_DASH_DASHREPLACE_WITH_DASH_DASHREPLACE_WITH_DASH_DASH- */
+void sampleByDegree(struct graph *G, int scnt, int bcnt, double *sep, double *cc)
+{
+
+  int vi, ind1, ind2, n, v, i, j, k, N, newN, *dd, *vlist, *mybin;
+  mwIndex *ptr,*ind;
+  double *w, x, *d, t, wcnt;
+
+  N = G->V;  
+  ptr = G->ptr; 
+  ind = G->ind;  
+
+  /* d[i] is the degree of  the ith vertex */
+  d = (stype *) malloc(sizeof(stype)*N);
+
+  /* mybin[i] is the bin of the ith vertex */
+  mybin = (int *) malloc(sizeof(int)*N);
+
+  /* dd[i] is the index of the first vertex  that is on the ith bin, on the array vlist */  
+  dd = (int *) malloc(sizeof(int)*(bcnt+1));
+  memset(dd, 0, sizeof(int)*(bcnt+1));
+
+  /* Compute the degrees and bins for al vertices */
+  for(i = 0; i < N; i ++) 
+  {
+    t = (double)(ptr[i+1]-ptr[i]);
+    d[i] = ((stype) t);
+    if (t > 1) 
+    {
+      mybin[i] = find_bin(sep, bcnt, t);
+      dd[mybin[i]] ++;
+    }
+  }
+  /* prefix sum  the dd array to set up insertion of vertices to vlist 
+  in the reverse order of appearence */
+
+  for(i = 1; i <= bcnt; i ++)
+  {
+    dd[i] += dd[i-1];
+  }
+  dd[bcnt] = dd[bcnt-1];
+  newN = dd[bcnt];
+
+  /*  vlist is an ordered list of  vertex indices such that  
+  if i<= j  then mybin[vlist[i]] <=mybin[vlist[j]] */
+
+  vlist = (int *) malloc(sizeof(int)*newN);
+  for(i = 0; i < N; i ++)
+  {
+    if (d[i] > 1) 
+    {
+      vlist[REPLACE_WITH_DASH_DASHdd[mybin[i]]] = i;  
+    }
+  }
+
+  /* w[i+1]-w[i] is the number of wedges centered on the ith vertex 
+  This array enables uniform sampling of wedges */
+
+  w = (stype *)malloc(sizeof(stype)*(newN+1));
+  for(i = 0; i < bcnt; i ++) 
+  {
+    if (dd[i+1] > dd[i]) /* skip empty bins */   
+    {  
+      /* set up uniform wedge sampling */
+      w[0] = 0; 
+      n = dd[i+1] - dd[i];
+      for(j = 0; j < n; j ++) 
+      {
+        w[j+1] = w[j] + d[vlist[dd[i]+j]]*(d[vlist[dd[i]+j]]-1);
+      }
+      wcnt = w[n];
+
+      /* sample scnt wedges (with replacement) to
+      compute the clustering coefficient */
+      cc[i] = 0.0;
+      for(j = 0; j < scnt;j ++)  
+      {
+        x = wcnt*((double)rand()/(double)RAND_MAX);
+
+        vi = fbinary_search(w,0,n,x);
+        v = vlist[dd[i]+vi];  /* figure which vertex this wedge is centered */ 
+
+        /* By constructionw[v+1]-w[v]=d[v]*d[v-1], and each wedge is represented twice.
+           Double representation for each  wedge is for convenience we can  either pick 
+           u-v-w or w-v-u */
+        ind1 = (int) floor((x-w[vi]) / (d[v]-1));  /* Pick the first vertex */
+        ind2 = (int) floor((x-w[vi]-(ind1*(d[v]-1))));  /* pick the second */ 
+        if (ind2 >= ind1) /* adjust for the position of the first */
+        {
+          ind2++;
+        }
+        /* convert relatives indices to actual vertex indices */
+        ind1 = ind[ptr[v]+ind1];
+        ind2 = ind[ptr[v]+ind2];
+
+        /*  Check if the wedge is closed;  the "if" enables searching on the shorter list */ 
+        if (d[ind1]<d[ind2]) 
+        {
+          for(k = G->ptr[ind1]; (k < G->ptr[ind1+1]) && (G->ind[k] != ind2); k ++);
+
+          if (k < G->ptr[ind1+1])
+          {
+            cc[i] += 1.0;
+          }
+        }
+        else 
+        {
+          for(k = G->ptr[ind2]; (k < G->ptr[ind2+1]) && (G->ind[k] != ind1); k ++);
+
+          if (k < G->ptr[ind2+1])
+          {
+            cc[i] += 1.0;
+          }
+        }
+      }
+
+      /* Compute the clustering coefficient as the ratio of closed wedges */
+      cc[i] = cc[i] / ((double)scnt);
+    }
+    else 
+    {
+      cc[i] = 0;
+    }
+  }
+  free(d); free(dd); free(vlist); free(w); free(mybin);
+}
+
+/* REPLACE_WITH_DASH_DASHREPLACE_WITH_DASH_DASHREPLACE_WITH_DASH_DASHREPLACE_WITH_DASH_DASHREPLACE_WITH_DASH_DASHREPLACE_WITH_DASH_DASHREPLACE_WITH_DASH_DASHREPLACE_WITH_DASH_DASHREPLACE_WITH_DASH_DASHREPLACE_WITH_DASH_DASHREPLACE_WITH_DASH_DASHREPLACE_WITH_DASH_DASHREPLACE_WITH_DASH_DASHREPLACE_WITH_DASH_DASHREPLACE_WITH_DASH_DASHREPLACE_WITH_DASH_DASHREPLACE_WITH_DASH_DASHREPLACE_WITH_DASH_DASHREPLACE_WITH_DASH_DASHREPLACE_WITH_DASH_DASHREPLACE_WITH_DASH_DASHREPLACE_WITH_DASH_DASHREPLACE_WITH_DASH_DASHREPLACE_WITH_DASH_DASHREPLACE_WITH_DASH_DASHREPLACE_WITH_DASH_DASHREPLACE_WITH_DASH_DASHREPLACE_WITH_DASH_DASHREPLACE_WITH_DASH_DASHREPLACE_WITH_DASH_DASHREPLACE_WITH_DASH_DASHREPLACE_WITH_DASH_DASHREPLACE_WITH_DASH_DASHREPLACE_WITH_DASH_DASHREPLACE_WITH_DASH_DASHREPLACE_WITH_DASH_DASHREPLACE_WITH_DASH_DASHREPLACE_WITH_DASH_DASH-
+This function provides the interface to Matlab 
+To call this function, you need to execute  in Matlab the following
+>> mex Sp_ccperdegest_mex.c -largeArrayDims
+
+The matlab function sould be called  as 
+>> cc=Sp_ccperdegest_mex(Graph, number_of_samples,bin_boundaries)
+
+Graph  is assumed to be a sparse matrix.
+It returns cc,  such that cc[i] is the clustering coefficient of the ith bin
+REPLACE_WITH_DASH_DASHREPLACE_WITH_DASH_DASHREPLACE_WITH_DASH_DASHREPLACE_WITH_DASH_DASHREPLACE_WITH_DASH_DASHREPLACE_WITH_DASH_DASHREPLACE_WITH_DASH_DASHREPLACE_WITH_DASH_DASHREPLACE_WITH_DASH_DASHREPLACE_WITH_DASH_DASHREPLACE_WITH_DASH_DASHREPLACE_WITH_DASH_DASHREPLACE_WITH_DASH_DASHREPLACE_WITH_DASH_DASHREPLACE_WITH_DASH_DASHREPLACE_WITH_DASH_DASHREPLACE_WITH_DASH_DASHREPLACE_WITH_DASH_DASHREPLACE_WITH_DASH_DASHREPLACE_WITH_DASH_DASHREPLACE_WITH_DASH_DASHREPLACE_WITH_DASH_DASHREPLACE_WITH_DASH_DASHREPLACE_WITH_DASH_DASHREPLACE_WITH_DASH_DASHREPLACE_WITH_DASH_DASHREPLACE_WITH_DASH_DASHREPLACE_WITH_DASH_DASHREPLACE_WITH_DASH_DASHREPLACE_WITH_DASH_DASHREPLACE_WITH_DASH_DASHREPLACE_WITH_DASH_DASHREPLACE_WITH_DASH_DASHREPLACE_WITH_DASH_DASHREPLACE_WITH_DASH_DASHREPLACE_WITH_DASH_DASHREPLACE_WITH_DASH_DASHREPLACE_WITH_DASH_DASH- */
+void mexFunction(int nlhs, mxArray *plhs[],  int nrhs, const mxArray *prhs[] )
+{
+  double *x, *y, *N, *dtd, *cc, *dcc, *dsep;
+  int i, m, n, scnt, bcnt, *sep;
+  struct graph G;
+
+  if (nrhs != 3 || ! mxIsSparse (prhs[0]))
+  {
+    mexErrMsgTxt ("expects sparse matrix, #samples, and bin separators as input");
+  }
+
+  G.V = mxGetN(prhs[0]);
+  G.E = mxGetNzmax(prhs [0]);
+  G.ind = mxGetIr(prhs[0]);
+  G.ptr = mxGetJc(prhs[0]);
+  dsep = mxGetPr(prhs[1]);
+
+  scnt = (int)(mxGetPr(prhs[2]))[0];
+
+  bcnt = mxGetM(prhs[1]);
+  if (bcnt == 1)
+  {
+    bcnt = mxGetN(prhs[1]);
+  }
+
+  /* Create matrix for the return argument. */
+  plhs[0] = mxCreateDoubleMatrix(bcnt-1, 1, mxREAL);
+  cc = mxGetPr(plhs[0]);
+
+  sampleByDegree(&G, scnt, bcnt-1, dsep, cc); 
+}
+
+##### SOURCE END #####
+--></body></html>
