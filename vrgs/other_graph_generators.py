@@ -7,6 +7,27 @@ import math
 import numpy as np
 import subprocess
 from time import time 
+import pickle
+
+
+def hrg_wrapper(g, n=5):
+    print('Starting HRG...')
+    nx.write_edgelist(g, './hrg-nm/{}.g'.format(g.name), data=False)
+
+
+    start_time = time()
+    completed_process = subprocess.run('cd hrg-nm; python2 exact_phrg.py --orig {}.g --trials {}'.format(g.name, n), shell=True)
+    print('HRG ran in {} secs'.format(round(time() - start_time, 3)))
+
+    if completed_process.returncode != 0:
+        print('error in HRG')
+        return None
+
+    f = open('./hrg-nm/Results/{}_hstars.pickle'.format(g.name), 'rb')
+    graphs = pickle.load(f)
+    assert len(graphs) == n, "HRG failed to generate {} graphs".format(n)
+
+    return graphs
 
 
 def bter_wrapper(g):
@@ -55,7 +76,7 @@ def bter_wrapper(g):
     print('\n'.join(matlab_code), file=open('./bter/{}_code.m'.format(g.name), 'w'))
 
     start_time = time()    
-    completed_process = subprocess.run('cd; cat {}_code.m | matlab'.format(g.name), shell=True)
+    completed_process = subprocess.run('cd bter; cat {}_code.m | matlab'.format(g.name), shell=True)
     print('BTER ran in {} secs'.format(round(time() - start_time, 3)))
     
     if completed_process.returncode != 0:
@@ -310,19 +331,20 @@ def subdue(g):
             f.write('\nu {} {} e'.format(u, v))
 
     start_time = time()
-    completed_process = subprocess.run('cd subdue;./subdue -undirected -nsubs 100000000 {}_subdue.g'.format(g.name),
-                                       shell=True, stdout=subprocess.PIPE)
 
     print('SUBDUE ran in {} secs'.format(round(time() - start_time, 3)))
 
-    completed_process = subprocess.run('./subdue -undirected -nsubs 100000 ./tmp/{}_subdue.g'.format(g.name),
+    completed_process = subprocess.run('cd subdue; ./subdue -undirected -nsubs 100000 {}_subdue.g'.format(g.name),
                                        shell=True, stdout=subprocess.PIPE)
+
+    raw_st = completed_process.stdout.decode("utf-8")
+    print(raw_st)
 
     if completed_process.returncode != 0:
         return None
 
     structures = []
-    raw_st = completed_process.stdout.decode("utf-8")
+
 
     lines = raw_st.split('\n')
 

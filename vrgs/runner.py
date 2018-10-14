@@ -24,7 +24,7 @@ from vrgs.funky_extract import funky_extract
 from vrgs.Tree import create_tree
 import vrgs.analysis as analysis
 from vrgs.MDL import graph_mdl
-from vrgs.other_graph_generators import chung_lu, kronecker_random_graph, bter_wrapper, vog, subdue
+from vrgs.other_graph_generators import chung_lu, kronecker2_random_graph, bter_wrapper, vog, subdue, hrg_wrapper
 from vrgs.GCD import GCD
 
 def get_graph(filename='sample'):
@@ -44,7 +44,9 @@ def get_graph(filename='sample'):
         g = nx.read_edgelist(filename, nodetype=int, create_using=nx.MultiGraph())
         if not nx.is_connected(g):
             g = max(nx.connected_component_subgraphs(g), key=len)
+        name = g.name
         g = nx.convert_node_labels_to_integers(g)
+        g.name = name
     return g
 
 def write_stats():
@@ -125,7 +127,9 @@ def main():
     name = 'football'
     g = get_graph('./tmp/{}.g'.format(name))
     g.name = name
+
     # g = get_graph()
+    g_hrgs = hrg_wrapper(g, n=5)
 
     g_chung_lu = chung_lu(g)
     print('n: {} m: {} n: {}, m: {} GCD {}'.format(g.order(), g.size(), g_chung_lu.order(), g_chung_lu.size(),
