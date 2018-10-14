@@ -12,18 +12,18 @@ import pickle
 
 def hrg_wrapper(g, n=5):
     print('Starting HRG...')
-    nx.write_edgelist(g, './hrg-nm/{}.g'.format(g.name), data=False)
+    nx.write_edgelist(g, './hrg/{}.g'.format(g.name), data=False)
 
 
     start_time = time()
-    completed_process = subprocess.run('cd hrg-nm; python2 exact_phrg.py --orig {}.g --trials {}'.format(g.name, n), shell=True)
+    completed_process = subprocess.run('cd hrg; python2 exact_phrg.py --orig {}.g --trials {}'.format(g.name, n), shell=True)
     print('HRG ran in {} secs'.format(round(time() - start_time, 3)))
 
     if completed_process.returncode != 0:
         print('error in HRG')
         return None
 
-    f = open('./hrg-nm/Results/{}_hstars.pickle'.format(g.name), 'rb')
+    f = open('./hrg/Results/{}_hstars.pickle'.format(g.name), 'rb')
     graphs = pickle.load(f)
     assert len(graphs) == n, "HRG failed to generate {} graphs".format(n)
 
