@@ -8,6 +8,7 @@ import numpy as np
 import subprocess
 from time import time 
 import pickle
+import os 
 
 
 def hrg_wrapper(g, n=5):
@@ -74,14 +75,15 @@ def bter_wrapper(g):
     matlab_code.append(r"dlmwrite('{}_bter.mat', G_bter, ' ');".format(g.name))
 
     print('\n'.join(matlab_code), file=open('./bter/{}_code.m'.format(g.name), 'w'))
-
-    start_time = time()    
-    completed_process = subprocess.run('cd bter; cat {}_code.m | matlab'.format(g.name), shell=True)
-    print('BTER ran in {} secs'.format(round(time() - start_time, 3)))
     
-    if completed_process.returncode != 0:
-        print('error in matlab')
-        return None
+    if not os.path.isfile('./bter/{}_bter.mat'.format(g.name)):
+        start_time = time()    
+        completed_process = subprocess.run('cd bter; cat {}_code.m | matlab'.format(g.name), shell=True)
+        print('BTER ran in {} secs'.format(round(time() - start_time, 3)))
+    
+        if completed_process.returncode != 0:
+            print('error in matlab')
+            return None
 
     bter_mat = np.loadtxt('./bter/{}_bter.mat'.format(g.name), dtype=int)
 
@@ -338,7 +340,6 @@ def subdue(g):
                                        shell=True, stdout=subprocess.PIPE)
 
     raw_st = completed_process.stdout.decode("utf-8")
-    print(raw_st)
 
     if completed_process.returncode != 0:
         return None
@@ -412,13 +413,15 @@ def vog(g):
     print('\n'.join(matlab_code), file=open('./vog/{}_vog_code.m'.format(name), 'w'))
 
     start_time = time()
-    completed_process = subprocess.run('cd vog; matlab -r {}_vog_code'.format(name), shell=True)
-    print('VoG ran in {} secs'.format(round(time() - start_time, 3)))
+
+    if not os.path.isfile('./vog/DATA/{}_ALL.model'.format(name)):
+        completed_process = subprocess.run('cd vog; cat {}_vog_code.m | matlab'.format(name), shell=True)
+        print('VoG ran in {} secs'.format(round(time() - start_time, 3)))
 
 
-    if completed_process.returncode != 0:
-        print('error in matlab')
-        return None
+        if completed_process.returncode != 0:
+            print('error in matlab')
+            return None
 
     with open('./vog/DATA/{}_ALL.model'.format(name)) as f:
         raw_st = f.read()
@@ -469,9 +472,5 @@ def vog(g):
 
         g_struct.name = line
         structures.append(g_struct)
-
-    return structures
-
-    # print(structures)
 
     return structures
