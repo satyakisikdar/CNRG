@@ -1,6 +1,8 @@
 from bitarray import bitarray
 import math
 import networkx as nx
+import sys
+import multiprocessing as mp
 
 def gamma_code(n):
     binary_n = format(n, 'b')
@@ -39,6 +41,7 @@ def graph_mdl_old(g, l_u=2):
     :param l_u: number of unique labels in the graph - general graphs - 2, RHS graphs - 4
     :return: Length in bits to represent graph G in binary
     """
+    print('entering graph mdl', file=sys.stderr)
     n = g.order()
 
     # encoding the nodes
@@ -68,7 +71,7 @@ def graph_mdl_old(g, l_u=2):
     return mdl_v + mdl_r + mdl_e
 
 
-def graph_mdl(g, l_u=2):
+def graph_mdl_seq(g, l_u=2):
     """
     Get MDL for graphs using Gamma coding
     :param g: graph
@@ -92,6 +95,48 @@ def graph_mdl(g, l_u=2):
         mdl_r += 2 * len(gamma_code(k + 1))
 
     mdl_r += (n ** 2 - nnz) * len(gamma_code(0 + 1))
+
+    return mdl_v + mdl_r
+
+
+mdl_r = 0
+def edge_mdl_collector(mdl):
+    global mdl_r
+    mdl_r += mdl
+
+def edge_fn(g, u, v):
+    k = g.number_of_edges(u, v)
+    return 2 * len(gamma_code(k + 1))
+
+def graph_mdl(g, l_u=2):
+    """
+     Get MDL for graphs using Gamma coding
+     :param g: graph
+     :param l_u: number of unique labels in the graph - general graphs - 2, RHS graphs - 4 (2 types of nodes,
+     2 types of edges)
+     :return: Length in bits to represent graph g in binary
+    """
+    global mdl_r
+    n = g.order()
+
+    # encoding the nodes
+    mdl_v = nbits(n) + n * nbits(l_u)
+
+    # encoding rows of matrix
+
+    # counting the upper triangle
+    nnz = 2 * g.size()  # the number of non-zero entries in the matrix
+
+
+    pool = mp.Pool(processes=20)
+
+    for u, v in g.edges_iter():
+        pool.apply_async(func=edge_fn, args=(g, u, v), callback=edge_mdl_collector)
+    pool.close()
+    pool.join()
+
+    mdl_r += (n ** 2 - nnz) * len(gamma_code(0 + 1))
+    print('edge mdl', mdl_r, 'bits')
 
     return mdl_v + mdl_r
 
