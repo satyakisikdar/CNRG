@@ -13,6 +13,8 @@ import scipy.sparse.linalg
 from sklearn.cluster import KMeans
 import random
 
+from vrgs.louvain import get_louvain_clusters
+
 def get_random_partition(g):
     nodes = g.nodes()
     random.shuffle(nodes)
@@ -33,6 +35,8 @@ def random_partition(nodes):
     return tree
 
 
+def louvain(g, randomize=False):
+    return get_louvain_clusters(g, randomize=randomize)
 
 
 def approx_min_conductance_partitioning(g, max_k=1):
