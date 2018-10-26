@@ -15,8 +15,9 @@ import random
 
 from vrgs.louvain import get_louvain_clusters
 
-def get_random_partition(g):
+def get_random_partition(g, seed):
     nodes = g.nodes()
+    random.seed(seed)
     random.shuffle(nodes)
     return random_partition(nodes)
 
@@ -61,9 +62,10 @@ def approx_min_conductance_partitioning(g, max_k=1):
 
     assert nx.is_connected(g), "g is not connected in cond"
 
-    fiedler_vector = nx.fiedler_vector(g, method='lanczos', tol=0)
-    p1 = set()
-    p2 = set()
+    fiedler_vector = nx.fiedler_vector(g, method='lanczos')
+
+    p1, p2 = set(), set()
+
     fiedler_dict = {}
     for idx, n in enumerate(fiedler_vector):
         fiedler_dict[idx] = n
@@ -126,10 +128,10 @@ def spectral_kmeans(g, k):
     tree = []
 
     if g.order() <= k:   # not more than k nodes, return the list of nodes
-        return g.nodes()
+        return [[n] for n in g.nodes_iter()]
 
     if k == 2:  # if k is two, use approx min partitioning
-        return [approx_min_conductance_partitioning(g, 1)]
+        return approx_min_conductance_partitioning(g)
 
     if not nx.is_connected(g):
         for p in nx.connected_component_subgraphs(g):
@@ -164,11 +166,11 @@ def spectral_kmeans(g, k):
 
     for cluster in clusters:
         sg = g.subgraph(cluster)
-        assert nx.is_connected(sg), "subgraph not connected"
+        # assert nx.is_connected(sg), "subgraph not connected"
         if len(cluster) > k + 1:
             tree.append(spectral_kmeans(sg, k))
         else:
-            tree.append(spectral_kmeans(sg, k - 1))
+            tree.append(spectral_kmeans(sg, k-1))
 
     return tree
 
@@ -196,7 +198,7 @@ def get_dendrogram(embeddings, method='best', metric='euclidean'):
         for method in methods:
             z = linkage(embeddings[:, 1:], method)
             c, _ = cophenet(z, pdist(embeddings[:, 1:], metric))
-            print(method, metric, c)
+            # print(method, metric, c)
             if c > best_score:
                 best_score = c
                 best_method = method
@@ -213,7 +215,7 @@ def get_dendrogram(embeddings, method='best', metric='euclidean'):
             return [labels[node.id]]
 
         if node.left.is_leaf() and node.right.is_leaf():  # combine two leaves into one
-            return [labels[node.left.id], labels[node.right.id]]
+            return [[labels[node.left.id]], [labels[node.right.id]]]
 
         left_list = print_tree(node.left)
         right_list = print_tree(node.right)

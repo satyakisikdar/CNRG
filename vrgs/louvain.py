@@ -294,7 +294,7 @@ def best_partition(graph, partition=None,
 def get_tree(lst, level, i, max_level):
     # print(lst[level][i], len(lst[level][i]))
     if level == max_level:# and len(lst[level][i]) == 1:
-        return lst[level][i][0]
+        return lst[level][i]#[0]
 
     tree = []
 

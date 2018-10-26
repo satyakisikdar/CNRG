@@ -10,8 +10,7 @@ class TreeNode:
         self.children = set()  # set of children
 
         self.parent = None
-        self.left = None  # left child
-        self.right = None  # right child
+        self.kids = []  # pointers to the children
 
         self.is_leaf = is_leaf  # True if it's a child, False otherwise
         self.nleaf = 0   # number of leaves
@@ -35,8 +34,7 @@ class TreeNode:
         node_copy = TreeNode(key=self.key)
 
         node_copy.parent = self.parent
-        node_copy.left = self.left
-        node_copy.right = self.right
+        node_copy.kids = self.kids
 
         node_copy.leaves = self.leaves
         node_copy.children = self.children
@@ -63,29 +61,29 @@ class TreeNode:
         self.leaves = {self.key}  # update the leaves
         self.children = set()
 
-        self.left = None
-        self.right = None
+        self.kids = []
         self.is_leaf = True
         self.nleaf = 1
 
 
 def create_tree(lst):
     """
-    Creates a BinaryTree from the list of lists
+    Creates a Tree from the list of lists
     :param lst: nested list of lists
-    :return: root of binary tree
+    :return: root of the tree
     """
     key = 'a'
 
     def create(lst):
         nonlocal key
-        if len(lst) == 1:  # detect leaf
-            return TreeNode(key=lst[0], is_leaf=True)
 
+        if len(lst) == 1 and isinstance(lst[0], int):  # detect leaf
+            return TreeNode(key=lst[0], is_leaf=True)
         node = TreeNode(key=key)
         key = chr(ord(key) + 1)
-        node.left = create(lst[0])
-        node.right = create(lst[1])
+
+        for item in lst:
+            node.kids.append(create(item))
 
         return node
 
@@ -101,21 +99,11 @@ def create_tree(lst):
             node.make_leaf(new_key=node.key)  # the key doesn't change
 
         else:
-            if node.left is not None:
-                node.left.parent = node
-                nleaf, children, leaves = update_info(node.left)
+            for kid in node.kids:
+                kid.parent = node
+                nleaf, children, leaves = update_info(kid)
                 node.nleaf += nleaf
-
-                node.children.add(node.left.key)
-                node.children.update(children)
-                node.leaves.update(leaves)
-
-            if node.right is not None:
-                node.right.parent = node
-                nleaf, children, leaves = update_info(node.right)
-                node.nleaf += nleaf
-
-                node.children.add(node.right.key)
+                node.children.add(kid.key)
                 node.children.update(children)
                 node.leaves.update(leaves)
 
