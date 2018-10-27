@@ -64,7 +64,7 @@ class FullRule(BaseRule):
         We have two types of nodes (internal and external) and one type of edge
         :return:
         """
-        self.cost = len(MDL.gamma_code(self.lhs + 1)) + MDL.graph_mdl(self.graph, l_u=3) + \
+        self.cost = len(MDL.gamma_code(self.lhs + 1)) + MDL.graph_mdl(self.graph, l_u=4) + \
                     len(MDL.gamma_code(self.frequency + 1))
 
     def generalize_rhs(self):
@@ -148,7 +148,8 @@ class PartRule(BaseRule):
         max_boundary_degree = max(b_deg.values())
 
         self.cost = len(MDL.gamma_code(self.lhs + 1)) + MDL.graph_mdl(self.graph, l_u=2) + \
-                    len(MDL.gamma_code(self.frequency + 1)) + len(MDL.gamma_code(max_boundary_degree + 1))
+                    len(MDL.gamma_code(self.frequency + 1)) +\
+                    self.graph.order() * len(MDL.gamma_code(max_boundary_degree + 1))
 
 
 class NoRule(PartRule):

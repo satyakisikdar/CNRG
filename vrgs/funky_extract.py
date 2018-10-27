@@ -7,6 +7,8 @@ from collections import defaultdict
 import networkx as nx
 import numpy as np
 from time import time
+from copy import deepcopy
+
 
 from vrgs.Rule import FullRule
 from vrgs.Rule import NoRule
@@ -33,12 +35,8 @@ def get_buckets(root, k):
         if not node.is_leaf:  # don't add to the bucket if it's a leaf
             bucket[val].add(node.key)   # bucket is a defaultdict
             node2bucket[node.key] = val
-
-        if node.left is not None:
-            stack.append(node.left)
-
-        if node.right is not None:
-            stack.append(node.right)
+            for kid in node.kids:
+                stack.append(kid)
 
     return nodes, bucket, node2bucket
 
@@ -102,10 +100,10 @@ def extract_subtree(k, buckets, node2bucket, active_nodes, key2node, g, mode, gr
                 is_existing_rule = False  # checks if the bucket contains any existing rules
                 min_mdl = float('inf')
                 min_mdl_node_key = None
-
                 for node_key in possible_node_keys:
                     subtree = key2node[node_key].leaves & active_nodes  # only consider the leaves that are active
-                    rule, _ = create_rule(subtree=subtree, mode=mode, g=g)  # the rule corresponding to the subtree
+
+                    rule, _ = create_rule(subtree=subtree, mode=mode, g=g)  # the rule corresponding to the subtree - TODO: graph g gets mutated - stop that
 
                     if rule in grammar:  # the rule already exists pick that
                         best_node_key = node_key
@@ -114,6 +112,7 @@ def extract_subtree(k, buckets, node2bucket, active_nodes, key2node, g, mode, gr
                         break  # you dont need to look further
 
                     rule.calculate_cost()  # find the MDL cost of the rule
+                    # print('node: {} mdl: {}'.format(node_key, rule.cost))
 
                     if rule.cost < min_mdl:  # keeps track of the rule with the minimum MDL in case there are no existing rules
                         min_mdl = rule.cost
@@ -122,7 +121,7 @@ def extract_subtree(k, buckets, node2bucket, active_nodes, key2node, g, mode, gr
                 if not is_existing_rule:  # all the rules were new
                     best_node_key = min_mdl_node_key
 
-        # print('Picking node {} from the bucket'.format(best_node_key))
+        print('Picking node {} from the bucket'.format(best_node_key))
         best_node = key2node[best_node_key]
         break
 

@@ -116,7 +116,7 @@ def graph_mdl(g, l_u=2):
      2 types of edges)
      :return: Length in bits to represent graph g in binary
     """
-    global mdl_r
+    # global mdl_r
     n = g.order()
 
     # encoding the nodes
@@ -127,16 +127,19 @@ def graph_mdl(g, l_u=2):
     # counting the upper triangle
     nnz = 2 * g.size()  # the number of non-zero entries in the matrix
 
-
-    pool = mp.Pool(processes=20)
-
+    mdl_r = 0
     for u, v in g.edges_iter():
-        pool.apply_async(func=edge_fn, args=(g, u, v), callback=edge_mdl_collector)
-    pool.close()
-    pool.join()
+        k = g.number_of_edges(u, v)
+        mdl_r += 2 * len(gamma_code(k  + 1))
+    # pool = mp.Pool(processes=20)
+    #
+    # for u, v in g.edges_iter():
+    #     pool.apply_async(func=edge_fn, args=(g, u, v), callback=edge_mdl_collector)
+    # pool.close()
+    # pool.join()
 
     mdl_r += (n ** 2 - nnz) * len(gamma_code(0 + 1))
-    print('edge mdl', mdl_r, 'bits')
+    # print('edge mdl', mdl_r, 'bits')
 
     return mdl_v + mdl_r
 
