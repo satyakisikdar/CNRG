@@ -31,7 +31,6 @@ def extract_vrg(g, tree, lvl):
     """
     Extract a vertex replacement grammar (specifically an ed-NRC grammar) from a graph given a dendrogram tree
 
-
     :param g: graph to extract from
     :param tree: dendrogram with nodes at the bottom.
     :return: List of Rule objects
@@ -142,7 +141,7 @@ def generate_graph(rule_dict):
     new_g.add_node(0, attr_dict={'label': 0})
     non_terminals.add(0)
 
-    while len(non_terminals) > 0:      # continue until no more non-terminal nodes
+    while len(non_terminals) > 0:      # continue until no more non-terminal nodes exist
         # choose a non terminal node at random
         node_sample = random.sample(non_terminals, 1)[0]
         lhs = new_g.node[node_sample]['label']
@@ -162,21 +161,21 @@ def generate_graph(rule_dict):
                 max_v = max(v, max_v)
         max_v += 1
 
-        # expanding the 'I' nodes into separate integer labeled nodes
-        if rhs.graph.has_node('I'):
+        # expanding the 'Iso' nodes into separate integer labeled nodes
+        if rhs.graph.has_node('Iso'):
             for u, v in rhs.graph.edges():
                 if u == 'I':
                     rhs.graph.remove_edge(u, v)
                     rhs.graph.add_edge(max_v, v, attr_dict={'b': True})
                     max_v += 1
-                elif v == 'I':
+
+                elif v == 'Iso':
                     rhs.graph.remove_edge(u, v)
                     rhs.graph.add_edge(u, max_v, attr_dict={'b': True})
                     max_v += 1
 
-
-            assert rhs.graph.degree('I') == 0
-            rhs.graph.remove_node('I')
+            assert rhs.graph.degree('Iso') == 0
+            rhs.graph.remove_node('Iso')
 
         broken_edges = find_boundary_edges(new_g, [node_sample])
 

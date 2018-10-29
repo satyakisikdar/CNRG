@@ -48,8 +48,8 @@ class FullRule(BaseRule):
     """
     Rule object for full-info option
     """
-    def __init__(self, lhs=0, graph=nx.MultiGraph(), level=0, cost=0, frequency=1, internal_nodes=set(),
-                 edges_covered=set()):
+    def __init__(self, lhs=0, graph=nx.MultiGraph(), level=0, cost=0, frequency=1, internal_nodes=None,
+                 edges_covered = None):
         super().__init__(lhs=lhs, graph=graph, level=level, cost=cost, frequency=frequency)
         self.internal_nodes = internal_nodes  # the set of internal nodes
         self.edges_covered = edges_covered  # edges in the original graph that's covered by the rule
@@ -94,21 +94,26 @@ class FullRule(BaseRule):
         """
         Contracts the RHS such that all boundary nodes with degree 1 are replaced by a special boundary isolated node I
         """
-        # iso_nodes = set()
-        # for node in self.graph.nodes_iter():
-        #     if isinstance(node, int) and self.graph.degree(node) == 1:  # identifying the isolated nodes
-        #         iso_nodes.add(node)
-        #
-        # if len(iso_nodes) == 0:  # the rule cannot be contracted
-        #     return
-        #
-        # rhs_copy = self.graph.copy()
-        #
-        # [self.graph.add_edge(u, 'I', attr_dict={'b': True})  # add the new edges
-        #  for iso_node in iso_nodes
-        #  for u in rhs_copy.neighbors_iter(iso_node)]
-        #
-        # self.graph.remove_nodes_from(iso_nodes)   # remove the old isolated nodes
+        iso_nodes = set()
+        for node in self.graph.nodes_iter():
+            if node not in self.internal_nodes and self.graph.degree(node) == 1:  # identifying the isolated nodes
+                iso_nodes.add(node)
+
+        if len(iso_nodes) == 0:  # the rule cannot be contracted
+            self.generalize_rhs()
+            return
+
+        rhs_copy = nx.Graph(self.graph)
+
+        for iso_node in iso_nodes:
+            for u in rhs_copy.neighbors_iter(iso_node):
+                self.graph.add_edge(u, 'Iso', attr_dict={'b': True})
+
+        assert self.graph.has_node('Iso'), 'No Iso node after contractions'
+
+        self.graph.remove_nodes_from(iso_nodes)   # remove the old isolated nodes
+
+        self.generalize_rhs()
         return
 
 

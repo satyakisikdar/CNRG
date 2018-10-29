@@ -118,45 +118,45 @@ def approx_min_conductance_partitioning(g, max_k=1):
     return lvl
 
 
-def spectral_kmeans(g, k):
+def spectral_kmeans(g, K):
     """
     k-way ncut spectral clustering Ng et al. 2002 KNSC1
     :param g: graph g
-    :param k: number of clusters
+    :param K: number of clusters
     :return:
     """
     tree = []
 
-    if g.order() <= k:   # not more than k nodes, return the list of nodes
+    if g.order() <= K:   # not more than k nodes, return the list of nodes
         return [[n] for n in g.nodes_iter()]
 
-    if k == 2:  # if k is two, use approx min partitioning
+    if K == 2:  # if K is two, use approx min partitioning
         return approx_min_conductance_partitioning(g)
 
     if not nx.is_connected(g):
         for p in nx.connected_component_subgraphs(g):
-            if p.order() > k + 1:   # if p has more than k + 1 nodes, use spectral k-means
-                tree.append(spectral_kmeans(p, k))
-            else:   # try spectral k-means with a lesser k
-                tree.append(spectral_kmeans(p, k - 1))
+            if p.order() > K + 1:   # if p has more than K + 1 nodes, use spectral K-means
+                tree.append(spectral_kmeans(p, K))
+            else:   # try spectral K-means with a lesser K
+                tree.append(spectral_kmeans(p, K - 1))
         assert len(tree) > 0
         return tree
 
-    if k >= g.order() - 2:
-        return spectral_kmeans(g, k - 1)
+    if K >= g.order() - 2:
+        return spectral_kmeans(g, K - 1)
 
     assert nx.is_connected(g), "g is not connected in cond"
 
     L = nx.laplacian_matrix(g)
 
-    assert k < g.order() - 2, "k is too high"
+    assert K < g.order() - 2, "k is too high"
 
-    _, eigenvecs = scipy.sparse.linalg.eigs(L.asfptype(), k=k + 1, which='SM')  # compute the first k+1 eigenvectors
+    _, eigenvecs = scipy.sparse.linalg.eigs(L.asfptype(), k=K + 1, which='SM')  # compute the first K+1 eigenvectors
     eigenvecs = eigenvecs[:, 1:]  # discard the first trivial eigenvector
 
     U = np.apply_along_axis(lambda x: x / np.linalg.norm(x), axis=1, arr=eigenvecs)  # normalize each row by its norm
 
-    kmeans = KMeans(n_clusters=k, random_state=0).fit(U)
+    kmeans = KMeans(n_clusters=K, random_state=0).fit(U)
 
     cluster_labels = kmeans.labels_
     clusters = [[] for _ in range(max(cluster_labels) + 1)]
@@ -167,10 +167,10 @@ def spectral_kmeans(g, k):
     for cluster in clusters:
         sg = g.subgraph(cluster)
         # assert nx.is_connected(sg), "subgraph not connected"
-        if len(cluster) > k + 1:
-            tree.append(spectral_kmeans(sg, k))
+        if len(cluster) > K + 1:
+            tree.append(spectral_kmeans(sg, K))
         else:
-            tree.append(spectral_kmeans(sg, k-1))
+            tree.append(spectral_kmeans(sg, K - 1))
 
     return tree
 

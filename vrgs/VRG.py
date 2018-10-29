@@ -8,9 +8,10 @@ class VRG:
     """
     Class for Vertex Replacement Grammars
     """
-    def __init__(self, mode, k):
+    def __init__(self, mode, k, selection):
         self.mode = mode  # type of VRG - full, part, or no
         self.k = k
+        self.selection = selection  # selection strategy - random, mdl, level, or mdl_levels
 
         self.rule_list = []   # list of rule objects
         self.rule_dict = defaultdict(list)  # dictionary of rules, keyed in by their LHS
@@ -22,6 +23,10 @@ class VRG:
     def __contains__(self, item):
         return item in self.rule_dict[item.lhs]
 
+    def __str__(self):
+        if self.mdl == 0:
+            self.calculate_cost()
+        return '{} {} {} {} rules, {} bits'.format(self.k, self.mode, self.selection, len(self.rule_list), self.mdl)
 
     def add_rule(self, rule):
         # adds to the grammar iff it's a new rule
@@ -36,19 +41,17 @@ class VRG:
             self.rule_list.append(rule)  # add the rule to the list of rules
             self.rule_dict[rule.lhs].append(rule)  # add the rule to the rule dictionary
 
-    def calculate_cost(self, contract):
+    def calculate_cost(self):
         for rule in self.rule_list:
-            if contract:
-                rule.contract_rhs()
             rule.calculate_cost()
             self.mdl += rule.cost
 
-    def get_cost(self, contract=False):
+    def get_cost(self):
         # if self.mdl != 0:  # the cost has been computed before
         #     return self.mdl
         # else:
         self.mdl = 0
-        self.calculate_cost(contract)
+        self.calculate_cost()
         return self.mdl
 
     def generate_graphs(self, count):
