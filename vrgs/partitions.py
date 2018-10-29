@@ -15,9 +15,11 @@ import random
 
 from vrgs.louvain import get_louvain_clusters
 
-def get_random_partition(g, seed):
+
+def get_random_partition(g, seed=None):
     nodes = g.nodes()
-    random.seed(seed)
+    if seed is not None:
+        random.seed(seed)
     random.shuffle(nodes)
     return random_partition(nodes)
 
@@ -224,7 +226,7 @@ def get_dendrogram(embeddings, method='best', metric='euclidean'):
     return [print_tree(root)]
 
 
-def n2v_partition(g):
+def get_node2vec(g):
     """
     Partitions the graph using hierarchical clustering on node2vec embeddings
     :param g: graph
