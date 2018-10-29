@@ -126,7 +126,7 @@ def extract_subtree(k, buckets, node2bucket, active_nodes, key2node, g, mode, gr
                     if rule in grammar:  # the rule already exists pick that
                         best_node_key = node_key
                         is_existing_rule = True
-                        print('existing rule found!')
+                        # print('existing rule found!')
                         break  # you dont need to look further
 
                     rule.calculate_cost()  # find the MDL cost of the rule
@@ -210,7 +210,7 @@ def create_rule(subtree, g, mode):
     return rule, boundary_edges
 
 
-def funky_extract(g, root, k, selection, mode):
+def funky_extract(g, root, k, selection, mode, clustering):
     """
     Runner function for the funcky extract
     :param g: graph
@@ -227,7 +227,7 @@ def funky_extract(g, root, k, selection, mode):
     active_nodes = {node.key for node in nodes}  # all nodes in the tree
     key2node = {node.key: node for node in nodes}   # key -> node mapping
 
-    grammar = VRG(mode=mode, k=k, selection=selection)
+    grammar = VRG(mode=mode, k=k, selection=selection, clustering=clustering)
 
     while True:
         subtree, active_nodes = extract_subtree(k=k, buckets=buckets, node2bucket=node2bucket, key2node=key2node,
