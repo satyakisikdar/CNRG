@@ -33,7 +33,14 @@ def external_orca(g, gname):
         for u, v in g.edges_iter():
             f.write('{} {}\n'.format(u, v))
 
-    args = './orca', '4', './{}/{}.in'.format(file_dir, gname), './{}/{}.out'.format(file_dir, gname)
+    args = ['./orca', '4', './{}/{}.in'.format(file_dir, gname), './{}/{}.out'.format(file_dir, gname)]
+
+    if 'Windows' in platform.platform():
+        args[0] = './orca.exe'
+    elif 'Linux' in platform.platform():
+        args[0] = './orca_linux'
+    else:
+        args[0] = './orca_mac'
 
     popen = subprocess.Popen(args, stdout=subprocess.DEVNULL)
     popen.wait()
