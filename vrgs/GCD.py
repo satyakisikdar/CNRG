@@ -27,6 +27,8 @@ def external_orca(g, gname):
     g = max(nx.connected_component_subgraphs(g), key=len)
     g = nx.convert_node_labels_to_integers(g, first_label=0)
 
+    g.remove_edges_from(g.selfloop_edges())   # removing self-loop edges
+
     file_dir = 'tmp'
     with open('./{}/{}.in'.format(file_dir, gname), 'w') as f:
         f.write('{} {}\n'.format(g.order(), g.size()))
