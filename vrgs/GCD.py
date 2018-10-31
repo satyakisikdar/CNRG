@@ -4,7 +4,7 @@ import platform
 import subprocess
 import pandas as pd
 import scipy.stats
-import math
+import scipy.spatial
 import numpy as np
 
 def GCD(h1, h2, mode='rage'):
@@ -70,26 +70,23 @@ def external_rage(G, netname):
 
 
 def tijana_eval_compute_gcm(G_df):
-    l = len(G_df.columns)
-    gcm = np.zeros((l, l))
-    i = 0
-    for column_G in G_df:
-        j = 0
-        for column_H in G_df:
-            gcm[i, j] = scipy.stats.spearmanr(G_df[column_G].tolist(), G_df[column_H].tolist())[0]
-            if scipy.isnan(gcm[i, j]):
-                gcm[i, j] = 1.0
-            j += 1
-        i += 1
+    l = G_df.shape[1]  # no of graphlets: #cols in G_df
+
+    M = G_df.as_matrix()  # matrix of nodes & graphlet counts
+    M = np.transpose(M)  # transpose to make it graphlet counts & nodes
+    gcm = scipy.spatial.distance.squareform(   # squareform converts the sparse matrix to dense matrix
+        scipy.spatial.distance.pdist(M,   # compute the pairwise distances in M
+                                     lambda x, y: scipy.stats.spearmanr(x, y)[0]))  # using spearman's correlation
+    gcm = gcm + np.eye(l, l)   # make the diagonals 1 (dunno why, but it did that in the original code)
     return gcm
 
 
 def tijana_eval_compute_gcd(gcm_g, gcm_h):
-    assert len(gcm_h) == len(gcm_g), "Graphs must be same size"
-    s = 0
-    for i in range(len(gcm_g)):
-        for j in range(i, len(gcm_h)):
-            s += math.pow((gcm_g[i, j] - gcm_h[i, j]), 2)
+    assert len(gcm_h) == len(gcm_g), "Correlation matrices must be of the same size"
 
-    gcd = math.sqrt(s)
+    gcd = np.sqrt(   # sqrt
+        np.sum(  # of the sum of elements
+            (np.triu(gcm_g) - np.triu(gcm_h)) ** 2   # of the squared difference of the upper triangle values
+        ))
+
     return gcd
