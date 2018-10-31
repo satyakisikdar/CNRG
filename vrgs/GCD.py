@@ -45,11 +45,10 @@ def external_orca(g, gname):
 def external_rage(G, netname):
     G = nx.Graph(G)
     G = max(nx.connected_component_subgraphs(G), key=len)
+    G = nx.convert_node_labels_to_integers(G, first_label=1)
 
     tmp_file = "tmp_{}.txt".format(netname)
-    with open(tmp_file, 'w') as tmp:
-        for e in G.edges_iter():
-            tmp.write(str(int(e[0]) + 1) + ' ' + str(int(e[1]) + 1) + '\n')
+    nx.write_edgelist(G, tmp_file, data=False)
 
     if 'Windows' in platform.platform():
         args = ("./RAGE_windows.exe", tmp_file)
@@ -72,7 +71,7 @@ def external_rage(G, netname):
 def tijana_eval_compute_gcm(G_df):
     l = G_df.shape[1]  # no of graphlets: #cols in G_df
 
-    M = G_df.as_matrix()  # matrix of nodes & graphlet counts
+    M = G_df.values  # matrix of nodes & graphlet counts
     M = np.transpose(M)  # transpose to make it graphlet counts & nodes
     gcm = scipy.spatial.distance.squareform(   # squareform converts the sparse matrix to dense matrix
         scipy.spatial.distance.pdist(M,   # compute the pairwise distances in M
@@ -89,4 +88,4 @@ def tijana_eval_compute_gcd(gcm_g, gcm_h):
             (np.triu(gcm_g) - np.triu(gcm_h)) ** 2   # of the squared difference of the upper triangle values
         ))
 
-    return gcd
+    return round(gcd, 3)
