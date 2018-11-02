@@ -334,10 +334,11 @@ def subdue(g):
 
     start_time = time()
 
-    print('SUBDUE ran in {} secs'.format(round(time() - start_time, 3)))
-
     completed_process = subprocess.run('cd subdue; ./subdue -undirected -nsubs 100000 {}_subdue.g'.format(g.name),
                                        shell=True, stdout=subprocess.PIPE)
+
+    print('SUBDUE ran in {} secs'.format(round(time() - start_time, 3)))
+
 
     raw_st = completed_process.stdout.decode("utf-8")
 
@@ -349,24 +350,28 @@ def subdue(g):
 
     lines = raw_st.split('\n')
 
-    for i, line in enumerate(lines):
+    start_time = time()
+
+    i = 0
+
+    while i < len(lines):
+        line = lines[i]
         if line.startswith('('):  # start of a substructure
-            sub_count = int(line.split(',')[-2].split()[-1])  # freq of substructure
+            sub_count = int(line.split(',')[-2].split()[-1])
             substr = nx.Graph()
             next_line = lines[i + 1]
             n = int(next_line[next_line.find('(') + 1: next_line.find('v')])  # number of nodes
             m = int(next_line[next_line.find(',') + 1: next_line.find('e')])  # number of edges
-            sub_count = int(line.split(',')[-2].split()[-1])
-            substr = nx.Graph()
-            next_line = lines[i + 1]
-            n = int(next_line[next_line.find('(') + 1: next_line.find('v')])
-            m = int(next_line[next_line.find(',') + 1: next_line.find('e')])
+
             for j in range(i + 2, i + 2 + m + n):
                 if lines[j].strip().startswith('u'):  # it's an edge
                     u, v = map(int, lines[j].split()[1: 3])
                     substr.add_edge(u, v)
-
+            i = j - 1
             structures.append((substr, sub_count))
+        i += 1
+
+    print('Parsing took {} secs'.format(round(time() - start_time, 3)))
 
     return structures
 
@@ -461,8 +466,7 @@ def vog(g):
 
             g_fb = nx.Graph()
             [g_fb.add_edge(u, v) for u in nodes_1 for v in nodes_2]  # making a complete biparite graph
-            edges = set(g.edges_iter()) & set(
-                g_fb.edges_iter())  # pick only those edges which actually exist in the graph
+            edges = set(g.edges_iter()) & set(g_fb.edges_iter())  # pick only those edges which actually exist in the graph
 
             g_struct = nx.Graph()
             g_struct.add_edges_from(edges)
