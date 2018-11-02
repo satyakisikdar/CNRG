@@ -137,7 +137,7 @@ def graph_mdl(g, l_u=2):
     # pool.close()
     # pool.join()
 
-    mdl_r += (n ** 2 - nnz) * len(gamma_code(0 + 1))
+    mdl_r += (n ** 2 - nnz) * gamma_code(0 + 1)
     # print('edge mdl', mdl_r, 'bits')
 
     return mdl_v + mdl_r

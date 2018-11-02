@@ -64,8 +64,8 @@ class FullRule(BaseRule):
         We have two types of nodes (internal and external) and one type of edge
         :return:
         """
-        self.cost = len(MDL.gamma_code(self.lhs + 1)) + MDL.graph_mdl(self.graph, l_u=4) + \
-                    len(MDL.gamma_code(self.frequency + 1))
+        self.cost = MDL.gamma_code(self.lhs + 1) + MDL.graph_mdl(self.graph, l_u=4) + \
+                    MDL.gamma_code(self.frequency + 1)
 
     def generalize_rhs(self):
         """
@@ -152,9 +152,9 @@ class PartRule(BaseRule):
         b_deg = nx.get_node_attributes(self.graph, 'b_deg')
         max_boundary_degree = max(b_deg.values())
 
-        self.cost = len(MDL.gamma_code(self.lhs + 1)) + MDL.graph_mdl(self.graph, l_u=2) + \
-                    len(MDL.gamma_code(self.frequency + 1)) +\
-                    self.graph.order() * len(MDL.gamma_code(max_boundary_degree + 1))
+        self.cost = MDL.gamma_code(self.lhs + 1) + MDL.graph_mdl(self.graph, l_u=2) + \
+                    MDL.gamma_code(self.frequency + 1) +\
+                    self.graph.order() * MDL.gamma_code(max_boundary_degree + 1)
 
 
 class NoRule(PartRule):
@@ -170,5 +170,5 @@ class NoRule(PartRule):
         l_u = 2 (because we have one type of nodes and one type of edge)
         :return:
         """
-        self.cost = len(MDL.gamma_code(self.lhs + 1)) + MDL.graph_mdl(self.graph, l_u=2) + \
-                    len(MDL.gamma_code(self.frequency + 1))
+        self.cost = MDL.gamma_code(self.lhs + 1) + MDL.graph_mdl(self.graph, l_u=2) + \
+                    MDL.gamma_code(self.frequency + 1)
