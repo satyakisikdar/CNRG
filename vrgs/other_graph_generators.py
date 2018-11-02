@@ -95,10 +95,7 @@ def chung_lu(g):
     print('Starting Chung-Lu....')
 
     start_time = time()
-    
-    degree_seq = list(g.degree().values())
-    g_chung_lu = nx.expected_degree_graph(degree_seq, selfloops=False)
-    
+
     print('Chung-Lu ran in {} secs'.format(round(time() - start_time, 3)))
     degree_seq = sorted(g.degree().values())
     g_chung_lu = nx.expected_degree_graph(degree_seq, selfloops=False)

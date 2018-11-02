@@ -2,13 +2,12 @@ from bitarray import bitarray
 import math
 import networkx as nx
 import sys
+import numpy as np
 import multiprocessing as mp
 
 def gamma_code(n):
-    binary_n = format(n, 'b')
-    binary_offset = binary_n[1::]
-    unary_length = bitarray(True for i in range(len(binary_offset))) + bitarray([False])
-    return bitarray(unary_length) + bitarray(binary_offset)
+    bits = np.log2(n)
+    return 2 * np.floor(bits) + 1
 
 
 def nCr(n, r):
@@ -92,9 +91,9 @@ def graph_mdl_seq(g, l_u=2):
 
     for u, v in g.edges_iter():
         k = g.number_of_edges(u, v)
-        mdl_r += 2 * len(gamma_code(k + 1))
+        mdl_r += 2 * gamma_code(k + 1)
 
-    mdl_r += (n ** 2 - nnz) * len(gamma_code(0 + 1))
+    mdl_r += (n ** 2 - nnz) * gamma_code(0 + 1)
 
     return mdl_v + mdl_r
 
@@ -106,7 +105,7 @@ def edge_mdl_collector(mdl):
 
 def edge_fn(g, u, v):
     k = g.number_of_edges(u, v)
-    return 2 * len(gamma_code(k + 1))
+    return 2 * gamma_code(k + 1)
 
 def graph_mdl(g, l_u=2):
     """
@@ -130,7 +129,7 @@ def graph_mdl(g, l_u=2):
     mdl_r = 0
     for u, v in g.edges_iter():
         k = g.number_of_edges(u, v)
-        mdl_r += 2 * len(gamma_code(k  + 1))
+        mdl_r += 2 * gamma_code(k  + 1)
     # pool = mp.Pool(processes=20)
     #
     # for u, v in g.edges_iter():
