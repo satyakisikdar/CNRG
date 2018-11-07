@@ -153,7 +153,7 @@ def spectral_kmeans(g, K):
 
     assert K < g.order() - 2, "k is too high"
 
-    _, eigenvecs = scipy.sparse.linalg.eigs(L.asfptype(), k=K + 1, which='SM')  # compute the first K+1 eigenvectors
+    _, eigenvecs = scipy.sparse.linalg.eigsh(L.asfptype(), k=K + 1, which='SM')  # compute the first K+1 eigenvectors
     eigenvecs = eigenvecs[:, 1:]  # discard the first trivial eigenvector
 
     U = np.apply_along_axis(lambda x: x / np.linalg.norm(x), axis=1, arr=eigenvecs)  # normalize each row by its norm
