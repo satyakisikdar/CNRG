@@ -12,6 +12,7 @@ import numpy as np
 import scipy.sparse.linalg
 from sklearn.cluster import KMeans
 import random
+import sklearn.preprocessing
 
 from vrgs.louvain import get_louvain_clusters
 
@@ -156,7 +157,7 @@ def spectral_kmeans(g, K):
     _, eigenvecs = scipy.sparse.linalg.eigsh(L.asfptype(), k=K + 1, which='SM')  # compute the first K+1 eigenvectors
     eigenvecs = eigenvecs[:, 1:]  # discard the first trivial eigenvector
 
-    U = np.apply_along_axis(lambda x: x / np.linalg.norm(x), axis=1, arr=eigenvecs)  # normalize each row by its norm
+    U = sklearn.preprocessing.normalize(eigenvecs)  # normalize the eigenvecs by its L2 norm
 
     kmeans = KMeans(n_clusters=K).fit(U)
 
