@@ -35,14 +35,14 @@ def graph_mdl(g, l_u=2):
     mdl_v = nbits(n) + n * nbits(l_u)
 
     # encoding the edges
-    mdl_e = 0
+    mdl_edges = 0
     for u, v in g.edges_iter():
         k = g.number_of_edges(u, v)
-        mdl_e += 2 * gamma_code(k + 1)  # 2 because the graph is undirected
+        mdl_edges += 2 * gamma_code(k + 1)  # 2 because the graph is undirected
 
     nnz = 2 * m  # the number of non-zero entries in the matrix
-    mdl_e += (n ** 2 - nnz) * gamma_code(0 + 1)
+    mdl_edges += (n ** 2 - nnz) * gamma_code(0 + 1)
 
-    mdl_e = nbits(m) + nbits(l_u) * mdl_e # added the l_u factor
+    mdl_e = nbits(m) + nbits(l_u) * mdl_edges # added the l_u factor
 
     return mdl_v + mdl_e

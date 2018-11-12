@@ -9,11 +9,11 @@ import numpy as np
 
 def GCD(h1, h2, mode='rage'):
     if mode == 'rage':
-        df_g = external_rage(h1, 'orig')
-        df_h = external_rage(h2, 'test')
+        df_g = external_rage(h1, '{}_o'.format(h1.name))
+        df_h = external_rage(h2, '{}_t'.format(h2.name))
     else:
-        df_g = external_orca(h1, 'orig')
-        df_h = external_orca(h2, 'test')
+        df_g = external_orca(h1, '{}_o'.format(h1.name))
+        df_h = external_orca(h2, '{}_t'.format(h2.name))
 
     gcm_g = tijana_eval_compute_gcm(df_g)
     gcm_h = tijana_eval_compute_gcm(df_h)
@@ -25,9 +25,10 @@ def GCD(h1, h2, mode='rage'):
 def external_orca(g, gname):
     g = nx.Graph(g)  # convert it into a simple graph
     g = max(nx.connected_component_subgraphs(g), key=len)
-    g = nx.convert_node_labels_to_integers(g, first_label=0)
+    selfloops = g.selfloop_edges()
+    g.remove_edges_from(selfloops)   # removing self-loop edges
 
-    g.remove_edges_from(g.selfloop_edges())   # removing self-loop edges
+    g = nx.convert_node_labels_to_integers(g, first_label=0)
 
     file_dir = 'tmp'
     with open('./{}/{}.in'.format(file_dir, gname), 'w') as f:
@@ -44,10 +45,11 @@ def external_orca(g, gname):
     else:
         args[0] = './orca_mac'
 
-    popen = subprocess.Popen(args, stdout=subprocess.DEVNULL)
-    popen.wait()
+    process = subprocess.run(' '.join(args), shell=True, stdout=subprocess.DEVNULL)
+    if process.returncode != 0:
+        print('Error in ORCA')
 
-    df = pd.read_csv('{}/{}.out'.format(file_dir, gname), sep=' ', header=None)
+    df = pd.read_csv('./{}/{}.out'.format(file_dir, gname), sep=' ', header=None)
     return df
 
 
@@ -77,6 +79,19 @@ def external_rage(G, netname):
     return df
 
 
+def spearmanr(x, y):
+    """
+    Spearman correlation - takes care of the nan situation
+    :param x:
+    :param y:
+    :return:
+    """
+    score = scipy.stats.spearmanr(x, y)[0]
+    if np.isnan(score):
+        score = 1
+    return score
+
+
 def tijana_eval_compute_gcm(G_df):
     l = G_df.shape[1]  # no of graphlets: #cols in G_df
 
@@ -84,7 +99,7 @@ def tijana_eval_compute_gcm(G_df):
     M = np.transpose(M)  # transpose to make it graphlet counts & nodes
     gcm = scipy.spatial.distance.squareform(   # squareform converts the sparse matrix to dense matrix
         scipy.spatial.distance.pdist(M,   # compute the pairwise distances in M
-                                     lambda x, y: scipy.stats.spearmanr(x, y)[0]))  # using spearman's correlation
+                                     spearmanr))  # using spearman's correlation
     gcm = gcm + np.eye(l, l)   # make the diagonals 1 (dunno why, but it did that in the original code)
     return gcm
 
@@ -96,5 +111,6 @@ def tijana_eval_compute_gcd(gcm_g, gcm_h):
         np.sum(  # of the sum of elements
             (np.triu(gcm_g) - np.triu(gcm_h)) ** 2   # of the squared difference of the upper triangle values
         ))
-
+    if np.isnan(gcd):
+        print('GCD is nan')
     return round(gcd, 3)

@@ -158,7 +158,7 @@ def spectral_kmeans(g, K):
 
     U = np.apply_along_axis(lambda x: x / np.linalg.norm(x), axis=1, arr=eigenvecs)  # normalize each row by its norm
 
-    kmeans = KMeans(n_clusters=K, random_state=0).fit(U)
+    kmeans = KMeans(n_clusters=K).fit(U)
 
     cluster_labels = kmeans.labels_
     clusters = [[] for _ in range(max(cluster_labels) + 1)]
