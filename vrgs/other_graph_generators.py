@@ -31,6 +31,13 @@ def hrg_wrapper(g, n=5):
     return graphs
 
 
+def bter_graphs(g, n=5):
+    graphs = []
+    for _ in range(n):
+        graphs.append(bter_wrapper(g))
+    return graphs
+
+
 def bter_wrapper(g):
     # fix BTER to use the directory.. 
     print('Starting BTER...')
@@ -91,15 +98,18 @@ def bter_wrapper(g):
     return g_bter
 
 
-def chung_lu(g):
-    print('Starting Chung-Lu....')
+def chung_lu_graphs(g, n=5):
+    graphs = []
 
-    start_time = time()
+    for _ in range(n):
+        print('Starting Chung-Lu....')
+        start_time = time()
+        degree_seq = sorted(g.degree().values())
+        g_chung_lu = nx.expected_degree_graph(degree_seq, selfloops=False)
+        graphs.append(g_chung_lu)
+        print('Chung-Lu ran in {} secs'.format(round(time() - start_time, 3)))
 
-    print('Chung-Lu ran in {} secs'.format(round(time() - start_time, 3)))
-    degree_seq = sorted(g.degree().values())
-    g_chung_lu = nx.expected_degree_graph(degree_seq, selfloops=False)
-    return g_chung_lu
+    return graphs
 
 
 def kronecker_graph(k, G):
