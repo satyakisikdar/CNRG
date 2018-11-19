@@ -6,7 +6,7 @@ import networkx as nx
 import numpy as np
 import csv
 from collections import deque, Counter
-
+from time import time
 from vrgs.GCD import GCD
 
 def get_level_wise_mdl(vrg_rules):
@@ -20,23 +20,32 @@ def get_level_wise_mdl(vrg_rules):
     return lvl_mdl
 
 
-def compare_two_graphs(g_true, g):
+def compare_two_graphs(g_true, g, true_deg, true_page):
     """
     Compares two graphs
     :param g_true: actual graph
     :param g: generated graph
     :return:
     """
-    true_deg = list(g_true.degree().values())
-    true_page = list(map(lambda x: round(x, 3), nx.pagerank_scipy(g_true).values()))
-
+    start = time()
     g_deg = list(g.degree().values())
-    g_page = list(map(lambda x: round(x, 3), nx.pagerank_scipy(g).values()))
+    deg_time = time() - start
 
+    start = time()
+    g_page = list(map(lambda x: round(x, 3), nx.pagerank_scipy(g).values()))
+    page_time = time() - start
+
+    start = time()
     gcd = GCD(g_true, g, 'orca')
+    gcd_time = time() - start
+
+    start = time()
     cvm_deg = cvm_distance(true_deg, g_deg)
     cvm_page = cvm_distance(true_page, g_page)
+    cvm_time = time() - start
 
+    print('times: deg {}s, page {}s, gcd {}s, cvm {}s'.format(round(deg_time, 3), round(page_time, 3), round(gcd_time, 3),
+                                                              round(cvm_time, 3)))
     return gcd, cvm_deg, cvm_page
 
 
