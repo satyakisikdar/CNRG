@@ -26,7 +26,7 @@ from vrgs.funky_extract import funky_extract
 from vrgs.Tree import create_tree
 import vrgs.analysis as analysis
 from vrgs.MDL import graph_mdl, gamma_code
-from vrgs.other_graph_generators import chung_lu_graphs, kronecker2_random_graph, bter_wrapper, vog, subdue, hrg_wrapper
+from vrgs.other_graph_generators import chung_lu_graphs, kronecker2_random_graph, bter_graphs, vog, subdue, hrg_wrapper
 from vrgs.GCD import GCD
 
 def get_graph(filename='sample'):
@@ -72,42 +72,60 @@ def write_graph_stats(g, name, write_flag):
 
 
 
-    for clustering in ('random', 'louvain', 'cond', 'spectral', 'node2vec'):
+    for clustering in ('louvain', 'cond', 'spectral', 'node2vec', 'random'):
         print('clustering:', clustering)
-        if clustering == 'random':
-            tree = partitions.get_random_partition(g)
-        elif clustering == 'louvain':
-            tree = partitions.louvain(g)
-        elif clustering == 'cond':
-            tree = partitions.approx_min_conductance_partitioning(g)
-        elif clustering == 'spectral':
-            tree = partitions.spectral_kmeans(g, K=int(math.sqrt(g.order() // 2)))
+
+        if os.path.isfile('./pickles/trees/{}_{}.tree'.format(name, clustering)):
+            tree = pickle.load(open('./pickles/trees/{}_{}.tree'.format(name, clustering), 'rb'))
+            print('read tree from pickle')
         else:
-            tree = partitions.get_node2vec(g)
+            if clustering == 'random':
+                tree = partitions.get_random_partition(g)
+            elif clustering == 'louvain':
+                tree = partitions.louvain(g)
+            elif clustering == 'cond':
+                tree = partitions.approx_min_conductance_partitioning(g)
+            elif clustering == 'spectral':
+                tree = partitions.spectral_kmeans(g, K=int(math.sqrt(g.order() // 2)))
+            else:
+                tree = partitions.get_node2vec(g)
+            pickle.dump(tree, open('./pickles/trees/{}_{}.tree'.format(name, clustering), 'wb'))
 
         root = create_tree(tree)
-
-        pickle.dump(tree, open('./pickles/trees/{}_{}.tree'.format(name, clustering), 'wb'))
 
         for selection in ('random', 'mdl', 'level', 'level_mdl'):
             new_graph_count = 5  # number of graphs generated
 
-            for k in range(2, 7):
+            for k in range(3, 5):
                 print('\nname:{} selection:{} clustering:{} k:{}'.format(name, selection, clustering, k))
                 row = {'name': name, 'selection': selection, 'clustering': clustering, 'k': k,
                        'actual_n': orig_graph.order(), 'actual_m': orig_graph.size(), 'actual_MDL': g_mdl}
 
                 rows = [dict() for _ in range(new_graph_count)]  # for each of the row, this info is the same
                 for mode in ('full', 'part', 'no'):
-                    grammar = funky_extract(g=deepcopy(g), root=deepcopy(root), k=k, mode=mode,
-                                            selection=selection, clustering=clustering)
 
-                    pickle.dump(grammar, open('./pickles/grammars/{}_{}_{}_{}.grammar'.format(name, clustering, selection, k), 'wb'))
+                    if os.path.isfile('./pickles/grammars/{}_{}_{}_{}.grammar'.format(name, clustering, selection, k)):
+                        grammar = pickle.load(open('./pickles/grammars/{}_{}_{}_{}.grammar'.format(name, clustering, selection, k), 'rb'))
+                        print('read grammar from pickle')
 
-                    graphs = grammar.generate_graphs(count=new_graph_count)
+                    else:
+                        grammar = funky_extract(g=deepcopy(g), root=deepcopy(root), k=k, mode=mode,
+                                                selection=selection, clustering=clustering)
 
-                    [nx.write_edgelist(graph, './pickles/graphs/{}_{}_{}_{}_{}.g'.format(name, clustering, selection, k, i+1), data=False)
-                        for i, graph in enumerate(graphs)]
+                        pickle.dump(grammar, open('./pickles/grammars/{}_{}_{}_{}.grammar'.format(name, clustering, selection, k), 'wb'))
+
+
+                    graphs = []
+                    for i in range(new_graph_count):
+                        if os.path.isfile('./pickles/graphs/{}_{}_{}_{}_{}.g'.format(name, clustering, selection, k, i+1)):
+                            graphs.append(nx.read_edgelist('./pickles/graphs/{}_{}_{}_{}_{}.g'.format(name, clustering, selection, k, i+1), nodetype=int))
+                            print('reading pickled graph')
+
+                    if len(graphs) != new_graph_count:
+                        graphs = grammar.generate_graphs(count=new_graph_count)
+
+                        [nx.write_edgelist(graph, './pickles/graphs/{}_{}_{}_{}_{}.g'.format(name, clustering, selection, k, i+1), data=False)
+                            for i, graph in enumerate(graphs)]
 
                     row['{}_rules'.format(mode)] = len(grammar)
                     row['{}_MDL'.format(mode)] = grammar.get_cost()
@@ -140,6 +158,30 @@ def write_graph_stats(g, name, write_flag):
                     writer.writerow({})  # two blank rows after each k
 
 
+def write_edgelists(graphs, name, gname):
+    for i, g in enumerate(graphs):
+        nx.write_edgelist(g, './graph_comp/{}/{}_{}.g'.format(name, gname, i+1), data=False)
+
+def graph_generation(g):
+    name = g.name
+
+    if not os.path.isfile('./graph_comp/hrg/{}_1.g'.format(name)):
+        hrgs = hrg_wrapper(g, n=5)
+        write_edgelists(hrgs, 'hrg', name)
+
+    # bter = get_best(bter_graphs(g, n=5), g)
+    # nx.write_edgelist(bter, './graph_comp/{}_bter.g'.format(name))
+
+    # krons = kronecker2_random_graph()
+
+    if not os.path.isfile('./graph_comp/cl/{}_1.g'.format(name)):
+        chungs = chung_lu_graphs(g, n=5)
+        write_edgelists(chungs, 'cl', name)
+
+
+
+
+
 
 def main():
     """
@@ -150,14 +192,16 @@ def main():
 
     names = ('karate', 'lesmis', 'dolphins', 'football', 'eucore', 'GrQc', 'gnutella', 'wikivote')
 
-
-    if len(sys.argv) < 2 or sys.argv[1] not in names:
-        print('enter name from', names)
-        return
-    name = sys.argv[1]
+    # if len(sys.argv) < 2 or sys.argv[1] not in names:
+    #     print('enter name from', names)
+    #     return
+    # name = sys.argv[1]
+    name = 'karate'
     g = get_graph('./tmp/{}.g'.format(name))
     g.name = name
-    write_graph_stats(g, name, write_flag=False)
+    # graph_generation(g)
+
+    write_graph_stats(g, name, write_flag=True)
 
     return
 
