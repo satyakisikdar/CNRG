@@ -1,5 +1,4 @@
 bitarray == 0.8.3
-gensim == 3.6.0
 networkx == 1.11
 numpy == 1.15.4
 pandas == 0.23.4
