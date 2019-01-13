@@ -221,7 +221,7 @@ def funky_extract(g, root, k, selection, mode, clustering):
     :return: list of rules
     """
 
-    start_time = time()
+    # start_time = time()
 
     nodes, buckets, node2bucket = get_buckets(root=root, k=k)
     active_nodes = {node.key for node in nodes}  # all nodes in the tree
@@ -257,8 +257,8 @@ def funky_extract(g, root, k, selection, mode, clustering):
                 v = new_node
             g.add_edge(u, v)
 
-    end_time = time()
+    # end_time = time()
 
-    print('\nGrammar extracted in {} secs'.format(round(end_time - start_time, 3)))
+    # print('\nGrammar extracted in {} secs'.format(round(end_time - start_time, 3)))
 
     return grammar

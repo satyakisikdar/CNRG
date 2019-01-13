@@ -8,7 +8,7 @@ Runner script for VRGs
 5. Analyzes the final network
 """
 
-from time import time
+from time import time, sleep
 import networkx as nx
 import csv
 from copy import deepcopy
@@ -16,8 +16,9 @@ import os
 import sys
 import numpy as np
 import math
-import multiprocessing as mp
 import pickle
+import argparse
+import glob
 
 sys.path.extend([os.getcwd(), os.path.dirname(os.getcwd())])
 
@@ -183,12 +184,13 @@ def graph_generation(g):
 
 
 
-def main():
+def main2():
     """
     Driver method for VRG
     :return:
     """
-    np.seterr(all='ignore')
+
+
 
     names = ('karate', 'lesmis', 'dolphins', 'football', 'eucore', 'GrQc', 'gnutella', 'wikivote')
 
@@ -196,14 +198,103 @@ def main():
     #     print('enter name from', names)
     #     return
     # name = sys.argv[1]
-    name = 'karate'
+    name = 'GrQc'
     g = get_graph('./tmp/{}.g'.format(name))
     g.name = name
-    # graph_generation(g)
 
-    write_graph_stats(g, name, write_flag=True)
+    tree = partitions.spectral_kmeans(g, K=int(math.sqrt(g.order() // 2)))
+    root = create_tree(tree)
+    k = 5; mode = 'part'; selection='level_mdl'; clustering='spectral'
+
+    grammar = funky_extract(g=deepcopy(g), root=deepcopy(root), k=k, mode=mode,
+                            selection=selection, clustering=clustering)
+    print(grammar)
+    pickle.dump(grammar, open('./pickles/{}_{}_{}_{}.grammar'.format(name, clustering, selection, k), 'wb'))
 
     return
 
+
+def main():
+    """
+    Driver method for VRG
+    :return:
+    """
+    # names = ('karate', 'lesmis', 'dolphins', 'football', 'eucore', 'GrQc', 'gnutella', 'wikivote')
+    graph_names = [fname[: fname.find('.g')].split('/')[-1]
+                   for fname in glob.glob('./tmp/*.g')]
+    clustering_algs = ['louvain', 'spectral', 'cond', 'node2vec', 'random']
+    selections = ['random', 'level', 'level_mdl', 'mdl']
+
+    parser = argparse.ArgumentParser(formatter_class=argparse.ArgumentDefaultsHelpFormatter)  # formatter class shows defaults in help
+    # using choices we can control the inputs. metavar='' prevents printing the choices in the help preventing clutter
+    parser.add_argument('-g', '--graph', help='Name of the graph', default='karate', choices=graph_names, metavar='')
+    parser.add_argument('-c', '--clustering', help='Clustering method to use', default='louvain',
+                        choices=clustering_algs, metavar='')
+    parser.add_argument('-b', '--boundary', help='Degree of boundary information to store', default='part',
+                        choices=['full', 'part', 'no'])
+    parser.add_argument('-l', '--lamb', help='Size of RHS (lambda)', default=5, type=int)
+    parser.add_argument('-s', '--selection', help='Selection strategy', default='level', choices=selections, metavar='')
+    parser.add_argument('-o', '--outdir', help='Name of the output directory', default='output')
+    parser.add_argument('-n', help='Number of graphs to generate', default=5, type=int)
+    args = parser.parse_args()
+
+    name, clustering, mode, k, selection, outdir = args.graph, args.clustering, args.boundary, args.lamb,\
+                                                   args.selection, args.outdir
+
+    if not os.path.isdir('./{}'.format(outdir)):  # make the output directory if it doesn't exist already
+        os.mkdir(outdir)
+
+    print('Reading graph "{}"...'.format(name), end='\r')  # using \r allows to rewrite the current line
+    start_time = time()
+    g = get_graph('./tmp/{}.g'.format(name))
+    end_time = time() - start_time
+    g.name = name
+
+    print('Graph "{}", n: {}, m: {}, read in {} secs\n'.format(name, g.order(), g.size(), round(end_time, 3)))
+
+    tree_pickle = './{}/{}_{}_tree.pkl'.format(outdir, name, clustering)
+    if os.path.exists(tree_pickle):
+        print('Using existing pickle for {} clustering\n'.format(clustering))
+        root = pickle.load(open(tree_pickle, 'rb'))
+    else:
+        print('Running {} clustering...'.format(clustering), end='\r')
+        start_time = time()
+        if clustering == 'random':
+            tree = partitions.get_random_partition(g)
+        elif clustering == 'louvain':
+            tree = partitions.louvain(g)
+        elif clustering == 'cond':
+            tree = partitions.approx_min_conductance_partitioning(g)
+        elif clustering == 'spectral':
+            tree = partitions.spectral_kmeans(g, K=int(math.sqrt(g.order() // 2)))
+        else:
+            tree = partitions.get_node2vec(g)
+        root = create_tree(tree)
+        end_time = time() - start_time
+
+        pickle.dump(root, open(tree_pickle, 'wb'))
+        print('{} clustering ran in {} secs. Pickled as a Tree object.\n'.format(clustering, round(end_time, 3)))
+
+    grammar_pickle = './{}/{}_{}_{}_{}_grammar.pkl'.format(outdir, name, clustering, selection, k)
+    if os.path.exists(grammar_pickle):
+        print('Using existing pickle for grammar: lambda: {}, boundary info: {}, selection: {}.\n'.format(k, mode, selection))
+        grammar = pickle.load(open(grammar_pickle, 'rb'))
+    else:
+        print('Starting grammar induction: lambda: {}, boundary info: {}, selection: {}...'.format(k, mode, selection), end='\r')
+        start_time = time()
+        grammar = funky_extract(g=deepcopy(g), root=deepcopy(root), k=k, mode=mode,
+                                selection=selection, clustering=clustering)
+        end_time = time() - start_time
+        pickle.dump(grammar, open(grammar_pickle, 'wb'))
+        print('Grammar: lambda: {}, boundary info: {}, selection: {}. Generated in {} secs. Pickled as a VRG object.\n'.format(k, mode, selection, round(end_time, 3)))
+
+    print('Generating {} graphs...'.format(args.n), end='\r')
+    start_time = time()
+    graphs = grammar.generate_graphs(count=args.n)
+    end_time = time() - start_time
+    pickle.dump(graphs, open('./{}/{}_{}_{}_{}_graphs.pkl'.format(outdir, name, clustering, selection, k), 'wb'))
+    print('{} graphs generated in {} secs. Pickled as a list of Graph objects.'.format(args.n, round(end_time, 3)))
+
 if __name__ == '__main__':
+    np.seterr(all='ignore')
     main()

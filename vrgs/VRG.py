@@ -72,10 +72,10 @@ class VRG:
         graphs = []
 
         for _ in range(count):
-            start_time = time()
+            # start_time = time()
             h = generate_graph(self.rule_dict)
-            t = time() - start_time
+            # t = time() - start_time
             graphs.append(h)
-            print('n = {} m = {} ({} secs)'.format(h.order(), h.size(), round(t, 3)))
+            # print('n = {} m = {} ({} secs)'.format(h.order(), h.size(), round(t, 3)))
 
         return graphs
