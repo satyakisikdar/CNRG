@@ -8,7 +8,7 @@ Runner script for VRGs
 5. Analyzes the final network
 """
 
-from time import time, sleep
+from time import time
 import networkx as nx
 import csv
 from copy import deepcopy
@@ -28,7 +28,7 @@ from vrgs.Tree import create_tree
 import vrgs.analysis as analysis
 from vrgs.MDL import graph_mdl, gamma_code
 from vrgs.other_graph_generators import chung_lu_graphs, kronecker2_random_graph, bter_graphs, vog, subdue, hrg_wrapper
-from vrgs.GCD import GCD
+
 
 def get_graph(filename='sample'):
     if filename == 'sample':
@@ -163,6 +163,7 @@ def write_edgelists(graphs, name, gname):
     for i, g in enumerate(graphs):
         nx.write_edgelist(g, './graph_comp/{}/{}_{}.g'.format(name, gname, i+1), data=False)
 
+
 def graph_generation(g):
     name = g.name
 
@@ -180,46 +181,7 @@ def graph_generation(g):
         write_edgelists(chungs, 'cl', name)
 
 
-
-
-
-
-def main2():
-    """
-    Driver method for VRG
-    :return:
-    """
-
-
-
-    names = ('karate', 'lesmis', 'dolphins', 'football', 'eucore', 'GrQc', 'gnutella', 'wikivote')
-
-    # if len(sys.argv) < 2 or sys.argv[1] not in names:
-    #     print('enter name from', names)
-    #     return
-    # name = sys.argv[1]
-    name = 'GrQc'
-    g = get_graph('./tmp/{}.g'.format(name))
-    g.name = name
-
-    tree = partitions.spectral_kmeans(g, K=int(math.sqrt(g.order() // 2)))
-    root = create_tree(tree)
-    k = 5; mode = 'part'; selection='level_mdl'; clustering='spectral'
-
-    grammar = funky_extract(g=deepcopy(g), root=deepcopy(root), k=k, mode=mode,
-                            selection=selection, clustering=clustering)
-    print(grammar)
-    pickle.dump(grammar, open('./pickles/{}_{}_{}_{}.grammar'.format(name, clustering, selection, k), 'wb'))
-
-    return
-
-
-def main():
-    """
-    Driver method for VRG
-    :return:
-    """
-    # names = ('karate', 'lesmis', 'dolphins', 'football', 'eucore', 'GrQc', 'gnutella', 'wikivote')
+def parse_args():
     graph_names = [fname[: fname.find('.g')].split('/')[-1]
                    for fname in glob.glob('./tmp/*.g')]
     clustering_algs = ['louvain', 'spectral', 'cond', 'node2vec', 'random']
@@ -236,7 +198,17 @@ def main():
     parser.add_argument('-s', '--selection', help='Selection strategy', default='level', choices=selections, metavar='')
     parser.add_argument('-o', '--outdir', help='Name of the output directory', default='output')
     parser.add_argument('-n', help='Number of graphs to generate', default=5, type=int)
-    args = parser.parse_args()
+    return parser.parse_args()
+
+
+def main():
+    """
+    Driver method for VRG
+    :return:
+    """
+    # names = ('karate', 'lesmis', 'dolphins', 'football', 'eucore', 'GrQc', 'gnutella', 'wikivote')
+
+    args = parse_args()
 
     name, clustering, mode, k, selection, outdir = args.graph, args.clustering, args.boundary, args.lamb,\
                                                    args.selection, args.outdir
@@ -293,7 +265,8 @@ def main():
     graphs = grammar.generate_graphs(count=args.n)
     end_time = time() - start_time
     pickle.dump(graphs, open('./{}/{}_{}_{}_{}_graphs.pkl'.format(outdir, name, clustering, selection, k), 'wb'))
-    print('{} graphs generated in {} secs. Pickled as a list of Graph objects.'.format(args.n, round(end_time, 3)))
+    print('{} graphs generated in {} secs. Pickled as a list of nx.Graph objects.'.format(args.n, round(end_time, 3)))
+
 
 if __name__ == '__main__':
     np.seterr(all='ignore')
