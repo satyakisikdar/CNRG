@@ -9,9 +9,9 @@ import random
 import numpy as np
 from copy import deepcopy
 
-import vrgs.globals as globals
-from vrgs.Rule import FullRule as Rule
-from vrgs.globals import find_boundary_edges
+import src.globals as globals
+from src.Rule import FullRule as Rule
+from src.globals import find_boundary_edges
 
 
 def deduplicate_edges(edges):

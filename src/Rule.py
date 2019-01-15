@@ -1,5 +1,5 @@
 import networkx as nx
-import vrgs.MDL as MDL
+import src.MDL as MDL
 
 class BaseRule:
     """

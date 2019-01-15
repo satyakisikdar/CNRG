@@ -4,7 +4,7 @@ Contains the different partition methods
 2. Node2vec hierarchical partition
 """
 
-import vrgs.node2vec as n2v
+import src.node2vec as n2v
 import  networkx as nx
 from scipy.cluster.hierarchy import linkage, to_tree, cophenet
 from scipy.spatial.distance import pdist
@@ -14,7 +14,7 @@ from sklearn.cluster import KMeans
 import random
 import sklearn.preprocessing
 
-from vrgs.louvain import get_louvain_clusters
+from src.louvain import get_louvain_clusters
 
 
 def get_random_partition(g, seed=None):

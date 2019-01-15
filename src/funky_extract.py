@@ -9,12 +9,12 @@ import numpy as np
 from time import time
 from copy import deepcopy
 
-from vrgs.Rule import FullRule
-from vrgs.Rule import NoRule
-from vrgs.Rule import PartRule
-from vrgs.globals import find_boundary_edges
-from vrgs.part_info import set_boundary_degrees
-from vrgs.VRG import VRG
+from src.Rule import FullRule
+from src.Rule import NoRule
+from src.Rule import PartRule
+from src.globals import find_boundary_edges
+from src.part_info import set_boundary_degrees
+from src.VRG import VRG
 
 
 def get_buckets(root, k):

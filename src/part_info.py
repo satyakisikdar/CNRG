@@ -9,8 +9,8 @@ import random
 import numpy as np
 from copy import deepcopy
 
-from vrgs.Rule import PartRule as Rule
-from vrgs.globals import find_boundary_edges
+from src.Rule import PartRule as Rule
+from src.globals import find_boundary_edges
 
 def set_boundary_degrees(g, sg):
     """

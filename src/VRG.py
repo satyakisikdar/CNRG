@@ -1,8 +1,8 @@
 from collections import defaultdict
 from time import time
-import vrgs.full_info as full_info
-import vrgs.part_info as part_info
-import vrgs.no_info as no_info
+import src.full_info as full_info
+import src.part_info as part_info
+import src.no_info as no_info
 
 class VRG:
     """

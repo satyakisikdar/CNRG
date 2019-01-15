@@ -20,14 +20,14 @@ import pickle
 import argparse
 import glob
 
-sys.path.extend([os.getcwd(), os.path.dirname(os.getcwd())])
+sys.path.extend([os.getcwd(), os.path.dirname(os.getcwd()), './src'])
 
-import vrgs.partitions as partitions
-from vrgs.funky_extract import funky_extract
-from vrgs.Tree import create_tree
-import vrgs.analysis as analysis
-from vrgs.MDL import graph_mdl, gamma_code
-from vrgs.other_graph_generators import chung_lu_graphs, kronecker2_random_graph, bter_graphs, vog, subdue, hrg_wrapper
+import src.partitions as partitions
+from src.funky_extract import funky_extract
+from src.Tree import create_tree
+import src.analysis as analysis
+from src.MDL import graph_mdl, gamma_code
+from src.other_graph_generators import chung_lu_graphs, kronecker2_random_graph, bter_graphs, vog, subdue, hrg_wrapper
 
 
 def get_graph(filename='sample'):
@@ -61,7 +61,7 @@ def write_graph_stats(g, name, write_flag):
                   'no_n', 'no_m', 'no_rules', 'no_MDL', 'GCD_no', 'CVM_no_d', 'CVM_no_pr')
 
     if write_flag:
-        stats_filename = './new_stats/{}_stats.csv'.format(name)
+        stats_filename = './src/new_stats/{}_stats.csv'.format(name)
         with open(stats_filename, 'w') as f:
             writer = csv.DictWriter(f, fieldnames=fieldnames)
             writer.writeheader()
@@ -76,8 +76,8 @@ def write_graph_stats(g, name, write_flag):
     for clustering in ('louvain', 'cond', 'spectral', 'node2vec', 'random'):
         print('clustering:', clustering)
 
-        if os.path.isfile('./pickles/trees/{}_{}.tree'.format(name, clustering)):
-            tree = pickle.load(open('./pickles/trees/{}_{}.tree'.format(name, clustering), 'rb'))
+        if os.path.isfile('./src/pickles/trees/{}_{}.tree'.format(name, clustering)):
+            tree = pickle.load(open('./src/pickles/trees/{}_{}.tree'.format(name, clustering), 'rb'))
             print('read tree from pickle')
         else:
             if clustering == 'random':
@@ -90,7 +90,7 @@ def write_graph_stats(g, name, write_flag):
                 tree = partitions.spectral_kmeans(g, K=int(math.sqrt(g.order() // 2)))
             else:
                 tree = partitions.get_node2vec(g)
-            pickle.dump(tree, open('./pickles/trees/{}_{}.tree'.format(name, clustering), 'wb'))
+            pickle.dump(tree, open('./src/pickles/trees/{}_{}.tree'.format(name, clustering), 'wb'))
 
         root = create_tree(tree)
 
@@ -105,27 +105,27 @@ def write_graph_stats(g, name, write_flag):
                 rows = [dict() for _ in range(new_graph_count)]  # for each of the row, this info is the same
                 for mode in ('full', 'part', 'no'):
 
-                    if os.path.isfile('./pickles/grammars/{}_{}_{}_{}.grammar'.format(name, clustering, selection, k)):
-                        grammar = pickle.load(open('./pickles/grammars/{}_{}_{}_{}.grammar'.format(name, clustering, selection, k), 'rb'))
+                    if os.path.isfile('./src/pickles/grammars/{}_{}_{}_{}.grammar'.format(name, clustering, selection, k)):
+                        grammar = pickle.load(open('./src/pickles/grammars/{}_{}_{}_{}.grammar'.format(name, clustering, selection, k), 'rb'))
                         print('read grammar from pickle')
 
                     else:
                         grammar = funky_extract(g=deepcopy(g), root=deepcopy(root), k=k, mode=mode,
                                                 selection=selection, clustering=clustering)
 
-                        pickle.dump(grammar, open('./pickles/grammars/{}_{}_{}_{}.grammar'.format(name, clustering, selection, k), 'wb'))
+                        pickle.dump(grammar, open('./src/pickles/grammars/{}_{}_{}_{}.grammar'.format(name, clustering, selection, k), 'wb'))
 
 
                     graphs = []
                     for i in range(new_graph_count):
-                        if os.path.isfile('./pickles/graphs/{}_{}_{}_{}_{}.g'.format(name, clustering, selection, k, i+1)):
-                            graphs.append(nx.read_edgelist('./pickles/graphs/{}_{}_{}_{}_{}.g'.format(name, clustering, selection, k, i+1), nodetype=int))
+                        if os.path.isfile('./src/pickles/graphs/{}_{}_{}_{}_{}.g'.format(name, clustering, selection, k, i+1)):
+                            graphs.append(nx.read_edgelist('./src/pickles/graphs/{}_{}_{}_{}_{}.g'.format(name, clustering, selection, k, i+1), nodetype=int))
                             print('reading pickled graph')
 
                     if len(graphs) != new_graph_count:
                         graphs = grammar.generate_graphs(count=new_graph_count)
 
-                        [nx.write_edgelist(graph, './pickles/graphs/{}_{}_{}_{}_{}.g'.format(name, clustering, selection, k, i+1), data=False)
+                        [nx.write_edgelist(graph, './src/pickles/graphs/{}_{}_{}_{}_{}.g'.format(name, clustering, selection, k, i+1), data=False)
                             for i, graph in enumerate(graphs)]
 
                     row['{}_rules'.format(mode)] = len(grammar)
@@ -161,13 +161,13 @@ def write_graph_stats(g, name, write_flag):
 
 def write_edgelists(graphs, name, gname):
     for i, g in enumerate(graphs):
-        nx.write_edgelist(g, './graph_comp/{}/{}_{}.g'.format(name, gname, i+1), data=False)
+        nx.write_edgelist(g, './src/graph_comp/{}/{}_{}.g'.format(name, gname, i+1), data=False)
 
 
 def graph_generation(g):
     name = g.name
 
-    if not os.path.isfile('./graph_comp/hrg/{}_1.g'.format(name)):
+    if not os.path.isfile('./src/graph_comp/hrg/{}_1.g'.format(name)):
         hrgs = hrg_wrapper(g, n=5)
         write_edgelists(hrgs, 'hrg', name)
 
@@ -176,18 +176,19 @@ def graph_generation(g):
 
     # krons = kronecker2_random_graph()
 
-    if not os.path.isfile('./graph_comp/cl/{}_1.g'.format(name)):
+    if not os.path.isfile('./src/graph_comp/cl/{}_1.g'.format(name)):
         chungs = chung_lu_graphs(g, n=5)
         write_edgelists(chungs, 'cl', name)
 
 
 def parse_args():
     graph_names = [fname[: fname.find('.g')].split('/')[-1]
-                   for fname in glob.glob('./tmp/*.g')]
+                   for fname in glob.glob('./src/tmp/*.g')]
     clustering_algs = ['louvain', 'spectral', 'cond', 'node2vec', 'random']
     selections = ['random', 'level', 'level_mdl', 'mdl']
 
     parser = argparse.ArgumentParser(formatter_class=argparse.ArgumentDefaultsHelpFormatter)  # formatter class shows defaults in help
+
     # using choices we can control the inputs. metavar='' prevents printing the choices in the help preventing clutter
     parser.add_argument('-g', '--graph', help='Name of the graph', default='karate', choices=graph_names, metavar='')
     parser.add_argument('-c', '--clustering', help='Clustering method to use', default='louvain',
@@ -213,18 +214,18 @@ def main():
     name, clustering, mode, k, selection, outdir = args.graph, args.clustering, args.boundary, args.lamb,\
                                                    args.selection, args.outdir
 
-    if not os.path.isdir('./{}'.format(outdir)):  # make the output directory if it doesn't exist already
+    if not os.path.isdir('./src/{}'.format(outdir)):  # make the output directory if it doesn't exist already
         os.mkdir(outdir)
 
     print('Reading graph "{}"...'.format(name), end='\r')  # using \r allows to rewrite the current line
     start_time = time()
-    g = get_graph('./tmp/{}.g'.format(name))
+    g = get_graph('./src/tmp/{}.g'.format(name))
     end_time = time() - start_time
     g.name = name
 
     print('Graph "{}", n: {}, m: {}, read in {} secs\n'.format(name, g.order(), g.size(), round(end_time, 3)))
 
-    tree_pickle = './{}/{}_{}_tree.pkl'.format(outdir, name, clustering)
+    tree_pickle = './src/{}/{}_{}_tree.pkl'.format(outdir, name, clustering)
     if os.path.exists(tree_pickle):
         print('Using existing pickle for {} clustering\n'.format(clustering))
         root = pickle.load(open(tree_pickle, 'rb'))
@@ -247,7 +248,7 @@ def main():
         pickle.dump(root, open(tree_pickle, 'wb'))
         print('{} clustering ran in {} secs. Pickled as a Tree object.\n'.format(clustering, round(end_time, 3)))
 
-    grammar_pickle = './{}/{}_{}_{}_{}_grammar.pkl'.format(outdir, name, clustering, selection, k)
+    grammar_pickle = './src/{}/{}_{}_{}_{}_grammar.pkl'.format(outdir, name, clustering, selection, k)
     if os.path.exists(grammar_pickle):
         print('Using existing pickle for grammar: lambda: {}, boundary info: {}, selection: {}.\n'.format(k, mode, selection))
         grammar = pickle.load(open(grammar_pickle, 'rb'))
@@ -260,11 +261,13 @@ def main():
         pickle.dump(grammar, open(grammar_pickle, 'wb'))
         print('Grammar: lambda: {}, boundary info: {}, selection: {}. Generated in {} secs. Pickled as a VRG object.\n'.format(k, mode, selection, round(end_time, 3)))
 
+
     print('Generating {} graphs...'.format(args.n), end='\r')
     start_time = time()
     graphs = grammar.generate_graphs(count=args.n)
     end_time = time() - start_time
-    pickle.dump(graphs, open('./{}/{}_{}_{}_{}_graphs.pkl'.format(outdir, name, clustering, selection, k), 'wb'))
+
+    pickle.dump(graphs, open('./src/{}/{}_{}_{}_{}_graphs.pkl'.format(outdir, name, clustering, selection, k), 'wb'))
     print('{} graphs generated in {} secs. Pickled as a list of nx.Graph objects.'.format(args.n, round(end_time, 3)))
 
 

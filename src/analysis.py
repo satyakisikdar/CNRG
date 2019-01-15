@@ -7,7 +7,7 @@ import numpy as np
 import csv
 from collections import deque, Counter
 from time import time
-from vrgs.GCD import GCD
+from src.GCD import GCD
 
 def get_level_wise_mdl(vrg_rules):
     lvl_mdl = {}

@@ -10,8 +10,8 @@ import numpy as np
 from copy import deepcopy
 from itertools import chain
 
-from vrgs.Rule import NoRule as Rule
-from vrgs.globals import find_boundary_edges
+from src.Rule import NoRule as Rule
+from src.globals import find_boundary_edges
 
 def extract_vrg(g, tree, lvl):
     """
