@@ -1,5 +1,5 @@
 Code repository for the paper *Modelling graphs with Vertex Replacement Grammars* by 
-*Satyaki Sikdar, Justus Hibshman, Tim Weninger*. Submitted to ECML-PKDD 2019 journal track.
+*Satyaki Sikdar, Justus Hibshman, and Tim Weninger*. Submitted to ECML-PKDD 2019 journal track.
 All graph generation stats can be found in `all_stats.csv`. 
 
 Run `python3 -m pip install -r requirements.txt` prior to running `runner.py` to install required packages.
