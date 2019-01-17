@@ -1,5 +1,5 @@
 """
-Funky extraction using Justus' method
+VRG extraction
 """
 
 import random
@@ -178,34 +178,21 @@ def create_rule(subtree, g, mode):
     sg = g.subgraph(subtree)
     boundary_edges = find_boundary_edges(g, subtree)
 
-
     if mode == 'full':  # in the full information case, we add the boundary edges to the RHS and contract it
         rule = FullRule(lhs=len(boundary_edges), internal_nodes=subtree, graph=sg)
-        # rule.lhs = len(boundary_edges)
-
-        # rule.internal_nodes = subtree
 
         for u, v in boundary_edges:
             rule.graph.add_edge(u, v, attr_dict={'b': True})
 
-        # rule.graph = sg
         rule.contract_rhs()  # contract and generalize
 
     elif mode == 'part':  # in the partial boundary info, we need to set the boundary degrees
         rule = PartRule(lhs=len(boundary_edges), graph=sg)
-        # rule.lhs = len(boundary_edges)
-        # rule.internal_nodes = subtree
-
         set_boundary_degrees(g, rule.graph)
-
-        # rule.graph = sg
         rule.generalize_rhs()
 
     else:
-        rule = NoRule(lhs=len(boundary_edges), internal_nodes=subtree, graph=sg)
-        # rule.lhs = len(boundary_edges)
-        # rule.internal_nodes = subtree
-        # rule.graph = sg
+        rule = NoRule(lhs=len(boundary_edges), graph=sg)
         rule.generalize_rhs()
     return rule, boundary_edges
 

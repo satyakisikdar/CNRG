@@ -13,66 +13,6 @@ from itertools import chain
 from src.Rule import NoRule as Rule
 from src.globals import find_boundary_edges
 
-def extract_vrg(g, tree, lvl):
-    """
-    Extract a vertex replacement grammar (specifically an ed-NRC grammar) from a graph given a dendrogram tree
-    Stores no boundary info
-
-    :param g: graph to extract from
-    :param tree: dendrogram with nodes at the bottom.
-    :param lvl: level of discovery - root at level 0
-    :return: List of Rule objects
-    """
-    rule_list = list()
-    if not isinstance(tree, list):
-        # if we are at a leaf, then we need to backup one level
-        return rule_list
-
-    for index, subtree in enumerate(tree):
-        # build the grammar from a left-to-right bottom-up tree ordering (in order traversal)
-        rule_list.extend(extract_vrg(g, subtree, lvl+1))
-        if not isinstance(subtree, list):
-            # if we are at a leaf, then we need to backup one level
-            continue
-
-        # subtree to be replaced
-        # print(subtree, lvl)
-
-        sg = g.subgraph(subtree)
-        boundary_edges = find_boundary_edges(g, subtree)
-
-        # print('st:', subtree, nbunch)
-
-        rule = Rule()
-        rule.lhs = len(boundary_edges)
-        rule.graph = sg
-        rule.level = lvl
-        rule.internal_nodes = subtree
-        rule.generalize_rhs()
-        # rule.contract_rhs()
-
-        # next we contract the original graph
-        [g.remove_node(n) for n in subtree]
-
-        new_node = min(subtree)
-
-        # replace subtree with new_node
-        tree[index] = new_node
-        g.add_node(new_node, attr_dict={'label': rule.lhs})
-
-        # rewire new_node
-        subtree = set(subtree)
-
-        for u, v in boundary_edges:
-            if u in subtree:
-                u = new_node
-            if v in subtree:
-                v = new_node
-            g.add_edge(u, v)
-
-        rule_list.append(rule)
-    return rule_list
-
 
 def generate_graph(rule_dict):
     """

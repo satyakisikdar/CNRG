@@ -14,7 +14,7 @@ class VRG:
         self.selection = selection  # selection strategy - random, mdl, level, or mdl_levels
         self.clustering = clustering  # clustering strategy
 
-        self.rule_list = []   # list of rule objects
+        self.rule_list = []   # list of Rule objects
         self.rule_dict = defaultdict(list)  # dictionary of rules, keyed in by their LHS
         self.mdl = 0  # the MDL of the rules
 

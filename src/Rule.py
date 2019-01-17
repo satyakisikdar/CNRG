@@ -5,21 +5,35 @@ class BaseRule:
     """
     Base class for Rule
     """
-    def __init__(self, lhs=0, graph=nx.MultiGraph(), level=0, cost=0, frequency=1):
+    def __init__(self, lhs, graph, level=0, cost=0, frequency=1):
         self.lhs = lhs  # the left hand side: the number of boundary edges
         self.graph = graph  # the right hand side subgraph
         self.level = level  # level of discovery in the tree (the root is at 0)
         self.cost = cost  # the cost of encoding the rule using MDL (in bits)
         self.frequency = frequency  # frequency of occurence
 
+        self.non_terminals = []  # list of non-terminals in the RHS graph
+        for node, d in self.graph.nodes_iter(data=True):
+            if 'label' in d:
+                self.non_terminals.append(d['label'])
+
+
     def __str__(self):
         st = '{} -> (n = {}, m = {})'.format(self.lhs, self.graph.order(), self.graph.size())
+        # print non-terminals if present
+
+        if len(self.non_terminals) != 0:  # if it has non-terminals, print the sizes
+            st += 'nt: {' + ','.join(map(str, self.non_terminals)) + '}'
+
         if self.frequency > 1:  # if freq > 1, show it in square brackets
             st += '[{}]'.format(self.frequency)
         return st
 
     def __repr__(self):
         st = '{} -> ({}, {})'.format(self.lhs, self.graph.order(), self.graph.size())
+
+        if len(self.non_terminals) != 0:  # if it has non-terminals, print the sizes
+            st += '{' + ','.join(map(str, self.non_terminals)) + '}'
         if self.frequency > 1:  # if freq > 1, show it in square brackets
             st += '[{}]'.format(self.frequency)
         return st
@@ -34,21 +48,40 @@ class BaseRule:
         g = nx.freeze(self.graph)
         return hash((self.lhs, g))
 
-    # def __del__(self):
-    #     print('del rule')
-
     def __deepcopy__(self, memodict={}):
         return BaseRule(lhs=self.lhs, graph=self.graph, level=self.level, cost=self.cost, frequency=self.frequency)
 
     def contract_rhs(self):
         pass
 
+    def draw(self):
+        '''
+        Returns a graphviz object that can be rendered into a pdf/png
+        '''
+        from graphviz import Graph
+        flattened_graph = nx.Graph(self.graph)
+
+        dot = Graph(engine='dot')
+        for node, d in self.graph.nodes_iter(data=True):
+            if 'label' in d:
+                dot.node(str(node), str(d['label']), shape='square', height='0.20')
+            else:
+                dot.node(str(node), '', height='0.12', shape='circle')
+
+        for u, v in flattened_graph.edges_iter():
+            w = self.graph.number_of_edges(u, v)
+            if w > 1:
+                dot.edge(str(u), str(v), label=str(w))
+            else:
+                dot.edge(str(u), str(v))
+        return dot
+
 
 class FullRule(BaseRule):
     """
     Rule object for full-info option
     """
-    def __init__(self, lhs=0, graph=nx.MultiGraph(), level=0, cost=0, frequency=1, internal_nodes=None,
+    def __init__(self, lhs, graph, internal_nodes, level=0, cost=0, frequency=1,
                  edges_covered = None):
         super().__init__(lhs=lhs, graph=graph, level=level, cost=cost, frequency=frequency)
         self.internal_nodes = internal_nodes  # the set of internal nodes
@@ -121,7 +154,7 @@ class PartRule(BaseRule):
     """
     Rule class for Partial option
     """
-    def __init__(self, lhs=0, graph=nx.MultiGraph(), level=0, cost=0, frequency=1):
+    def __init__(self, lhs, graph, level=0, cost=0, frequency=1):
         super().__init__(lhs=lhs, graph=graph, level=level, cost=cost, frequency=frequency)
 
     def __deepcopy__(self, memodict={}):

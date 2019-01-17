@@ -23,7 +23,7 @@ import glob
 sys.path.extend([os.getcwd(), os.path.dirname(os.getcwd()), './src'])
 
 import src.partitions as partitions
-from src.funky_extract import funky_extract
+from src.extract import extract
 from src.Tree import create_tree
 import src.analysis as analysis
 from src.MDL import graph_mdl, gamma_code
@@ -110,8 +110,8 @@ def write_graph_stats(g, name, write_flag):
                         print('read grammar from pickle')
 
                     else:
-                        grammar = funky_extract(g=deepcopy(g), root=deepcopy(root), k=k, mode=mode,
-                                                selection=selection, clustering=clustering)
+                        grammar = extract(g=deepcopy(g), root=deepcopy(root), k=k, mode=mode,
+                                          selection=selection, clustering=clustering)
 
                         pickle.dump(grammar, open('./src/pickles/grammars/{}_{}_{}_{}.grammar'.format(name, clustering, selection, k), 'wb'))
 
@@ -159,28 +159,6 @@ def write_graph_stats(g, name, write_flag):
                     writer.writerow({})  # two blank rows after each k
 
 
-def write_edgelists(graphs, name, gname):
-    for i, g in enumerate(graphs):
-        nx.write_edgelist(g, './src/graph_comp/{}/{}_{}.g'.format(name, gname, i+1), data=False)
-
-
-def graph_generation(g):
-    name = g.name
-
-    if not os.path.isfile('./src/graph_comp/hrg/{}_1.g'.format(name)):
-        hrgs = hrg_wrapper(g, n=5)
-        write_edgelists(hrgs, 'hrg', name)
-
-    # bter = get_best(bter_graphs(g, n=5), g)
-    # nx.write_edgelist(bter, './graph_comp/{}_bter.g'.format(name))
-
-    # krons = kronecker2_random_graph()
-
-    if not os.path.isfile('./src/graph_comp/cl/{}_1.g'.format(name)):
-        chungs = chung_lu_graphs(g, n=5)
-        write_edgelists(chungs, 'cl', name)
-
-
 def parse_args():
     graph_names = [fname[: fname.find('.g')].split('/')[-1]
                    for fname in glob.glob('./src/tmp/*.g')]
@@ -207,8 +185,6 @@ def main():
     Driver method for VRG
     :return:
     """
-    # names = ('karate', 'lesmis', 'dolphins', 'football', 'eucore', 'GrQc', 'gnutella', 'wikivote')
-
     args = parse_args()
 
     name, clustering, mode, k, selection, outdir = args.graph, args.clustering, args.boundary, args.lamb,\
@@ -255,12 +231,11 @@ def main():
     else:
         print('Starting grammar induction: lambda: {}, boundary info: {}, selection: {}...'.format(k, mode, selection), end='\r')
         start_time = time()
-        grammar = funky_extract(g=deepcopy(g), root=deepcopy(root), k=k, mode=mode,
-                                selection=selection, clustering=clustering)
+        grammar = extract(g=deepcopy(g), root=deepcopy(root), k=k, mode=mode,
+                          selection=selection, clustering=clustering)
         end_time = time() - start_time
         pickle.dump(grammar, open(grammar_pickle, 'wb'))
         print('Grammar: lambda: {}, boundary info: {}, selection: {}. Generated in {} secs. Pickled as a VRG object.\n'.format(k, mode, selection, round(end_time, 3)))
-
 
     print('Generating {} graphs...'.format(args.n), end='\r')
     start_time = time()
