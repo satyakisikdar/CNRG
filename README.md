@@ -11,7 +11,7 @@ usage: runner.py [-h] [-g] [-c] [-b {full,part,no}] [-l LAMB] [-s] [-o OUTDIR]
 
 optional arguments:
   -h, --help            Show this help message and exit
-  -g, --graph           Name of the graph (default: karate)
+  -g, --graph           Name of the graph, looks in the ./src/tmp directory for the edge list (default: karate)
   -c, --clustering      Clustering method to use (default: louvain)
   -b {full,part,no}, --boundary {full,part,no}
                         Degree of boundary information to store (default: part)
@@ -20,3 +20,5 @@ optional arguments:
   -o , --outdir OUTDIR  Name of the output directory (default: output)
   -n N                  Number of graphs to generate (default: 5)
 ```
+
+Edge lists of new undirected graphs can be added in the `./src/temp/` directory with extension `.g`.
