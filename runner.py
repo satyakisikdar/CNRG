@@ -190,7 +190,7 @@ def main():
     name, clustering, mode, k, selection, outdir = args.graph, args.clustering, args.boundary, args.lamb,\
                                                    args.selection, args.outdir
 
-    if not os.path.isdir('./src/{}'.format(outdir)):  # make the output directory if it doesn't exist already
+    if not os.path.isdir('./{}'.format(outdir)):  # make the output directory if it doesn't exist already
         os.mkdir(outdir)
 
     print('Reading graph "{}"...'.format(name), end='\r')  # using \r allows to rewrite the current line
@@ -201,7 +201,7 @@ def main():
 
     print('Graph "{}", n: {}, m: {}, read in {} secs\n'.format(name, g.order(), g.size(), round(end_time, 3)))
 
-    tree_pickle = './src/{}/{}_{}_tree.pkl'.format(outdir, name, clustering)
+    tree_pickle = './{}/{}_{}_tree.pkl'.format(outdir, name, clustering)
     if os.path.exists(tree_pickle):
         print('Using existing pickle for {} clustering\n'.format(clustering))
         root = pickle.load(open(tree_pickle, 'rb'))
@@ -224,7 +224,7 @@ def main():
         pickle.dump(root, open(tree_pickle, 'wb'))
         print('{} clustering ran in {} secs. Pickled as a Tree object.\n'.format(clustering, round(end_time, 3)))
 
-    grammar_pickle = './src/{}/{}_{}_{}_{}_grammar.pkl'.format(outdir, name, clustering, selection, k)
+    grammar_pickle = './{}/{}_{}_{}_{}_grammar.pkl'.format(outdir, name, clustering, selection, k)
     if os.path.exists(grammar_pickle):
         print('Using existing pickle for grammar: lambda: {}, boundary info: {}, selection: {}.\n'.format(k, mode, selection))
         grammar = pickle.load(open(grammar_pickle, 'rb'))
@@ -242,7 +242,7 @@ def main():
     graphs = grammar.generate_graphs(count=args.n)
     end_time = time() - start_time
 
-    pickle.dump(graphs, open('./src/{}/{}_{}_{}_{}_graphs.pkl'.format(outdir, name, clustering, selection, k), 'wb'))
+    pickle.dump(graphs, open('./{}/{}_{}_{}_{}_graphs.pkl'.format(outdir, name, clustering, selection, k), 'wb'))
     print('{} graphs generated in {} secs. Pickled as a list of nx.Graph objects.'.format(args.n, round(end_time, 3)))
 
 
