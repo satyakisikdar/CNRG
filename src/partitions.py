@@ -4,17 +4,52 @@ Contains the different partition methods
 2. Node2vec hierarchical partition
 """
 
-import src.node2vec as n2v
 import  networkx as nx
 from scipy.cluster.hierarchy import linkage, to_tree, cophenet
 from scipy.spatial.distance import pdist
-import numpy as np
 import scipy.sparse.linalg
 from sklearn.cluster import KMeans
 import random
 import sklearn.preprocessing
+import subprocess
+from collections import defaultdict
 
+import src.node2vec as n2v
 from src.louvain import get_louvain_clusters
+
+def leiden_one_level(g):
+    if g.size() < 3 and nx.is_connected(g):
+        return list(g.nodes_iter())
+    g = nx.convert_node_labels_to_integers(g, label_attribute='old_label')
+    nx.write_edgelist(g, './src/leiden/graph.g', delimiter='\t', data=False)
+
+    subprocess.run('cd src/leiden; java -jar RunNetworkClustering.jar -q modularity -o clusters.txt graph.g', shell=True)
+
+    clusters = defaultdict(list)
+    old_label = nx.get_node_attributes(g, 'old_label')
+    with open('./src/leiden/clusters.txt') as f:
+        for line in f.readlines():
+            u, c_u = map(int, line.split())
+            clusters[c_u].append(old_label[u])
+    return clusters.values()
+
+
+def leiden(g):
+    tree = []
+
+    if g.order() < 2:
+        return [[n] for n in g.nodes_iter()]
+
+    clusters = leiden_one_level(g)
+    if len(clusters) == 1:
+        return [[n] for n in list(clusters)[0]]
+
+    for cluster in clusters:
+        sg = g.subgraph(cluster)
+        assert nx.is_connected(sg), "subgraph not connected"
+        tree.append(leiden(sg))
+
+    return tree
 
 
 def get_random_partition(g, seed=None):

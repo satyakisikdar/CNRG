@@ -6,10 +6,11 @@ class TreeNode:
         self.key = key   # key of the node, each node has an unique key
         self.level = 0  # level of the node
 
-        self.leaves = set()  # set of leaf nodes that are children
-        self.children = set()  # set of children
+        self.children = set()  # set of node labels of nodes in the subtree rooted at the node
+        self.leaves = set()  # set of children that are leaf nodes
 
-        self.parent = None
+
+        self.parent = None  # pointer to paren
         self.kids = []  # pointers to the children
 
         self.is_leaf = is_leaf  # True if it's a child, False otherwise
