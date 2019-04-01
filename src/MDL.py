@@ -7,7 +7,7 @@ import multiprocessing as mp
 
 def gamma_code(n):
     bits = np.log2(n)
-    return 2 * np.floor(bits) + 1
+    return 2 * bits + 1
 
 def nbits(x):
     """
@@ -17,7 +17,7 @@ def nbits(x):
     """
     if x == 0:
         return 0
-    return np.ceil(np.log2(x))
+    return np.log2(x)
 
 
 def graph_mdl(g, l_u=2):
