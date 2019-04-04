@@ -13,11 +13,13 @@ import random
 import sklearn.preprocessing
 import subprocess
 from collections import defaultdict
+import igraph as ig
+import leidenalg as la
 
 import src.node2vec as n2v
 from src.louvain import get_louvain_clusters
 
-def leiden_one_level(g):
+def leiden_one_level_old(g):
     if g.size() < 3 and nx.is_connected(g):
         return list(g.nodes_iter())
     g = nx.convert_node_labels_to_integers(g, label_attribute='old_label')
@@ -32,6 +34,25 @@ def leiden_one_level(g):
             u, c_u = map(int, line.split())
             clusters[c_u].append(old_label[u])
     return clusters.values()
+
+
+def leiden_one_level(g):
+    if g.size() < 3 and nx.is_connected(g):
+        return list(g.nodes_iter())
+
+    nx_g = nx.convert_node_labels_to_integers(g, label_attribute='old_label')
+    old_label = nx.get_node_attributes(nx_g, 'old_label')
+
+    ig_g = ig.Graph(directed=False)
+    ig_g.add_vertices(nx_g.order())
+    ig_g.add_edges(nx_g.edges_iter())
+    partition = la.find_partition(ig_g, partition_type=la.ModularityVertexPartition)
+    cover = tuple(partition.as_cover())
+
+    for cluster in cover:
+        for i, member in enumerate(cluster):
+            cluster[i] = old_label[member]
+    return cover
 
 
 def leiden(g):
@@ -50,6 +71,7 @@ def leiden(g):
         tree.append(leiden(sg))
 
     return tree
+
 
 
 def get_random_partition(g, seed=None):
