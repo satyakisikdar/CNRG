@@ -20,15 +20,15 @@ import argparse
 import glob
 
 sys.path.extend([os.getcwd(), os.path.dirname(os.getcwd()), './src'])
-
 import src.partitions as partitions
-from src.extract import extract
+from src.extract import extract, extract_mdl
 from src.Tree import create_tree
-
+from src.LightMultiGraph import LightMultiGraph
 
 def get_graph(filename='sample'):
     if filename == 'sample':
-        g = nx.MultiGraph()
+        # g = nx.MultiGraph()
+        g = nx.Graph()
         g.add_edges_from([(1, 2), (1, 3), (1, 5),
                           (2, 4), (2, 5), (2, 7),
                           (3, 4), (3, 5),
@@ -38,15 +38,20 @@ def get_graph(filename='sample'):
                           (8, 9)])
     elif filename == 'BA':
         g = nx.barabasi_albert_graph(10, 2, seed=42)
-        g = nx.MultiGraph(g)
+        # g = nx.MultiGraph(g)
+        g = nx.Graph()
     else:
-        g = nx.read_edgelist(filename, nodetype=int, create_using=nx.MultiGraph())
+        g = nx.read_edgelist(f'./src/tmp/{filename}.g', nodetype=int, create_using=nx.Graph())
+        # g = nx.MultiGraph(g)
         if not nx.is_connected(g):
             g = max(nx.connected_component_subgraphs(g), key=len)
         name = g.name
         g = nx.convert_node_labels_to_integers(g)
         g.name = name
-    return g
+
+    g_new = LightMultiGraph()
+    g_new.add_edges_from(g.edges_iter())
+    return g_new
 
 
 def parse_args():
@@ -59,7 +64,7 @@ def parse_args():
 
     # using choices we can control the inputs. metavar='' prevents printing the choices in the help preventing clutter
     parser.add_argument('-g', '--graph', help='Name of the graph', default='karate', choices=graph_names, metavar='')
-    parser.add_argument('-c', '--clustering', help='Clustering method to use', default='louvain',
+    parser.add_argument('-c', '--clustering', help='Clustering method to use', default='leiden',
                         choices=clustering_algs, metavar='')
     parser.add_argument('-b', '--boundary', help='Degree of boundary information to store', default='part',
                         choices=['full', 'part', 'no'])
@@ -79,9 +84,13 @@ def get_clustering(g, name, outdir, clustering):
     :param clustering: name of clustering method
     :return: root node of the dendrogram
     '''
-    tree_pickle = './{}/{}_{}_tree.pkl'.format(outdir, name, clustering)
+    tree_pickle = f'./{outdir}/{clustering}_tree.pkl'
+    if not os.path.exists(f'./{outdir}'):
+        os.makedirs(f'./{outdir}')
+
     if os.path.exists(tree_pickle):
         print('Using existing pickle for {} clustering\n'.format(clustering))
+
         root = pickle.load(open(tree_pickle, 'rb'))
     else:
         print('Running {} clustering...'.format(clustering), end='\r')
@@ -98,7 +107,9 @@ def get_clustering(g, name, outdir, clustering):
             list_of_list_clusters = partitions.spectral_kmeans(g, K=int(math.sqrt(g.order() // 2)))
         else:
             list_of_list_clusters = partitions.get_node2vec(g)
+
         root = create_tree(list_of_list_clusters)
+
         end_time = time() - start_time
 
         pickle.dump(root, open(tree_pickle, 'wb'))
@@ -106,7 +117,7 @@ def get_clustering(g, name, outdir, clustering):
     return root
 
 
-def get_grammar(g, name, outdir, clustering, selection, k, mode, root):
+def get_grammar(g, name, outdir, clustering, selection, lamb, mode, root):
     '''
     returns a VRG object of type 'mode'
     :param g: graph
@@ -114,23 +125,26 @@ def get_grammar(g, name, outdir, clustering, selection, k, mode, root):
     :param outdir: output directory
     :param clustering: name of clustering method
     :param selection: selection algorithm used
-    :param k: lambda
+    :param lamb: lambda
     :param mode: full, part, or no boundary info
     :param root: root of the dendrogram
     :return: VRG object
     '''
-    grammar_pickle = './{}/{}_{}_{}_{}_grammar.pkl'.format(outdir, name, clustering, selection, k)
+    grammar_pickle = f'./{outdir}/{clustering}_{mode}_{selection}_{lamb}.pkl'
+    if not os.path.exists(f'./{outdir}'):
+        os.makedirs(f'./{outdir}')
+
     if os.path.exists(grammar_pickle):
-        print('Using existing pickle for grammar: lambda: {}, boundary info: {}, selection: {}.\n'.format(k, mode, selection))
+        print('Using existing pickle for grammar: lambda: {}, boundary info: {}, selection: {}.\n'.format(lamb, mode, selection))
         grammar = pickle.load(open(grammar_pickle, 'rb'))
     else:
-        print('Starting grammar induction: lambda: {}, boundary info: {}, selection: {}...'.format(k, mode, selection), end='\r')
+        print('Starting grammar induction: lambda: {}, boundary info: {}, selection: {}...'.format(lamb, mode, selection), end='\r')
         start_time = time()
-        grammar = extract(g=deepcopy(g), root=deepcopy(root), k=k, mode=mode,
-                          selection=selection, clustering=clustering)
+        grammar = extract(g=deepcopy(g), root=deepcopy(root), lamb=lamb, mode=mode, selection=selection, clustering=clustering, name=name)
+        # grammar = extract_mdl(g=g.copy(), root=root, mode=mode, selection=selection, clustering=clustering, name=name)
         end_time = time() - start_time
         pickle.dump(grammar, open(grammar_pickle, 'wb'))
-        print('Grammar: lambda: {}, boundary info: {}, selection: {}. Generated in {} secs. Pickled as a VRG object.\n'.format(k, mode, selection, round(end_time, 3)))
+        print(f'Grammar: {grammar}. Generated in {round(end_time, 3)} secs. Pickled as a VRG object.\n')
     return grammar
 
 def main():
@@ -140,31 +154,40 @@ def main():
     """
     args = parse_args()
 
-    name, clustering, mode, k, selection, outdir = args.graph, args.clustering, args.boundary, args.lamb,\
+    name, clustering, mode, lamb, selection, outdir = args.graph, args.clustering, args.boundary, args.lamb,\
                                                    args.selection, args.outdir
 
     if not os.path.isdir('./{}'.format(outdir)):  # make the output directory if it doesn't exist already
         os.mkdir(outdir)
 
-    print('Reading graph "{}"...'.format(name), end='\r')  # using \r allows to rewrite the current line
     start_time = time()
-    g = get_graph('./src/tmp/{}.g'.format(name))
+    # g = get_graph('./src/tmp/{}.g'.format(name))
+    # name = 'eucore'
+    # clustering = 'leiden'
+    # selection = 'random'
+    # lamb = 5
+
+    g = get_graph(name)
     end_time = time() - start_time
-    g.name = name
 
     print('Graph "{}", n: {}, m: {}, read in {} secs\n'.format(name, g.order(), g.size(), round(end_time, 3)))
 
-    root = get_clustering(g=g, name=name, outdir=outdir, clustering=clustering)
+    root = get_clustering(g=g, name=name, outdir=f'{outdir}/trees/{name}', clustering=clustering)
 
-    grammar = get_grammar(g=g, name=name, outdir=outdir, clustering=clustering, k=k, mode=mode, selection=selection,
-                          root=root)
+    grammar = get_grammar(g=g, name=name, outdir=f'{outdir}/grammars/{name}', clustering=clustering, lamb=lamb, mode=mode,
+                          selection=selection, root=root)
+
 
     print('Generating {} graphs...'.format(args.n), end='\r')
     start_time = time()
     graphs = grammar.generate_graphs(count=args.n)
     end_time = time() - start_time
 
-    pickle.dump(graphs, open('./{}/{}_{}_{}_{}_graphs.pkl'.format(outdir, name, clustering, selection, k), 'wb'))
+    gen_path = f'./{outdir}/graphs/{name}/{clustering}_{selection}_{lamb}_{args.n}_graphs.pkl'
+    if not os.path.exists(f'./{outdir}/graphs/{name}'):
+        os.makedirs(f'./{outdir}/graphs/{name}')
+
+    # pickle.dump(graphs, open(gen_path, 'wb'))
     print('{} graphs generated in {} secs. Pickled as a list of nx.Graph objects.'.format(args.n, round(end_time, 3)))
 
 
