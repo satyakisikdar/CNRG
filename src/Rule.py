@@ -1,5 +1,7 @@
 import networkx as nx
 import src.MDL as MDL
+import networkx.algorithms.isomorphism as iso
+
 
 class BaseRule:
     """
@@ -42,7 +44,9 @@ class BaseRule:
         g1 = nx.convert_node_labels_to_integers(self.graph)
         g2 = nx.convert_node_labels_to_integers(other.graph)
         return self.lhs == other.lhs \
-                and nx.is_isomorphic(g1, g2)
+               and nx.fast_could_be_isomorphic(g1, g2)
+                # and nx.is_isomorphic(g1, g2, edge_match=iso.numerical_edge_match('weight', 1.0))
+
 
     def __hash__(self):
         g = nx.freeze(self.graph)
@@ -167,14 +171,16 @@ class PartRule(BaseRule):
         :param self: RHS subgraph
         :return:
         """
-        mapping = {}
-        internal_node_counter = 'a'
+        return
+        # mapping = {}
+        # internal_node_counter = 'a'
+        #
+        # for n in self.graph.nodes_iter():
+        #     mapping[n] = internal_node_counter
+        #     internal_node_counter = chr(ord(internal_node_counter) + 1)
+        #
+        # nx.relabel_nodes(self.graph, mapping=mapping, copy=False)
 
-        for n in self.graph.nodes_iter():
-            mapping[n] = internal_node_counter
-            internal_node_counter = chr(ord(internal_node_counter) + 1)
-
-        self.graph = nx.relabel_nodes(self.graph, mapping=mapping)
 
     def calculate_cost(self):
         """

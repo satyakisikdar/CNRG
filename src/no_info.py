@@ -14,7 +14,7 @@ from src.Rule import NoRule as Rule
 from src.globals import find_boundary_edges
 
 
-def generate_graph(rule_dict):
+def generate_graph(rule_dict, rule_list):
     """
     Create a new graph from the VRG at random
     :param rule_dict: List of unique VRG rules
@@ -32,6 +32,8 @@ def generate_graph(rule_dict):
     # non_terminals.add(0)
     non_terminals[0] = 0  # non-terminal 0 has size 0
 
+    rule_ordering = []
+
     while len(non_terminals) > 0:  # continue until no more non-terminal nodes
         # choose a non terminal node at random
         sampled_node = random.sample(non_terminals.keys(), 1)[0]
@@ -46,6 +48,7 @@ def generate_graph(rule_dict):
             idx = int(np.random.choice(range(len(rhs_candidates)), size=1, p=weights))  # pick based on probability
             rhs = rhs_candidates[idx]
 
+        rule_ordering.append(rule_list.index(rhs))
         # find the broken edges
         broken_edges = find_boundary_edges(new_g, [sampled_node])
 
@@ -110,4 +113,4 @@ def generate_graph(rule_dict):
             # print('adding boundary edge ({}, {})'.format(u, v))
             new_g.add_edge(u, v)
 
-    return new_g
+    return new_g, rule_ordering

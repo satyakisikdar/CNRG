@@ -27,7 +27,7 @@ def deduplicate_edges(edges):
     return uniq_edges
 
 
-def generate_graph(rule_dict):
+def generate_graph(rule_dict, rule_list):
     """
     Create a new graph from the VRG at random
     :param rule_dict: List of unique VRG rules
@@ -39,6 +39,8 @@ def generate_graph(rule_dict):
 
     new_g.add_node(0, attr_dict={'label': 0})
     non_terminals.add(0)
+
+    rule_ordering = []
 
     while len(non_terminals) > 0:      # continue until no more non-terminal nodes exist
         # choose a non terminal node at random
@@ -53,6 +55,8 @@ def generate_graph(rule_dict):
             weights = weights / np.sum(weights)   # normalize into probabilities
             idx = int(np.random.choice(range(len(rhs_candidates)), size=1, p=weights))  # pick based on probability
             rhs = rhs_candidates[idx]
+
+        rule_ordering.append(rule_list.index(rhs))
 
         max_v = -1
         for v in rhs.graph.nodes_iter():
@@ -124,4 +128,4 @@ def generate_graph(rule_dict):
                 else:
                     new_g.add_edge(nodes[v], b_u)
 
-    return new_g
+    return new_g, rule_ordering

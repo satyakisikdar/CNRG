@@ -1,5 +1,7 @@
 from collections import defaultdict
 from time import time
+import os
+
 import src.full_info as full_info
 import src.part_info as part_info
 import src.no_info as no_info
@@ -8,9 +10,10 @@ class VRG:
     """
     Class for Vertex Replacement Grammars
     """
-    def __init__(self, mode, k, selection, clustering):
+    def __init__(self, mode, selection, clustering, name, lamb=None):
+        self.name = name  # name of the graph
         self.mode = mode  # type of VRG - full, part, or no
-        self.k = k
+        self.lamb = lamb
         self.selection = selection  # selection strategy - random, mdl, level, or mdl_levels
         self.clustering = clustering  # clustering strategy
 
@@ -27,8 +30,8 @@ class VRG:
     def __str__(self):
         if self.mdl == 0:
             self.calculate_cost()
-        return '{} {} {} {} {} rules, {} bits'.format(self.mode, self.clustering, self.selection,
-                                                      self.k, len(self.rule_list), self.mdl)
+        return 'mode: {} clustering: {} selection: {} lambda: {} rules: {} mdl: {} bits'.format(self.mode, self.clustering, self.selection,
+                                                      self.lamb, len(self.rule_list), round(self.mdl, 3))
 
     def add_rule(self, rule):
         # adds to the grammar iff it's a new rule
@@ -71,9 +74,17 @@ class VRG:
 
         graphs = []
 
-        for _ in range(count):
+        if not os.path.exists(f'./output/rule_orders/{self.name}'):
+            os.makedirs(f'./output/rule_orders/{self.name}')
+
+        for i in range(count):
             # start_time = time()
-            h = generate_graph(self.rule_dict)
+            h, rule_ordering = generate_graph(self.rule_dict, self.rule_list)
+
+            with open(f'./output/stats/{self.name}_{self.clustering}_{self.selection}_{self.lamb}_sizes.txt', 'a') as f:
+                f.write(f'{h.order()}, {h.size()}\n')
+                # f.write(','.join(map(str, rule_ordering)) + '\n')
+
             # t = time() - start_time
             graphs.append(h)
             # print('n = {} m = {} ({} secs)'.format(h.order(), h.size(), round(t, 3)))

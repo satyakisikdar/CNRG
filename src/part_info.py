@@ -7,10 +7,12 @@ Partial boundary information containing node level info on boundary degree
 import networkx as nx
 import random
 import numpy as np
+
 from copy import deepcopy
 
 from src.Rule import PartRule as Rule
 from src.globals import find_boundary_edges
+from src.LightMultiGraph import LightMultiGraph
 
 def set_boundary_degrees(g, sg):
     """
@@ -32,7 +34,7 @@ def set_boundary_degrees(g, sg):
     nx.set_node_attributes(sg, 'b_deg', boundary_degree)
 
 
-def generate_graph(rule_dict):
+def generate_graph(rule_dict, rule_list):
     """
     Create a new graph from the VRG at random
     :param rule_dict: List of unique VRG rules
@@ -41,10 +43,13 @@ def generate_graph(rule_dict):
 
     node_counter = 1
     non_terminals = set()
-    new_g = nx.MultiGraph()
+    # new_g = nx.MultiGraph()
+    new_g = LightMultiGraph()
 
     new_g.add_node(0, attr_dict={'label': 0})
     non_terminals.add(0)
+
+    rule_ordering = []  # list of rule ids in the order they were fired
 
     while len(non_terminals) > 0:      # continue until no more non-terminal nodes
         # choose a non terminal node at random
@@ -60,6 +65,8 @@ def generate_graph(rule_dict):
             idx = int(np.random.choice(range(len(rhs_candidates)), size=1, p=weights))  # pick based on probability
             rhs = rhs_candidates[idx]
 
+        # print(f'firing rule {rule_list.index(rhs)}')
+        # rule_ordering.append(rule_list.index(rhs))
         # print('Selected node {} with label {}'.format(node_sample, lhs))
 
         broken_edges = find_boundary_edges(new_g, [node_sample])
@@ -108,5 +115,7 @@ def generate_graph(rule_dict):
         # adding the rhs to the new graph
         for u, v in rhs.graph.edges_iter():
             # print('adding RHS internal edge ({}, {})'.format(nodes[u], nodes[v]))
-            new_g.add_edge(nodes[u], nodes[v])
-    return new_g
+            edge_multiplicity = rhs.graph[u][v]['weight']  #
+            for _ in range(edge_multiplicity):
+                new_g.add_edge(nodes[u], nodes[v])
+    return new_g, rule_ordering
