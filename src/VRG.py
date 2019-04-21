@@ -1,6 +1,7 @@
 from collections import defaultdict
 from time import time
 import os
+from typing import List, Any
 
 import src.full_info as full_info
 import src.part_info as part_info
@@ -11,15 +12,16 @@ class VRG:
     Class for Vertex Replacement Grammars
     """
     def __init__(self, mode, selection, clustering, name, lamb=None):
-        self.name = name  # name of the graph
-        self.mode = mode  # type of VRG - full, part, or no
-        self.lamb = lamb
-        self.selection = selection  # selection strategy - random, mdl, level, or mdl_levels
-        self.clustering = clustering  # clustering strategy
+        self.name: str = name  # name of the graph
+        self.mode: str = mode  # type of VRG - full, part, or no
+        self.lamb: int = lamb
+        self.selection: str = selection  # selection strategy - random, mdl, level, or mdl_levels
+        self.clustering: str = clustering  # clustering strategy
 
         self.rule_list = []   # list of Rule objects
         self.rule_dict = defaultdict(list)  # dictionary of rules, keyed in by their LHS
         self.mdl = 0  # the MDL of the rules
+        self.active_rules = 0  # number of active rules
 
     def __len__(self):
         return len(self.rule_list)
@@ -30,26 +32,37 @@ class VRG:
     def __str__(self):
         if self.mdl == 0:
             self.calculate_cost()
-        return 'mode: {} clustering: {} selection: {} lambda: {} rules: {} mdl: {} bits'.format(self.mode, self.clustering, self.selection,
-                                                      self.lamb, len(self.rule_list), round(self.mdl, 3))
+        return 'mode: {} clustering: {} selection: {} lambda: {} rules: {}({}) mdl: {} bits'.format(self.mode, self.clustering, self.selection,
+                                                      self.lamb, self.active_rules, len(self.rule_list), round(self.mdl, 3))
 
     def add_rule(self, rule):
         # adds to the grammar iff it's a new rule
-        isomorphic = False
+        # returns the rule id
+
         for old_rule in self.rule_dict[rule.lhs]:
             if rule == old_rule:  # check for isomorphism
                 old_rule.frequency += 1
-                isomorphic = True
-                break
+                assert old_rule.id != -1, 'invalid rule id'
+                return old_rule.id
 
-        if not isomorphic:
-            self.rule_list.append(rule)  # add the rule to the list of rules
-            self.rule_dict[rule.lhs].append(rule)  # add the rule to the rule dictionary
+        rule.id = len(self.rule_list)
+        self.rule_list.append(rule)  # add the rule to the list of rules
+        self.rule_dict[rule.lhs].append(rule)  # add the rule to the rule dictionary
+        self.active_rules += 1
+
+        return rule.id
+
+    def deactivate_rule(self, rule_id):
+        rule = self.rule_list[rule_id]
+        if rule.is_active:
+            rule.deactivate()
+            self.active_rules -= 1
 
     def calculate_cost(self):
         for rule in self.rule_list:
-            rule.calculate_cost()
-            self.mdl += rule.cost
+            if rule.is_active:  # only count if rules are active
+                rule.calculate_cost()
+                self.mdl += rule.cost
 
     def get_cost(self):
         # if self.mdl != 0:  # the cost has been computed before

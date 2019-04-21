@@ -10,6 +10,7 @@ from time import time
 from copy import deepcopy
 from tqdm import tqdm
 from typing import List, Tuple, Dict, DefaultDict, Set, Any
+import logging
 
 from src.Rule import FullRule
 from src.Rule import NoRule
@@ -22,6 +23,27 @@ from src.Tree import TreeNode
 from src.MDL import graph_mdl
 
 
+class Record:
+    def __init__(self, rule_id):
+        self.tnodes_list = []
+        self.rule_id = rule_id
+        self.frequency = 0  # number of times we have seen this rule_id
+        self.boundary_edges_list = []
+        self.subtree_list = []
+
+    def update(self, boundary_edges, subtree, tnode):
+        self.frequency += 1
+        self.boundary_edges_list.append(tuple(boundary_edges))
+        self.subtree_list.append(tuple(subtree))
+        self.tnodes_list.append(tnode)
+
+    def __repr__(self):
+        return f'{self.rule_id};>{self.tnodes_list}'
+
+    def __str__(self):
+        return f'{self.rule_id};>{self.tnodes_list}'
+
+
 def node_score_lambda(internal_node: TreeNode, lamb: int) -> int:
     '''
     returns the score of an internal node
@@ -30,15 +52,6 @@ def node_score_lambda(internal_node: TreeNode, lamb: int) -> int:
     :return:
     '''
     return abs(internal_node.nleaf - lamb)
-
-
-def node_score_mdl(g: LightMultiGraph, subtree: List[int], mode: str):
-    g_copy = g.copy()
-
-    # step 1: find mdl of the rule's RHS graph
-    rule, boundary_edges = create_rule(subtree, g_copy, mode)
-
-    # step 2: find mdl of the graph after compression
 
 
 def get_buckets(root: TreeNode, lamb: int) -> Tuple[Set[Any], DefaultDict[float, Any], Dict[float, Any]]:
@@ -97,8 +110,8 @@ def update_parents(node: TreeNode, buckets: DefaultDict[float, Any], node2bucket
     return
 
 
-def extract_subtree(lamb: int, buckets: DefaultDict[float, Any], node2bucket: Dict[Any, int], active_nodes: Set[Any],
-                    key2node: Dict[Any, TreeNode], g: LightMultiGraph, mode: str, grammar: VRG, selection: str) -> Tuple[List[int], Set[int]]:
+def extract_subtree_original(lamb: int, buckets: DefaultDict[float, Any], node2bucket: Dict[Any, int], active_nodes: Set[Any],
+                             key2node: Dict[Any, TreeNode], g: LightMultiGraph, mode: str, grammar: VRG, selection: str) -> Tuple[List[int], Set[int]]:
     """
     :param lamb: size of subtree to be collapsed
     :param buckets: mapping of val -> set of internal nodes in the tree
@@ -245,7 +258,7 @@ def compress_graph(g: LightMultiGraph, subtree: List[int], boundary_edges: List[
         g.add_edge(u, v)
 
 
-def extract(g: LightMultiGraph, root: TreeNode, lamb: int, selection: str, mode: str, clustering: str, name: str) -> VRG:
+def extract_original(g: LightMultiGraph, root: TreeNode, lamb: int, selection: str, mode: str, clustering: str, name: str) -> VRG:
     """
     Runner function for the funcky extract
     :param g: graph
@@ -268,9 +281,9 @@ def extract(g: LightMultiGraph, root: TreeNode, lamb: int, selection: str, mode:
 
     with tqdm(total=100, bar_format='{l_bar}{bar}|[{elapsed}<{remaining}]', ncols=50) as pbar:
         while True:
-            subtree, active_nodes = extract_subtree(lamb=lamb, buckets=buckets, node2bucket=node2bucket, key2node=key2node,
-                                                    active_nodes=active_nodes, g=g, mode=mode, grammar=grammar,
-                                                    selection=selection)
+            subtree, active_nodes = extract_subtree_original(lamb=lamb, buckets=buckets, node2bucket=node2bucket, key2node=key2node,
+                                                             active_nodes=active_nodes, g=g, mode=mode, grammar=grammar,
+                                                             selection=selection)
             # print('Subtree: ', subtree)
             if subtree is None:
                 break
@@ -295,7 +308,7 @@ def extract(g: LightMultiGraph, root: TreeNode, lamb: int, selection: str, mode:
     return grammar
 
 
-def extract_subtree_mdl(g: LightMultiGraph, root: TreeNode, mode: str):
+def extract_subtree_local(g: LightMultiGraph, root: TreeNode, mode: str) -> List[int]:
     '''
     extract the subtree based on mdl
     :param g:
@@ -310,11 +323,11 @@ def extract_subtree_mdl(g: LightMultiGraph, root: TreeNode, mode: str):
     best_node = None
     best_score = float('-inf')
 
+    mdl_g = graph_mdl(g)
+    g_copy = g.copy()
+
     while len(stack) != 0:
         node =  stack.pop()
-        g_copy = g.copy()
-        mdl_g = graph_mdl(g_copy)
-
         subtree = node.leaves & active_nodes
 
         rule, boundary_edges = create_rule(subtree, g_copy, mode)
@@ -325,7 +338,8 @@ def extract_subtree_mdl(g: LightMultiGraph, root: TreeNode, mode: str):
         compress_graph(g_copy, subtree, boundary_edges)
         mdl_g_s = graph_mdl(g_copy)
         score = mdl_g / (mdl_g_s + mdl_s)
-        # print(f'node: {node.key}, subtree: {subtree}, rule: {rule}, score: {round(score, 3)}')
+        # score = mdl_g_s + mdl_s
+        logging.debug(f'node: {node.key}, subtree: {subtree}, rule: {rule}, score: {round(score, 3)}')
 
         if score > best_score:
             best_score = score
@@ -334,26 +348,28 @@ def extract_subtree_mdl(g: LightMultiGraph, root: TreeNode, mode: str):
         for kid in node.kids:
             if not kid.is_leaf:  # don't add to the bucket if it's a leaf
                 stack.append(kid)
-    print(f'best node: {best_node}, score: {round(best_score, 3)}')
+    logging.warning(f'best node: {best_node}, score: {round(best_score, 3)}')
+
     # step 2: pick largest
     best_subtree = best_node.leaves & active_nodes
 
     # step 3: update the tree
     best_node.make_leaf(new_key=min(best_subtree))
+
     return best_subtree
 
 
-def extract_mdl(g: LightMultiGraph, root: TreeNode, selection: str, mode: str, clustering: str, name: str) -> VRG:
+def extract_local(g: LightMultiGraph, root: TreeNode, selection: str, mode: str, clustering: str, name: str) -> VRG:
     '''
-    # do the funky MDL thing
+    # do the local MDL thing
 
     :return:
     '''
     grammar = VRG(mode=mode, selection=selection, clustering=clustering, name=name)
 
     while True:
-        subtree = extract_subtree_mdl(g, root, mode)
-        print('subtree:', subtree)
+        subtree = extract_subtree_local(g, root, mode)
+        # print('subtree:', subtree)
 
         rule, boundary_edges = create_rule(subtree, g, mode)
         grammar.add_rule(rule)
@@ -361,4 +377,163 @@ def extract_mdl(g: LightMultiGraph, root: TreeNode, selection: str, mode: str, c
 
         if g.order() == 1:
             break
+    return grammar
+
+
+def update_ancestor_rules(grammar: VRG, g: LightMultiGraph, tnode: TreeNode, tnode_to_record: Dict[TreeNode, Record],
+                          mode: str) -> None:
+    '''
+
+    :param grammar:
+    :param g:
+    :param tnode:
+    :return:
+    '''
+    # TODO: 1. get the rule from the grammar - reset
+
+    initial_tnode = tnode
+    new_key = min(initial_tnode.leaves)  # this becomes the new leaf node
+    leaves = initial_tnode.leaves  # leaf nodes
+
+    children = initial_tnode.children  # children includes all the leaf nodes
+    children.add(initial_tnode.key)  # add this to make the updation easier
+    children.remove(new_key)  # remove this from the children
+
+    nleaf = initial_tnode.nleaf
+    initial_tnode.make_leaf(new_key=new_key)  # make the initial node a leaf
+
+    # TODO: step 1: update the tree data structure
+    while tnode.parent is not None:
+        tnode.parent.nleaf -= nleaf - 1  # since all the children of the tnode disappears, but the tnode remains
+        tnode.parent.leaves -= leaves
+        tnode.parent.leaves.add(new_key)
+        tnode.parent.children -= children
+
+        tnode = tnode.parent
+
+    # TODO: step 2: update the rules in the grammar using the new subtrees and update the corresponding mapping too
+    active_nodes = set(g.nodes_iter())
+    tnode = initial_tnode
+
+    while tnode.parent is not None:
+        tnode = tnode.parent  # tnode is not its parent
+        subtree = tnode.leaves & active_nodes
+        logging.debug(f'{tnode}, {subtree}')
+
+        # create a new rule
+        new_rule, boundary_edges = create_rule(g=g, mode=mode, subtree=subtree)
+
+        # replace existing rule in the grammar with the new rule
+        existing_rule_id = tnode_to_record[tnode].rule_id
+        grammar.rule_list[existing_rule_id] = new_rule
+
+        # update tnode_to_record and rule_id_to_records data structures
+        # existing_record = tnode_to_record[tnode]
+
+    return
+
+
+def prune_descendant_rules(grammar: VRG, tnode: TreeNode, tnode_to_record: Dict[TreeNode, Record]) -> None:
+    for child in tnode.children:
+        if child in tnode_to_record:
+            record = tnode_to_record[child]
+            grammar.deactivate_rule(record.rule_id)
+
+
+def extract_subtree_global(g: LightMultiGraph, root: TreeNode, mode: str, grammar: VRG) -> Any:
+    active_nodes = set(g.nodes_iter())
+    stack: List[TreeNode] = [root]
+
+    # TODO step 1: compute the mapping between the internal nodes in the tree and rules
+    rule_id_to_records: Dict[Any, Record] = {}  # maps rule_id -> records
+    tnode_to_record: Dict[Any, Record] = {}   # maps tree tnode -> rules
+
+    while len(stack) != 0:
+        tnode =  stack.pop()
+        subtree = tnode.leaves & active_nodes
+
+        rule, boundary_edges = create_rule(g=g.copy(), mode=mode, subtree=subtree)
+        rule_id = grammar.add_rule(rule)  # gets the rule id
+
+        if rule_id in rule_id_to_records:  # the rule_id has already been seen before
+            rule_id_to_records[rule_id].update(boundary_edges=boundary_edges, subtree=subtree, tnode=tnode)
+        else:  # new rule_id
+            record = Record(rule_id=rule_id)
+            record.update(boundary_edges=boundary_edges, subtree=subtree, tnode=tnode)
+            rule_id_to_records[rule_id] = record
+
+        new_rec = Record(rule_id=rule_id)
+        new_rec.update(boundary_edges=boundary_edges, subtree=subtree, tnode=tnode)
+        tnode_to_record[tnode] = new_rec
+
+        logging.debug(f'tnode: {tnode.key}, subtree: {subtree}, rule {rule_id}: {rule}')
+
+        for kid in tnode.kids:
+            if not kid.is_leaf:  # don't add to the bucket if it's a leaf
+                stack.append(kid)
+
+    # print('node_rule_to_subtrees_boundary_edges:', rule_id_to_records)
+
+    # TODO Step 2: compress the subtrees for each unique rule to find the scores
+    best_score = float('-inf')
+    best_record_graph = None
+
+    mdl_graph = graph_mdl(g)
+    for rule_id, record in rule_id_to_records.items():
+        rule = grammar.rule_list[rule_id]
+        g_copy = g.copy()
+        rule.calculate_cost()
+        mdl_rule = rule.cost
+
+        # compress all subtrees for a rule
+        for subtree, boundary_edges in zip(record.subtree_list, record.boundary_edges_list):
+            # print(f'{subtree}, {boundary_edges}')
+            compress_graph(g=g_copy, boundary_edges=boundary_edges, subtree=subtree)
+
+        mdl_graph_rule = graph_mdl(g_copy)
+        score = mdl_graph / (mdl_graph_rule + mdl_rule)
+        # score = mdl_graph_rule + mdl_rule
+
+        logging.debug(f'Rule {rule.id}, score: {round(score, 3)}')
+        # if rule.id == 3:
+        #     score = 1000
+
+        if score > best_score:
+            best_score = score
+            best_record_graph = record, g_copy
+
+    #
+    best_record, best_graph = best_record_graph
+    logging.warning(f'Best rule {best_record.rule_id}, max score: {round(best_score, 3)}, best tnodes: {best_record.tnodes_list}')
+
+
+    # TODO step 4: update the tree - remove descendant grammar rules & update ancestor rules
+    for tnode in best_record.tnodes_list:
+        prune_descendant_rules(grammar=grammar, tnode=tnode, tnode_to_record=tnode_to_record)
+        update_ancestor_rules(grammar=grammar, g=best_graph, tnode=tnode, tnode_to_record=tnode_to_record, mode=mode)
+
+    # TODO step 5: compress the original graph
+    for subtree, boundary_edges in zip(best_record.subtree_list, best_record.boundary_edges_list):
+        compress_graph(g=g, subtree=subtree, boundary_edges=boundary_edges)
+
+    return grammar
+
+
+def extract_global(g: LightMultiGraph, root: TreeNode, selection: str, mode: str, clustering: str, name: str) -> VRG:
+    '''
+    do the global MDL
+    '''
+    grammar = VRG(mode=mode, selection=selection, clustering=clustering, name=name)
+    num_nodes = g.order()
+
+    with tqdm(total=100, bar_format='{l_bar}{bar}|[{elapsed}<{remaining}]', ncols=50) as pbar:
+        while True:
+            grammar = extract_subtree_global(g, root, mode, grammar)
+            percent = (1 -  (g.order() - 1)/(num_nodes-1)) * 100
+            pbar.update(percent - pbar.n)
+
+            if g.order() == 1:
+                break
+        #     print(f'rule {rule_id}, subtrees: {subtrees}')
+
     return grammar

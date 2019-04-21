@@ -24,12 +24,17 @@ def graph_mdl(g, l_u=2):
     """
      Get MDL for graphs using Gamma coding
      :param g: graph
-     :param l_u: number of unique labels in the graph - general graphs - 2, RHS graphs - 4 (2 types of nodes,
-     2 types of edges)
+     :param l_u: number of unique labels in the graph - general graphs - 2, RHS graphs - 3 (2 types of nodes,
+     1 type of edge)
      :return: Length in bits to represent graph g in binary
     """
     n = g.order()
     m = g.size()
+
+    for node, data in g.nodes_iter(data=True):
+        if 'label' in data:
+            l_u = 3
+            break
 
     # encoding the nodes
     mdl_v = nbits(n) + n * nbits(l_u)

@@ -7,7 +7,7 @@ import scipy.stats
 import scipy.spatial
 import numpy as np
 
-def GCD(h1, h2, mode='rage'):
+def GCD(h1, h2, mode='orca'):
     if mode == 'rage':
         df_g = external_rage(h1, '{}_o'.format(h1.name))
         df_h = external_rage(h2, '{}_t'.format(h2.name))

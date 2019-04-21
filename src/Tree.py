@@ -10,12 +10,14 @@ class TreeNode:
         self.leaves = set()  # set of children that are leaf nodes
 
 
-        self.parent = None  # pointer to paren
+        self.parent = None  # pointer to parent
         self.kids = []  # pointers to the children
 
         self.is_leaf = is_leaf  # True if it's a child, False otherwise
         self.nleaf = 0   # number of leaves
 
+    def __eq__(self, other):
+        return self.key == other
 
     def __str__(self):
         if self.parent is None:
