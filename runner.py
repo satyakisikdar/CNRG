@@ -18,12 +18,17 @@ import math
 import pickle
 import argparse
 import glob
+import logging
 
 sys.path.extend([os.getcwd(), os.path.dirname(os.getcwd()), './src'])
 import src.partitions as partitions
-from src.extract import extract, extract_mdl
+from src.extract import extract_original, extract_local, extract_global
 from src.Tree import create_tree
 from src.LightMultiGraph import LightMultiGraph
+
+
+logging.basicConfig(level=logging.WARNING,
+                    format="%(message)s")
 
 def get_graph(filename='sample'):
     if filename == 'sample':
@@ -130,21 +135,25 @@ def get_grammar(g, name, outdir, clustering, selection, lamb, mode, root):
     :param root: root of the dendrogram
     :return: VRG object
     '''
-    grammar_pickle = f'./{outdir}/{clustering}_{mode}_{selection}_{lamb}.pkl'
-    if not os.path.exists(f'./{outdir}'):
-        os.makedirs(f'./{outdir}')
+    # grammar_pickle = f'./{outdir}/{clustering}_{mode}_{selection}_{lamb}.pkl'
+    # if not os.path.exists(f'./{outdir}'):
+    #     os.makedirs(f'./{outdir}')
+    #
+    # if os.path.exists(grammar_pickle):
+    #     print('Using existing pickle for grammar: lambda: {}, boundary info: {}, selection: {}.\n'.format(lamb, mode, selection))
+    #     grammar = pickle.load(open(grammar_pickle, 'rb'))
+    # else:
+    print('Starting grammar induction: lambda: {}, boundary info: {}, selection: {}...'.format(lamb, mode, selection), end='\r')
+    start_time = time()
+    # grammar = extract_original(g=deepcopy(g), root=deepcopy(root), lamb=lamb, selection=selection, mode=mode,
+    #                            clustering=clustering, name=name)
 
-    if os.path.exists(grammar_pickle):
-        print('Using existing pickle for grammar: lambda: {}, boundary info: {}, selection: {}.\n'.format(lamb, mode, selection))
-        grammar = pickle.load(open(grammar_pickle, 'rb'))
-    else:
-        print('Starting grammar induction: lambda: {}, boundary info: {}, selection: {}...'.format(lamb, mode, selection), end='\r')
-        start_time = time()
-        grammar = extract(g=deepcopy(g), root=deepcopy(root), lamb=lamb, mode=mode, selection=selection, clustering=clustering, name=name)
-        # grammar = extract_mdl(g=g.copy(), root=root, mode=mode, selection=selection, clustering=clustering, name=name)
-        end_time = time() - start_time
-        pickle.dump(grammar, open(grammar_pickle, 'wb'))
-        print(f'Grammar: {grammar}. Generated in {round(end_time, 3)} secs. Pickled as a VRG object.\n')
+    # grammar = extract_local(g=g.copy(), root=root, mode=mode, selection=selection, clustering=clustering, name=name)
+    grammar = extract_global(g=g.copy(), clustering=clustering, mode=mode, name=name, root=root, selection=selection)
+
+    end_time = time() - start_time
+    # pickle.dump(grammar, open(grammar_pickle, 'wb'))
+    print(f'Grammar: {grammar}. Generated in {round(end_time, 3)} secs. Pickled as a VRG object.\n')
     return grammar
 
 def main():
@@ -162,10 +171,10 @@ def main():
 
     start_time = time()
     # g = get_graph('./src/tmp/{}.g'.format(name))
-    # name = 'eucore'
-    # clustering = 'leiden'
-    # selection = 'random'
-    # lamb = 5
+    name = 'eucore'
+    clustering = 'leiden'
+    selection = 'random'
+    lamb = 5
 
     g = get_graph(name)
     end_time = time() - start_time
@@ -178,17 +187,17 @@ def main():
                           selection=selection, root=root)
 
 
-    print('Generating {} graphs...'.format(args.n), end='\r')
-    start_time = time()
+    # print('Generating {} graphs...'.format(args.n), end='\r')
+    # start_time = time()
     graphs = grammar.generate_graphs(count=args.n)
-    end_time = time() - start_time
-
-    gen_path = f'./{outdir}/graphs/{name}/{clustering}_{selection}_{lamb}_{args.n}_graphs.pkl'
-    if not os.path.exists(f'./{outdir}/graphs/{name}'):
-        os.makedirs(f'./{outdir}/graphs/{name}')
-
-    # pickle.dump(graphs, open(gen_path, 'wb'))
-    print('{} graphs generated in {} secs. Pickled as a list of nx.Graph objects.'.format(args.n, round(end_time, 3)))
+    # end_time = time() - start_time
+    #
+    # gen_path = f'./{outdir}/graphs/{name}/{clustering}_{selection}_{lamb}_{args.n}_graphs.pkl'
+    # if not os.path.exists(f'./{outdir}/graphs/{name}'):
+    #     os.makedirs(f'./{outdir}/graphs/{name}')
+    #
+    # # pickle.dump(graphs, open(gen_path, 'wb'))
+    # print('{} graphs generated in {} secs. Pickled as a list of nx.Graph objects.'.format(args.n, round(end_time, 3)))
 
 
 if __name__ == '__main__':
