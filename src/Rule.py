@@ -93,6 +93,8 @@ class BaseRule:
     def deactivate(self):
         self.is_active = False
 
+    def activate(self):
+        self.is_active = True
 
 class FullRule(BaseRule):
     """

@@ -27,7 +27,7 @@ from src.Tree import create_tree
 from src.LightMultiGraph import LightMultiGraph
 
 
-logging.basicConfig(level=logging.WARNING,
+logging.basicConfig(level=logging.DEBUG,
                     format="%(message)s")
 
 def get_graph(filename='sample'):
@@ -148,8 +148,8 @@ def get_grammar(g, name, outdir, clustering, selection, lamb, mode, root):
     # grammar = extract_original(g=deepcopy(g), root=deepcopy(root), lamb=lamb, selection=selection, mode=mode,
     #                            clustering=clustering, name=name)
 
-    # grammar = extract_local(g=g.copy(), root=root, mode=mode, selection=selection, clustering=clustering, name=name)
-    grammar = extract_global(g=g.copy(), clustering=clustering, mode=mode, name=name, root=root, selection=selection)
+    grammar = extract_local(g=g.copy(), root=root, mode=mode, selection=selection, clustering=clustering, name=name)
+    # grammar = extract_global(g=g.copy(), clustering=clustering, mode=mode, name=name, root=root, selection=selection)
 
     end_time = time() - start_time
     # pickle.dump(grammar, open(grammar_pickle, 'wb'))
