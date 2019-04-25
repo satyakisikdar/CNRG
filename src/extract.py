@@ -2,25 +2,22 @@
 VRG extraction
 """
 
+import logging
 import random
 from collections import defaultdict
-import networkx as nx
-import numpy as np
-from time import time
-from copy import deepcopy
-from tqdm import tqdm
 from typing import List, Tuple, Dict, DefaultDict, Set, Any
-import logging
 
+from tqdm import tqdm
+
+from src.LightMultiGraph import LightMultiGraph
+from src.MDL import graph_mdl
 from src.Rule import FullRule
 from src.Rule import NoRule
 from src.Rule import PartRule
+from src.Tree import TreeNode
+from src.VRG import VRG
 from src.globals import find_boundary_edges
 from src.part_info import set_boundary_degrees
-from src.VRG import VRG
-from src.LightMultiGraph import LightMultiGraph
-from src.Tree import TreeNode
-from src.MDL import graph_mdl
 
 
 class Record:
@@ -210,7 +207,7 @@ def extract_subtree_original(lamb: int, buckets: DefaultDict[float, Any], node2b
 
 
 def create_rule(subtree: List[int], g: LightMultiGraph, mode: str) -> Tuple[PartRule, List[Tuple[int, int]]]:
-    sg = g.subgraph(subtree)
+    sg = g.subgraph(subtree).copy()
     assert isinstance(sg, LightMultiGraph)
     boundary_edges = find_boundary_edges(g, subtree)
 
@@ -318,7 +315,7 @@ def extract_subtree_local(g: LightMultiGraph, root: TreeNode, mode: str, avoid_r
     '''
     # TODO: step 1: compute score for each tree node: mdl(G) / (mdl(G | S) + mdl(S))
 
-    active_nodes = set(g.nodes_iter())
+    active_nodes = set(g.nodes())
     stack: List[TreeNode] = [root]
     best_tnode: TreeNode = None
     best_score = float('-inf')
@@ -421,7 +418,7 @@ def update_ancestor_rules(grammar: VRG, g: LightMultiGraph, tnode: TreeNode, tno
         tnode = tnode.parent
 
     # TODO: step 2: update the rules in the grammar using the new subtrees and update the corresponding mapping too
-    active_nodes = set(g.nodes_iter())
+    active_nodes = set(g.nodes())
     tnode = initial_tnode
 
     while tnode.parent is not None:
@@ -510,7 +507,7 @@ def extract_global(g: LightMultiGraph, root: TreeNode, selection: str, mode: str
     '''
     grammar = VRG(mode=mode, selection=selection, clustering=clustering, name=name)
 
-    active_nodes = set(g.nodes_iter())
+    active_nodes = set(g.nodes())
     stack: List[TreeNode] = [root]
 
     # TODO step 1: compute the mapping between the internal nodes in the tree and rules
@@ -523,6 +520,9 @@ def extract_global(g: LightMultiGraph, root: TreeNode, selection: str, mode: str
 
         rule, boundary_edges = create_rule(g=g.copy(), mode=mode, subtree=subtree)
         rule_id = grammar.add_rule(rule)  # gets the rule id
+
+        if rule.graph.order() < 2:
+            continue
 
         if rule_id in rule_id_to_records:  # the rule_id has already been seen before
             rule_id_to_records[rule_id].update(boundary_edges=boundary_edges, subtree=subtree, tnode=tnode)

@@ -1,13 +1,15 @@
 """
 Script for analysis
 """
-import networkx as nx
-#import matplotlib.pyplot as plt
-import numpy as np
-import csv
 from collections import deque, Counter
 from time import time
+
+import networkx as nx
+# import matplotlib.pyplot as plt
+import numpy as np
+
 from src.GCD import GCD
+
 
 def get_level_wise_mdl(vrg_rules):
     lvl_mdl = {}

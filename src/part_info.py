@@ -4,15 +4,14 @@ Partial info extraction and generation
 Partial boundary information containing node level info on boundary degree
 """
 
-import networkx as nx
 import random
+
+import networkx as nx
 import numpy as np
 
-from copy import deepcopy
-
-from src.Rule import PartRule as Rule
-from src.globals import find_boundary_edges
 from src.LightMultiGraph import LightMultiGraph
+from src.globals import find_boundary_edges
+
 
 def set_boundary_degrees(g, sg):
     """
@@ -25,13 +24,13 @@ def set_boundary_degrees(g, sg):
     """
     boundary_degree = {}
 
-    for u in sg.nodes_iter():
+    for u in sg.nodes():
         boundary_degree[u] = 0
-        for v in g.neighbors_iter(u):
+        for v in g.neighbors(u):
             if not sg.has_node(v):
                 boundary_degree[u] += g.number_of_edges(u, v)   # for a multi-graph
 
-    nx.set_node_attributes(sg, 'b_deg', boundary_degree)
+    nx.set_node_attributes(sg, boundary_degree, name='b_deg')
 
 
 def generate_graph(rule_dict, rule_list):
@@ -80,7 +79,7 @@ def generate_graph(rule_dict, rule_list):
 
         nodes = {}
 
-        for n, d in rhs.graph.nodes_iter(data=True):   # all the nodes are internal
+        for n, d in rhs.graph.nodes(data=True):   # all the nodes are internal
             new_node = node_counter
             nodes[n] = new_node
             new_g.add_node(new_node, attr_dict=d)
@@ -93,7 +92,7 @@ def generate_graph(rule_dict, rule_list):
         random.shuffle(broken_edges)
 
         # randomly joining the new boundary edges from the RHS to the rest of the graph - uniformly at random
-        for n, d in rhs.graph.nodes_iter(data=True):
+        for n, d in rhs.graph.nodes(data=True):
             num_boundary_edges = d['b_deg']
             if num_boundary_edges == 0:  # there are no boundary edges incident to that node
                 continue
@@ -113,7 +112,7 @@ def generate_graph(rule_dict, rule_list):
 
 
         # adding the rhs to the new graph
-        for u, v in rhs.graph.edges_iter():
+        for u, v in rhs.graph.edges():
             # print('adding RHS internal edge ({}, {})'.format(nodes[u], nodes[v]))
             edge_multiplicity = rhs.graph[u][v]['weight']  #
             for _ in range(edge_multiplicity):

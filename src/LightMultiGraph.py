@@ -1,6 +1,8 @@
+from time import sleep
+
 import networkx as nx
 from tqdm import tqdm
-from time import sleep
+
 
 class LightMultiGraph(nx.Graph):
     def __init__(self):
@@ -14,6 +16,16 @@ class LightMultiGraph(nx.Graph):
             self[u][v]['weight'] += 1
         else:
             super(LightMultiGraph, self).add_edge(u, v, weight=1)
+
+    def copy(self):
+        g_copy = LightMultiGraph()
+        for node, d in self.nodes(data=True):
+            g_copy.add_node(node, attr_dict=d)
+
+        for e in self.edges(data=True):
+            u, v, d = e
+            g_copy.add_edge(u, v, attr_dict=d)
+        return g_copy
 
     def add_edges_from(self, ebunch, attr_dict=None, **attr):
         for e in ebunch:

@@ -1,9 +1,5 @@
-from bitarray import bitarray
-import math
-import networkx as nx
-import sys
 import numpy as np
-import multiprocessing as mp
+
 
 def gamma_code(n):
     bits = np.log2(n)
@@ -31,7 +27,7 @@ def graph_mdl(g, l_u=2):
     n = g.order()
     m = g.size()
 
-    for node, data in g.nodes_iter(data=True):
+    for node, data in g.nodes(data=True):
         if 'label' in data:
             l_u = 3
             break
@@ -41,7 +37,7 @@ def graph_mdl(g, l_u=2):
 
     # encoding the edges
     mdl_edges = 0
-    for u, v in g.edges_iter():
+    for u, v in g.edges():
         k = g.number_of_edges(u, v)
         mdl_edges += 2 * gamma_code(k + 1)  # 2 because the graph is undirected
 

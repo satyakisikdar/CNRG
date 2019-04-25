@@ -4,13 +4,11 @@ No info extraction and generation
 No boundary information is stored.
 """
 
-import networkx as nx
 import random
-import numpy as np
-from copy import deepcopy
-from itertools import chain
 
-from src.Rule import NoRule as Rule
+import networkx as nx
+import numpy as np
+
 from src.globals import find_boundary_edges
 
 

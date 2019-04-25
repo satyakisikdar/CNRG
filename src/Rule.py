@@ -1,6 +1,7 @@
 import networkx as nx
-import src.MDL as MDL
 import networkx.algorithms.isomorphism as iso
+
+import src.MDL as MDL
 
 
 class BaseRule:
@@ -16,7 +17,7 @@ class BaseRule:
         self.id = -1
         self.non_terminals = []  # list of non-terminals in the RHS graph
         self.is_active = True
-        for node, d in self.graph.nodes_iter(data=True):
+        for node, d in self.graph.nodes(data=True):
             if 'label' in d:
                 self.non_terminals.append(d['label'])
 
@@ -76,13 +77,13 @@ class BaseRule:
         flattened_graph = nx.Graph(self.graph)
 
         dot = Graph(engine='dot')
-        for node, d in self.graph.nodes_iter(data=True):
+        for node, d in self.graph.nodes(data=True):
             if 'label' in d:
                 dot.node(str(node), str(d['label']), shape='square', height='0.20')
             else:
                 dot.node(str(node), '', height='0.12', shape='circle')
 
-        for u, v in flattened_graph.edges_iter():
+        for u, v in flattened_graph.edges():
             w = self.graph.number_of_edges(u, v)
             if w > 1:
                 dot.edge(str(u), str(v), label=str(w))
@@ -135,7 +136,7 @@ class FullRule(BaseRule):
             mapping[n] = internal_node_counter
             internal_node_counter = chr(ord(internal_node_counter) + 1)
 
-        for n in [x for x in self.graph.nodes_iter() if x not in self.internal_nodes]:
+        for n in [x for x in self.graph.nodes() if x not in self.internal_nodes]:
             mapping[n] = boundary_node_counter
             boundary_node_counter += 1
         self.graph = nx.relabel_nodes(self.graph, mapping=mapping)
@@ -147,7 +148,7 @@ class FullRule(BaseRule):
         Contracts the RHS such that all boundary nodes with degree 1 are replaced by a special boundary isolated node I
         """
         iso_nodes = set()
-        for node in self.graph.nodes_iter():
+        for node in self.graph.nodes():
             if node not in self.internal_nodes and self.graph.degree(node) == 1:  # identifying the isolated nodes
                 iso_nodes.add(node)
 
@@ -158,7 +159,7 @@ class FullRule(BaseRule):
         rhs_copy = nx.Graph(self.graph)
 
         for iso_node in iso_nodes:
-            for u in rhs_copy.neighbors_iter(iso_node):
+            for u in rhs_copy.neighbors(iso_node):
                 self.graph.add_edge(u, 'Iso', attr_dict={'b': True})
 
         assert self.graph.has_node('Iso'), 'No Iso node after contractions'
@@ -190,7 +191,7 @@ class PartRule(BaseRule):
         # mapping = {}
         # internal_node_counter = 'a'
         #
-        # for n in self.graph.nodes_iter():
+        # for n in self.graph.nodes():
         #     mapping[n] = internal_node_counter
         #     internal_node_counter = chr(ord(internal_node_counter) + 1)
         #
@@ -206,7 +207,7 @@ class PartRule(BaseRule):
         b_deg = nx.get_node_attributes(self.graph, 'b_deg')
         max_boundary_degree = max(b_deg.values())
         l_u = 2
-        for node, data in self.graph.nodes_iter(data=True):
+        for node, data in self.graph.nodes(data=True):
             if 'label' in data:  # it's a non-terminal
                 l_u = 3
         self.cost = MDL.gamma_code(self.lhs + 1) + MDL.graph_mdl(self.graph, l_u=l_u) + \
