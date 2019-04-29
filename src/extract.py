@@ -244,7 +244,7 @@ def compress_graph(g: LightMultiGraph, subtree: List[int], boundary_edges: List[
     new_node = min(subtree)
 
     # step 2: replace subtree with new_node
-    g.add_node(new_node, attr_dict={'label': len(boundary_edges)})
+    g.add_node(new_node, label=len(boundary_edges))
 
     # step 3: rewire new_node
     for u, v in boundary_edges:
@@ -343,7 +343,7 @@ def extract_subtree_local(g: LightMultiGraph, root: TreeNode, mode: str, avoid_r
         if avoid_root and tnode == root:
             score = float('-inf')
 
-        logging.debug(f'node: {tnode.key}, subtree: {subtree}, rule: {rule}, score: {round(score, 3)}')
+        logging.debug(f'node: {tnode.key}, rule: {rule}, score: {round(score, 3)}')
 
         if score > best_score:
             best_score = score
@@ -424,15 +424,16 @@ def update_ancestor_rules(grammar: VRG, g: LightMultiGraph, tnode: TreeNode, tno
     while tnode.parent is not None:
         tnode = tnode.parent  # tnode is not its parent
         subtree = tnode.leaves & active_nodes
-        logging.debug(f'{tnode}, {subtree}')
-
         # create a new rule
         new_rule, boundary_edges = create_rule(g=g, mode=mode, subtree=subtree)
 
         # replace existing rule in the grammar with the new rule
         existing_rule_id = tnode_to_record[tnode].rule_id
-        grammar.rule_list[existing_rule_id] = new_rule
+        existing_rule = grammar.rule_list[existing_rule_id]
 
+        grammar.rule_dict[existing_rule.lhs].remove(existing_rule)
+        grammar.rule_list[existing_rule_id] = new_rule
+        grammar.rule_dict[new_rule.id].append(new_rule)
         # update tnode_to_record and rule_id_to_records data structures
         # existing_record = tnode_to_record[tnode]
 
@@ -446,6 +447,8 @@ def prune_descendant_rules(grammar: VRG, tnode: TreeNode, tnode_to_record: Dict[
             rule_id = record.rule_id
             if len(rule_id_to_records[rule_id].tnodes_list) == 1:  # if it's only involved in one rule, we can deactivate safely
                 grammar.deactivate_rule(record.rule_id)
+                rule = grammar.rule_list[record.rule_id]
+                grammar.rule_dict[rule.lhs].remove(rule)
 
 
 def extract_subtree_global(g: LightMultiGraph, rule_id_to_records: Dict[int, Record], tnode_to_record: Dict[TreeNode, Record],
@@ -459,6 +462,9 @@ def extract_subtree_global(g: LightMultiGraph, rule_id_to_records: Dict[int, Rec
     mdl_graph = graph_mdl(g)
     for rule_id, record in rule_id_to_records.items():
         rule = grammar.rule_list[rule_id]
+        # if not rule.is_active:
+        #     print(f'Rule {rule_id} not active')
+
         g_copy = g.copy()
         rule.calculate_cost()
         mdl_rule = rule.cost
@@ -476,9 +482,12 @@ def extract_subtree_global(g: LightMultiGraph, rule_id_to_records: Dict[int, Rec
             score = mdl_graph / (mdl_graph_rule + mdl_rule)
         # score = mdl_graph_rule + mdl_rule
 
-        logging.debug(f'Rule {rule.id}, score: {round(score, 3)}')
-        # if rule.id == 3:
-        #     score = 1000
+        if rule_id is None:
+            print('invalid rule id')
+        assert rule_id is not None, 'Invalid rule id'
+        logging.debug(f'Rule {rule_id}, score: {round(score, 3)}')
+        if rule.id == 3:
+            score = 1000
 
         if score > best_score:
             best_score = score
@@ -486,12 +495,12 @@ def extract_subtree_global(g: LightMultiGraph, rule_id_to_records: Dict[int, Rec
 
     #
     best_record, best_graph = best_record_graph
-    logging.warning(f'Best rule {best_record.rule_id}, max score: {round(best_score, 3)}, best tnodes: {best_record.tnodes_list}')
+    logging.warning(f'Best rule {best_record.rule_id}, max score: {round(best_score, 3)}')
 
 
     # TODO step 4: update the tree - remove descendant grammar rules & update ancestor rules
     for tnode in best_record.tnodes_list:
-        # prune_descendant_rules(grammar=grammar, tnode=tnode, tnode_to_record=tnode_to_record, rule_id_to_records=rule_id_to_records)
+        prune_descendant_rules(grammar=grammar, tnode=tnode, tnode_to_record=tnode_to_record, rule_id_to_records=rule_id_to_records)
         update_ancestor_rules(grammar=grammar, g=best_graph, tnode=tnode, tnode_to_record=tnode_to_record, mode=mode)
 
     # TODO step 5: compress the original graph
@@ -535,7 +544,7 @@ def extract_global(g: LightMultiGraph, root: TreeNode, selection: str, mode: str
         new_rec.update(boundary_edges=boundary_edges, subtree=subtree, tnode=tnode)
         tnode_to_record[tnode] = new_rec
 
-        logging.debug(f'tnode: {tnode.key}, subtree: {subtree}, rule {rule_id}: {rule}')
+        logging.debug(f'tnode: {tnode.key}, rule {rule_id}: {rule}')
 
         for kid in tnode.kids:
             if not kid.is_leaf:  # don't add to the bucket if it's a leaf

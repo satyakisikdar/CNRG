@@ -8,19 +8,20 @@ class BaseRule:
     """
     Base class for Rule
     """
+    __slots__ = 'lhs', 'graph', 'level', 'cost', 'frequency', 'id', 'non_terminals', 'is_active'
+
     def __init__(self, lhs, graph, level=0, cost=0, frequency=1):
         self.lhs = lhs  # the left hand side: the number of boundary edges
         self.graph = graph  # the right hand side subgraph
         self.level = level  # level of discovery in the tree (the root is at 0)
         self.cost = cost  # the cost of encoding the rule using MDL (in bits)
         self.frequency = frequency  # frequency of occurence
-        self.id = -1
+        self.id = None
         self.non_terminals = []  # list of non-terminals in the RHS graph
         self.is_active = True
         for node, d in self.graph.nodes(data=True):
             if 'label' in d:
                 self.non_terminals.append(d['label'])
-
 
     def __str__(self):
         if self.is_active:
@@ -57,7 +58,6 @@ class BaseRule:
         return self.lhs == other.lhs \
                and nx.is_isomorphic(g1, g2, edge_match=iso.numerical_edge_match('weight', 1.0),
                                     node_match=iso.categorical_node_match('label', ''))
-
 
     def __hash__(self):
         g = nx.freeze(self.graph)
@@ -101,6 +101,8 @@ class FullRule(BaseRule):
     """
     Rule object for full-info option
     """
+    __slots__ = 'internal_nodes', 'edges_covered'
+
     def __init__(self, lhs, graph, internal_nodes, level=0, cost=0, frequency=1,
                  edges_covered = None):
         super().__init__(lhs=lhs, graph=graph, level=level, cost=cost, frequency=frequency)
@@ -205,6 +207,8 @@ class PartRule(BaseRule):
         :return:
         """
         b_deg = nx.get_node_attributes(self.graph, 'b_deg')
+        if len(b_deg) == 0:
+            print('invalid b_deg')
         max_boundary_degree = max(b_deg.values())
         l_u = 2
         for node, data in self.graph.nodes(data=True):

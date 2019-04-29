@@ -14,6 +14,17 @@ from src.globals import find_boundary_edges
 
 
 def set_boundary_degrees(g, sg):
+    # TODO: test this!!
+    boundary_degree = {n: 0 for n in sg.nodes()}  # by default every boundary degree is 0
+
+    for u, v in nx.edge_boundary(g, sg.nodes()):
+        if sg.has_node(u):
+            boundary_degree[u] += g.number_of_edges(u, v)
+        else:
+            boundary_degree[v] += g.number_of_edges(u, v)
+    nx.set_node_attributes(sg, values=boundary_degree, name='b_deg')
+
+def set_boundary_degrees_old(g, sg):
     """
     Find the nunber of boundary edges that each node participate in.
     This is stored as a node level attribute - 'b_deg' in nodes in g that are part of nbunch
@@ -30,7 +41,7 @@ def set_boundary_degrees(g, sg):
             if not sg.has_node(v):
                 boundary_degree[u] += g.number_of_edges(u, v)   # for a multi-graph
 
-    nx.set_node_attributes(sg, boundary_degree, name='b_deg')
+    nx.set_node_attributes(sg, values=boundary_degree, name='b_deg')
 
 
 def generate_graph(rule_dict, rule_list):
@@ -45,7 +56,7 @@ def generate_graph(rule_dict, rule_list):
     # new_g = nx.MultiGraph()
     new_g = LightMultiGraph()
 
-    new_g.add_node(0, attr_dict={'label': 0})
+    new_g.add_node(0, label=0)
     non_terminals.add(0)
 
     rule_ordering = []  # list of rule ids in the order they were fired
@@ -53,9 +64,11 @@ def generate_graph(rule_dict, rule_list):
     while len(non_terminals) > 0:      # continue until no more non-terminal nodes
         # choose a non terminal node at random
         node_sample = random.sample(non_terminals, 1)[0]
-        lhs = new_g.node[node_sample]['label']
+        lhs = new_g.nodes[node_sample]['label']
 
-        rhs_candidates = rule_dict[lhs]
+        rhs_candidates = list(filter(lambda rule: rule.is_active, rule_dict[lhs]))
+        # consider only active rules
+
         if len(rhs_candidates) == 1:
             rhs = rhs_candidates[0]
         else:
@@ -118,3 +131,13 @@ def generate_graph(rule_dict, rule_list):
             for _ in range(edge_multiplicity):
                 new_g.add_edge(nodes[u], nodes[v])
     return new_g, rule_ordering
+
+
+if __name__ == '__main__':
+    g = LightMultiGraph()
+    g.add_edges_from([(1, 2), (1, 2), (1, 3), (2, 3), (3, 4)])
+    sg = g.subgraph([2, 3]).copy()
+    print(g.edges(data=True))
+    set_boundary_degrees_new(g, sg)
+    print(sg.nodes(data=True))
+
