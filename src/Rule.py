@@ -189,15 +189,14 @@ class PartRule(BaseRule):
         :param self: RHS subgraph
         :return:
         """
-        return
-        # mapping = {}
-        # internal_node_counter = 'a'
-        #
-        # for n in self.graph.nodes():
-        #     mapping[n] = internal_node_counter
-        #     internal_node_counter = chr(ord(internal_node_counter) + 1)
-        #
-        # nx.relabel_nodes(self.graph, mapping=mapping, copy=False)
+        mapping = {}
+        internal_node_counter = 'a'
+
+        for n in self.graph.nodes():
+            mapping[n] = internal_node_counter
+            internal_node_counter = chr(ord(internal_node_counter) + 1)
+
+        nx.relabel_nodes(self.graph, mapping=mapping, copy=False)
 
 
     def calculate_cost(self):

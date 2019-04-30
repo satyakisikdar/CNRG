@@ -20,10 +20,10 @@ class LightMultiGraph(nx.Graph):
     def copy(self):
         g_copy = LightMultiGraph()
         for node, d in self.nodes(data=True):
-            if len(d) == 0:
+            if len(d) == 0:  # prevents adding an empty 'attr_dict' dictionary
                 g_copy.add_node(node)
             else:
-                if 'label' in d:
+                if 'label' in d:  # this keeps the label and the b_deg attributes to the same level
                     g_copy.add_node(node, label=d['label'])
 
         for e in self.edges(data=True):

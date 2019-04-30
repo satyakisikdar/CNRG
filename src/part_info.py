@@ -138,6 +138,6 @@ if __name__ == '__main__':
     g.add_edges_from([(1, 2), (1, 2), (1, 3), (2, 3), (3, 4)])
     sg = g.subgraph([2, 3]).copy()
     print(g.edges(data=True))
-    set_boundary_degrees_new(g, sg)
+    set_boundary_degrees(g, sg)
     print(sg.nodes(data=True))
 

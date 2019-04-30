@@ -36,7 +36,7 @@ class VRG:
     def __str__(self):
         if self.cost == 0:
             self.calculate_cost()
-        st = f'graph: {self.name}, type: {self.type} clustering: {self.clustering} rules: {len(self.rule_list)}({self.num_active_rules}) mdl: {round(self.cost, 3)} bits'
+        st = f'graph: {self.name}, type: {self.type} clustering: {self.clustering} rules: {len(self.rule_list):_d}({self.num_active_rules:_d}) mdl: {round(self.cost, 3):_g} bits'
         return st
         # return f'{self.name}, mode: {self.mode} clustering: {self.clustering} selection: {} lambda: {} rules: {}({}) mdl: {} bits'.format(self.name, self.mode, self.clustering, self.selection,
         #                                                                                                 self.lamb, self.active_rules, len(self.rule_list), round(self.cost, 3))

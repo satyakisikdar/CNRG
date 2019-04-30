@@ -6,12 +6,13 @@ import math
 import logging
 
 from src.VRG_new import VRG
-from src.extract_new import MuExtractor
+from src.extract_new import MuExtractor, LocalExtractor
 from src.Tree_new import create_tree, TreeNodeNew
 import src.partitions as partitions
 from src.LightMultiGraph import LightMultiGraph
 
 def get_graph(filename='sample') -> LightMultiGraph:
+    start_time = time()
     if filename == 'sample':
         # g = nx.MultiGraph()
         g = nx.Graph()
@@ -37,7 +38,12 @@ def get_graph(filename='sample') -> LightMultiGraph:
 
     g_new = LightMultiGraph()
     g_new.add_edges_from(g.edges())
+
+    end_time = time() - start_time
+    print(f'Graph: {filename}, n = {g.order():_d}, m = {g.size():_d} read in {round(end_time, 3):_g}s.')
+
     return g_new
+
 
 def get_clustering(g, outdir, clustering) -> TreeNodeNew:
     '''
@@ -79,26 +85,33 @@ def get_clustering(g, outdir, clustering) -> TreeNodeNew:
         print(f'{clustering} clustering ran in {round(end_time, 3)} secs.')
     return root
 
-logging.basicConfig(level=logging.WARNING,
-                    format="%(message)s")
+
+logging.basicConfig(level=logging.WARNING, format="%(message)s")
 
 def main():
-    name = 'eucore'
+    name = 'wikivote'
     # name = 'eucore'
     outdir = 'output'
     clustering = 'leiden'
-    type = 'mu_level_dl'
-    mu = 3
+    type = 'mu_level'
+    mu = 5
 
     g = get_graph(name)
     root = get_clustering(g=g, outdir=f'{outdir}/trees/{name}', clustering=clustering)
 
-    # TODO: watch out for label and b_deg - both are node attributes, but they are different levels
-
+    # TODO check the DL selection - add check for existing rule
     grammar = VRG(clustering=clustering, type=type, name=name)
-    extractor = MuExtractor(g=g, type='mu_random', mu=mu, grammar=grammar, root=root)
+    extractor = MuExtractor(g=g, type=type, mu=mu, grammar=grammar, root=root)
+    # extractor = LocalExtractor(g=g, type=type, mu=mu, grammar=grammar, root=root)
     extractor.generate_grammar()
     print(extractor.grammar)
 
 if __name__ == '__main__':
     main()
+    # lg = LightMultiGraph()
+    # lg.add_node(1, label=1)
+    # lg.add_node(2, label=1)
+    # print(lg.nodes(data=True))
+    # bd = {1: 1, 2: 0}
+    # nx.set_node_attributes(lg, name='b_deg', values=bd)
+    # print(lg.nodes(data=True))
