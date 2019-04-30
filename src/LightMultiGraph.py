@@ -20,7 +20,11 @@ class LightMultiGraph(nx.Graph):
     def copy(self):
         g_copy = LightMultiGraph()
         for node, d in self.nodes(data=True):
-            g_copy.add_node(node, attr_dict=d)
+            if len(d) == 0:
+                g_copy.add_node(node)
+            else:
+                if 'label' in d:
+                    g_copy.add_node(node, label=d['label'])
 
         for e in self.edges(data=True):
             u, v, d = e
