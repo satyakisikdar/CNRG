@@ -6,10 +6,11 @@ import math
 import logging
 
 from src.VRG_new import VRG
-from src.extract_new import MuExtractor, LocalExtractor
+from src.extract_new import MuExtractor, LocalExtractor, GlobalExtractor
 from src.Tree_new import create_tree, TreeNodeNew
 import src.partitions as partitions
 from src.LightMultiGraph import LightMultiGraph
+from src.MDL import graph_dl
 
 def get_graph(filename='sample') -> LightMultiGraph:
     start_time = time()
@@ -89,20 +90,24 @@ def get_clustering(g, outdir, clustering) -> TreeNodeNew:
 logging.basicConfig(level=logging.WARNING, format="%(message)s")
 
 def main():
-    name = 'wikivote'
+    name = 'ba_500_3'
     # name = 'eucore'
     outdir = 'output'
     clustering = 'leiden'
     type = 'mu_level'
-    mu = 5
+    mu = 100
 
     g = get_graph(name)
+    print(f'Original Graph DL {graph_dl(g):_g}')
+
     root = get_clustering(g=g, outdir=f'{outdir}/trees/{name}', clustering=clustering)
 
     # TODO check the DL selection - add check for existing rule
-    grammar = VRG(clustering=clustering, type=type, name=name)
-    extractor = MuExtractor(g=g, type=type, mu=mu, grammar=grammar, root=root)
+    grammar = VRG(clustering=clustering, type=type, name=name, mu=mu)
+
+    # extractor = MuExtractor(g=g, type=type, mu=mu, grammar=grammar, root=root)
     # extractor = LocalExtractor(g=g, type=type, mu=mu, grammar=grammar, root=root)
+    extractor = GlobalExtractor(g=g, type=type, mu=mu, grammar=grammar, root=root)
     extractor.generate_grammar()
     print(extractor.grammar)
 

@@ -28,7 +28,7 @@ class BaseRule:
             st = ''
         else:
             st = '[x] '
-        st += '{} -> (n = {}, m = {})'.format(self.lhs, self.graph.order(), self.graph.size())
+        st += '({}) {} -> (n = {}, m = {})'.format(self.id, self.lhs, self.graph.order(), self.graph.size())
         # print non-terminals if present
 
         if len(self.non_terminals) != 0:  # if it has non-terminals, print the sizes
@@ -119,7 +119,7 @@ class FullRule(BaseRule):
         We have two types of nodes (internal and external) and one type of edge
         :return:
         """
-        self.cost = MDL.gamma_code(self.lhs + 1) + MDL.graph_mdl(self.graph, l_u=4) + \
+        self.cost = MDL.gamma_code(self.lhs + 1) + MDL.graph_dl(self.graph, l_u=4) + \
                     MDL.gamma_code(self.frequency + 1)
 
     def generalize_rhs(self):
@@ -213,8 +213,8 @@ class PartRule(BaseRule):
         for node, data in self.graph.nodes(data=True):
             if 'label' in data:  # it's a non-terminal
                 l_u = 3
-        self.cost = MDL.gamma_code(self.lhs + 1) + MDL.graph_mdl(self.graph, l_u=l_u) + \
-                    MDL.gamma_code(self.frequency + 1) +\
+        self.cost = MDL.gamma_code(self.lhs + 1) + MDL.graph_dl(self.graph, l_u=l_u) + \
+                    MDL.gamma_code(self.frequency + 1) + \
                     self.graph.order() * MDL.gamma_code(max_boundary_degree + 1)
 
 
@@ -231,5 +231,5 @@ class NoRule(PartRule):
         l_u = 2 (because we have one type of nodes and one type of edge)
         :return:
         """
-        self.cost = MDL.gamma_code(self.lhs + 1) + MDL.graph_mdl(self.graph, l_u=2) + \
+        self.cost = MDL.gamma_code(self.lhs + 1) + MDL.graph_dl(self.graph, l_u=2) + \
                     MDL.gamma_code(self.frequency + 1)

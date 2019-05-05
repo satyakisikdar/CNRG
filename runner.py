@@ -29,9 +29,6 @@ from src.extract import extract_global, extract_local, extract_original
 assert '2' in nx.__version__, 'Please update networkx. You are on the NetworkX 2.x branch'
 
 
-logging.basicConfig(level=logging.WARNING,
-                    format="%(message)s")
-
 def get_graph(filename='sample'):
     if filename == 'sample':
         # g = nx.MultiGraph()
@@ -158,6 +155,9 @@ def get_grammar(g, name, outdir, clustering, selection, lamb, mode, root):
     print(f'Grammar: {grammar}. Generated in {round(end_time, 3)} secs. Pickled as a VRG object.\n')
     return grammar
 
+logging.basicConfig(level=logging.DEBUG,
+                    format="%(message)s")
+
 def main():
     """
     Driver method for VRG
@@ -173,8 +173,11 @@ def main():
 
     start_time = time()
     # g = get_graph('./src/tmp/{}.g'.format(name))
-    name = 'eucore'
-    clustering = 'leiden'
+    # name = 'ba_500_3'
+    name = 'karate'
+    # name = 'eucore'
+    # clustering = 'leiden'
+    clustering = 'cond'
     selection = 'random'
     lamb = 5
 
@@ -191,7 +194,7 @@ def main():
 
     # print('Generating {} graphs...'.format(args.n), end='\r')
     # start_time = time()
-    # graphs = grammar.generate_graphs(count=args.n)
+    graphs = grammar.generate_graphs(count=args.n)
     # end_time = time() - start_time
     #
     # gen_path = f'./{outdir}/graphs/{name}/{clustering}_{selection}_{lamb}_{args.n}_graphs.pkl'
@@ -205,3 +208,5 @@ def main():
 if __name__ == '__main__':
     np.seterr(all='ignore')
     main()
+    # g = nx.barabasi_albert_graph(500, 3, seed=42)
+    # nx.write_edgelist(g, f'./src/tmp/ba_{500}_3.g', data=False)

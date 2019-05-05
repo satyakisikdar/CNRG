@@ -10,7 +10,7 @@ from typing import List, Tuple, Dict, DefaultDict, Set, Any
 from tqdm import tqdm
 
 from src.LightMultiGraph import LightMultiGraph
-from src.MDL import graph_mdl
+from src.MDL import graph_dl
 from src.Rule import FullRule
 from src.Rule import NoRule
 from src.Rule import PartRule
@@ -322,7 +322,7 @@ def extract_subtree_local(g: LightMultiGraph, root: TreeNode, mode: str, avoid_r
     best_rule: PartRule = None
     best_boundary_edges: List[Tuple[int, int]] = None
 
-    mdl_g = graph_mdl(g)
+    mdl_g = graph_dl(g)
 
     while len(stack) != 0:
         g_copy = g.copy()
@@ -337,7 +337,7 @@ def extract_subtree_local(g: LightMultiGraph, root: TreeNode, mode: str, avoid_r
         mdl_s = rule.cost
 
         compress_graph(g_copy, subtree, boundary_edges)
-        mdl_g_s = graph_mdl(g_copy)
+        mdl_g_s = graph_dl(g_copy)
         score = mdl_g / (mdl_g_s + mdl_s)
 
         if avoid_root and tnode == root:
@@ -459,7 +459,7 @@ def extract_subtree_global(g: LightMultiGraph, rule_id_to_records: Dict[int, Rec
     best_score = float('-inf')
     best_record_graph = None
 
-    mdl_graph = graph_mdl(g)
+    mdl_graph = graph_dl(g)
     for rule_id, record in rule_id_to_records.items():
         rule = grammar.rule_list[rule_id]
         # if not rule.is_active:
@@ -474,7 +474,7 @@ def extract_subtree_global(g: LightMultiGraph, rule_id_to_records: Dict[int, Rec
             # print(f'{subtree}, {boundary_edges}')
             compress_graph(g=g_copy, boundary_edges=boundary_edges, subtree=subtree)
 
-        mdl_graph_rule = graph_mdl(g_copy)
+        mdl_graph_rule = graph_dl(g_copy)
 
         if 'a' in record.tnodes_list and avoid_root:
             score = float('-inf')

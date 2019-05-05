@@ -16,7 +16,7 @@ def nbits(x):
     return np.log2(x)
 
 
-def graph_mdl(g, l_u=2):
+def graph_dl(g, l_u=2):
     """
      Get MDL for graphs using Gamma coding
      :param g: graph

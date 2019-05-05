@@ -20,3 +20,4 @@ def find_boundary_edges(g, nbunch):
                 edges = [(u, v)] * g.number_of_edges(u, v)
                 boundary_edges.extend(edges)
     return boundary_edges
+
