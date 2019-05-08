@@ -1,8 +1,8 @@
 import numpy as np
-
+import math
 
 def gamma_code(n):
-    bits = np.log2(n)
+    bits = math.log2(n)
     return 2 * bits + 1
 
 def nbits(x):
@@ -13,13 +13,13 @@ def nbits(x):
     """
     if x == 0:
         return 0
-    return np.log2(x)
+    return math.log2(x)
 
 
 def graph_dl(g, l_u=2):
     """
-     Get MDL for graphs using Gamma coding
-     :param g: graph
+     Get DL for graphs using Gamma coding
+     :param g:  a multigraph
      :param l_u: number of unique labels in the graph - general graphs - 2, RHS graphs - 3 (2 types of nodes,
      1 type of edge)
      :return: Length in bits to represent graph g in binary
@@ -33,17 +33,17 @@ def graph_dl(g, l_u=2):
             break
 
     # encoding the nodes
-    mdl_v = nbits(n) + n * nbits(l_u)
+    dl_v = nbits(n) + n * nbits(l_u)
 
     # encoding the edges
-    mdl_edges = 0
+    dl_edges = 0
     for u, v in g.edges():
         k = g.number_of_edges(u, v)
-        mdl_edges += 2 * gamma_code(k + 1)  # 2 because the graph is undirected
+        dl_edges += 2 * gamma_code(k + 1)  # 2 because the graph is undirected
 
     nnz = 2 * m  # the number of non-zero entries in the matrix
-    mdl_edges += (n ** 2 - nnz) * gamma_code(0 + 1)
+    dl_edges += (n ** 2 - nnz) * gamma_code(0 + 1)
 
-    mdl_e = nbits(m) + nbits(l_u) * mdl_edges # added the l_u factor
+    dl_e = nbits(m) + nbits(l_u) * dl_edges # added the l_u factor
 
-    return mdl_v + mdl_e
+    return dl_v + dl_e
