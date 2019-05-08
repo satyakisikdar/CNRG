@@ -8,14 +8,22 @@ class LightMultiGraph(nx.Graph):
     def __init__(self):
         nx.Graph.__init__(self)
 
+    def size(self, weight=None):
+        return super(LightMultiGraph, self).size(weight='weight')
 
     def add_edge(self, u, v, attr_dict=None, **attr):
         # print(f'inside add_edge {u}, {v}')
+        if attr_dict is not None and 'weight' in attr_dict:
+            wt = attr_dict['weight']
+        elif attr is not None and 'weight' in attr:
+            wt = attr['weight']
+        else:
+            wt = 1
         if self.has_edge(u, v):  # edge already exists
             # print(f'edge ({u}, {v}) exists, {self[u][v]["weight"]}')
-            self[u][v]['weight'] += 1
+            self[u][v]['weight'] += wt
         else:
-            super(LightMultiGraph, self).add_edge(u, v, weight=1)
+            super(LightMultiGraph, self).add_edge(u, v, weight=wt)
 
     def copy(self):
         g_copy = LightMultiGraph()
