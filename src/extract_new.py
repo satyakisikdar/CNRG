@@ -8,15 +8,16 @@ from collections import defaultdict
 from typing import List, Tuple, Dict, DefaultDict, Set, Any, Union, Optional
 import math
 from time import time
-
+import networkx as nx
 from tqdm import tqdm
+import itertools
+import pickle 
 
 from src.LightMultiGraph import LightMultiGraph
 from src.MDL import graph_dl
 from src.Rule import FullRule, NoRule, PartRule
 from src.globals import find_boundary_edges
 from src.part_info import set_boundary_degrees
-
 from src.Tree_new import TreeNodeNew
 from src.VRG_new import VRG
 
@@ -79,16 +80,30 @@ def create_rule(subtree: Set[int], g: LightMultiGraph, mode: str) -> Tuple[PartR
     return rule, boundary_edges
 
 
-def compress_graph(g: LightMultiGraph, subtree: Set[int], boundary_edges: Any) -> None:
+def compress_graph(g: LightMultiGraph, subtree: Set[int], boundary_edges: Any, permanent: bool) -> Union[None, float]:
     """
-    Compress the subtree into one node and return the updated graph
-    :param subtree:
-    :param boundary_edges:
+    :param g: the graph
+    :param subtree: the set of nodes that's compressed
+    :param boundary_edges: boundary edges
+    :param permanent: if disabled, undo the compression after computing the new dl -> returns the float
     :return:
     """
-    subtree = set(subtree)
+    assert len(subtree) > 0, f'Empty subtree g:{g.order(), g.size()}, bound: {boundary_edges}'
+    before = (g.order(), g.size())
 
-    # step 1: remove the nodes from subtree
+    if not isinstance(subtree, set):
+        subtree = set(subtree)
+
+    if boundary_edges is None:
+        # compute the boundary edges
+        boundary_edges = find_boundary_edges(g, subtree)
+
+    removed_edges = set()
+    removed_nodes = set()
+    # step 1: remove the nodes from subtree, keep track of the removed edges
+    if not permanent:
+        removed_edges = list(g.subgraph(subtree).edges(data=True))
+        removed_nodes = list(g.subgraph(subtree).nodes(data=True))
     g.remove_nodes_from(subtree)
     new_node = min(subtree)
 
@@ -104,6 +119,26 @@ def compress_graph(g: LightMultiGraph, subtree: Set[int], boundary_edges: Any) -
         g.add_edge(u, v)
 
     # TODO: reverse this to reconstruct the original graph - keep track of the edges being added and the new node - this might be faster than copying
+    if not permanent:  # if this flag is set, then return the graph dl of the compressed graph and undo the changes
+        compressed_graph_dl = graph_dl(g)
+        # print(f'In compress_graph, dl after change: {compressed_graph_dl:_g}')
+        g.remove_node(new_node)  # and the boundary edges
+        g.add_nodes_from(removed_nodes)  # add the subtree
+
+        for e in itertools.chain(removed_edges, boundary_edges):
+            if len(e) == 3:
+                u, v, d = e
+            else:
+                u, v = e
+                d = {'weight': 1}
+            g.add_edge(u, v, weight=d['weight'])
+
+        after = (g.order(), g.size())
+        assert before == after, 'Decompression did not work'
+        return compressed_graph_dl
+    else:
+        return None
+
 
 class BaseExtractor(abc.ABC):
     # __slots__ = 'type', 'g', 'root', 'tnode_to_score', 'grammar', 'mu'
@@ -143,18 +178,22 @@ class BaseExtractor(abc.ABC):
         """
         active_nodes = set(self.g.nodes())
         stack: List[TreeNodeNew] = [start_tnode]
-
+        nodes_visited = 0
+        total_tree_nodes = len([child for child in start_tnode.children if isinstance(child, str)]) + 1 # +1 for root
         is_global_extractor = hasattr(self, 'rule_id_to_record')
 
+        # logging.warning('Updaing the tree')
+        # with tqdm(total=100, bar_format='{l_bar}{bar}|[{elapsed}<{remaining}]', ncols=50) as pbar:
         while len(stack) != 0:
             tnode = stack.pop()
+            nodes_visited += 1
             subtree = tnode.leaves & active_nodes
 
             if is_global_extractor:  # this is true for GlobalExtractor objects only
                 self.rule_id_to_record: Dict[int, Record]
 
                 rule, boundary_edges = create_rule(subtree=subtree, g=self.g, mode='part')
-                rule_id = self.grammar.add_rule(rule)  # adds the rule to the grammar only if it's new
+                rule_id = self.grammar.add_rule(rule)  # adds the rule to the grammar only if it's new, updates otherwise
 
                 if rule_id not in self.rule_id_to_record:
                     self.rule_id_to_record[rule_id] = Record(rule_id=rule_id)
@@ -168,6 +207,9 @@ class BaseExtractor(abc.ABC):
             for kid in tnode.kids:
                 if not kid.is_leaf:  # don't add to the bucket if it's a leaf
                     stack.append(kid)
+                # perc = (nodes_visited / total_tree_nodes) * 100
+                # progress = perc - pbar.n
+                # pbar.update(progress)
         return
 
     def update_ancestor_scores(self, tnode: TreeNodeNew):
@@ -181,6 +223,7 @@ class BaseExtractor(abc.ABC):
         new_tnode_key = min(tnode_leaves)
         old_tnode_key = tnode.key
         tnode_children = tnode.children
+        is_global_extractor = hasattr(self, 'rule_id_to_record')
 
         tnode = tnode.parent
         while tnode is not None:
@@ -188,12 +231,13 @@ class BaseExtractor(abc.ABC):
             tnode.leaves -= tnode_leaves
             tnode.leaves.add(new_tnode_key)  # tnode becomes a new leaf
 
-            tnode.children.remove(old_tnode_key)   # remove the old tnode key from all subsequent ancestors
+            tnode.children.discard(old_tnode_key)   # remove the old tnode key from all subsequent ancestors  # switched from remove to discard
             tnode.children -= tnode_children
             tnode.children.add(new_tnode_key)
-
-            self.tnode_to_score[tnode] = self.tnode_score(tnode=tnode, subtree=subtree)
+            if not is_global_extractor:
+                self.tnode_to_score[tnode] = self.tnode_score(tnode=tnode, subtree=subtree)
             tnode = tnode.parent
+        return
 
     @abc.abstractmethod
     def update_tree(self, tnode: TreeNodeNew) -> None:
@@ -229,10 +273,11 @@ class BaseExtractor(abc.ABC):
         num_nodes = self.g.order()
 
         is_global_extractor = hasattr(self, 'final_grammar')
-
+        logging.warning('Extracting grammar')
         with tqdm(total=100, bar_format='{l_bar}{bar}|[{elapsed}<{remaining}]', ncols=50) as pbar:
             while True:
                 rule = self.extract_rule()
+                assert nx.is_connected(self.g), 'graph is disonnected'
                 assert rule is not None
                 logging.debug(f'new rule: {rule}')
 
@@ -242,8 +287,10 @@ class BaseExtractor(abc.ABC):
                     self.grammar.add_rule(rule)
 
                 percent = (1 - (self.g.order() - 1) / (num_nodes - 1)) * 100
-                pbar.update(percent - pbar.n)
+                curr_progress = percent - pbar.n
+                pbar.update(curr_progress)
                 if rule.lhs == 0:  # we are compressing the root, so that's the end
+                    assert self.g.order() == 1, 'Graph not correctly compressed'
                     break
 
         logging.warning(f'grammar generated in {round(time() - start_time, 3)} secs')
@@ -264,6 +311,7 @@ class MuExtractor(BaseExtractor):
         :return:
         """
         score = None
+
         diff = tnode.get_num_leaves() - self.mu
         if diff > 0:  # there are more nodes than mu
             mu_score = float('inf')
@@ -320,7 +368,7 @@ class MuExtractor(BaseExtractor):
 
         rule, boundary_edges = create_rule(subtree=subtree, g=self.g, mode='part')
 
-        compress_graph(boundary_edges=boundary_edges, g=self.g, subtree=subtree)
+        compress_graph(g=self.g, subtree=subtree, boundary_edges=boundary_edges, permanent=True)
         self.update_tree(tnode=best_tnode)
 
         return rule
@@ -339,7 +387,7 @@ class LocalExtractor(BaseExtractor):
 
     def tnode_score(self, tnode: TreeNodeNew, subtree: Set[int]) -> None:
         """
-        scores a tnode based on DL 
+        scores a tnode based on DL
         for the extractor, lower scores are better - so we use the inverse of the score ,i.e.,
         score(tnode) = (dl(graph | rule) + dl(rule)) / dl(graph)
         :param tnode:
@@ -350,15 +398,13 @@ class LocalExtractor(BaseExtractor):
             score = float('inf')
         else:
             assert self.graph_dl is not None, 'Graph DL is not computed in tnode_score'
-            g_copy = self.g.copy()  # make a copy
 
             rule, boundary_edges = create_rule(subtree=subtree, g=self.g, mode='part')
             rule.calculate_cost()
             rule_dl = rule.cost
 
-            compress_graph(g=g_copy, subtree=subtree, boundary_edges=boundary_edges)  # compress the copy
-            g_rule_dl = graph_dl(g_copy)  # after compression
-
+            g_rule_dl = compress_graph(g=self.g, subtree=subtree, boundary_edges=boundary_edges, permanent=False)  # compress the copy
+            assert g_rule_dl is not None, 'compress graph returns None'
             score = (g_rule_dl + rule_dl) / self.graph_dl
         return score
 
@@ -392,7 +438,7 @@ class LocalExtractor(BaseExtractor):
 
         rule, boundary_edges = create_rule(subtree=subtree, g=self.g, mode='part')
 
-        compress_graph(boundary_edges=boundary_edges, g=self.g, subtree=subtree)
+        compress_graph(g=self.g, subtree=subtree, boundary_edges=boundary_edges, permanent=True)
         self.update_tree(tnode=best_tnode)
 
         return rule
@@ -407,63 +453,16 @@ class GlobalExtractor(BaseExtractor):
         self.rule_id_to_record: Dict[int, Record] = {}  # maps each rule (via rule id) to a record object
 
         self.update_subtree_scores(start_tnode=self.root)
-        self.init_record_scores()  # this updates the scores of the records
+        self.update_all_record_scores()  # this updates the scores of the records
         logging.debug('Grammar initialized')
 
     def tnode_score(self, tnode: TreeNodeNew, subtree: Set[int]) -> Any:
         return None  # there is no need for tnode score in this case
 
-    def update_ancestor_records(self, tnode: TreeNodeNew):
-        """
-        traverse up the tree, updating the rules and records
-        :param tnode:
-        :return:
-        """
-        active_nodes = set(self.g.nodes())
-        tnode_leaves = tnode.leaves
-        new_tnode_key = min(tnode_leaves)
-        old_tnode_key = tnode.key
-        tnode_children = tnode.children
-
-        new_rule_id_to_record = dict(self.rule_id_to_record)
-        tnode = tnode.parent
-
-        g_copy = self.g.copy()
-        g_dl = graph_dl(g_copy)
-
-        while tnode is not None:
-            tnode.leaves -= tnode_leaves
-            tnode.leaves.add(new_tnode_key)  # tnode becomes a new leaf
-
-            tnode.children.remove(old_tnode_key)  # remove the old tnode key from all subsequent ancestors
-            tnode.children -= tnode_children
-            tnode.children.add(new_tnode_key)
-            subtree = tnode.leaves & active_nodes
-
-            # we don't need to remove the boundary edges and subtrees
-            old_rule = self.tnode_to_rule[tnode]
-            old_rule.deactivate()
-
-            old_record = self.rule_id_to_record[old_rule.id]
-            old_record.remove()
-
-            new_rule, boundary_edges = create_rule(subtree=subtree, g=self.g, mode='part')
-            new_rule_id = self.grammar.add_rule(new_rule)  # add the new rule to the grammar
-
-            if new_rule_id not in new_rule_id_to_record:
-                new_rule_id_to_record[new_rule_id] = Record(rule_id=new_rule_id)
-            new_rule_id_to_record[new_rule_id].update(boundary_edges=boundary_edges, subtree=subtree, tnode=tnode)
-            self.set_record_score(record=new_rule_id_to_record[new_rule_id], g_copy=g_copy, g_dl=g_dl)
-
-            self.tnode_to_rule[tnode] = new_rule
-            # see if the rule exists elsewhere, otherwise disable
-            # see if the new rule exists somewhere, then update the relevant record - shouldnt be too hard
-            # the tricky part is to make sure that the grammar gets updated the way it should
-
-            tnode = tnode.parent
-
-        self.rule_id_to_record = new_rule_id_to_record
-
+    def get_best_record(self) -> Record:
+        if len(self.rule_id_to_record) == 0:
+            raise(Exception('Extraction Failed'))
+        return min(self.rule_id_to_record.values(), key=lambda rec: rec.score)
 
     def update_tree(self, tnode: TreeNodeNew) -> None:
         """
@@ -472,27 +471,8 @@ class GlobalExtractor(BaseExtractor):
         :return:
         """
         new_key = min(tnode.leaves)
-
-        # update ancestors
-        self.update_ancestor_records(tnode)
-
-        # Disconnect the children
-        rule = self.tnode_to_rule[tnode]
-        rec = self.rule_id_to_record[rule.id]
-        rec.remove()
-
-        for child in filter(lambda x: isinstance(x, str), tnode.children):
-            rule = self.tnode_to_rule[child]  # test this out
-            rec = self.rule_id_to_record[rule.id]
-            rec.remove()
+        self.update_ancestor_scores(tnode)
         tnode.make_leaf(new_key=new_key)
-
-
-        # clean up records
-        empty_rec_rule_ids = [rec.rule_id for rec in self.rule_id_to_record.values() if rec.frequency == 0]
-        for rule_id in empty_rec_rule_ids:
-            del self.rule_id_to_record[rule_id]
-
         return
 
     def extract_rule(self) -> PartRule:
@@ -502,31 +482,41 @@ class GlobalExtractor(BaseExtractor):
             step 2.1: update the tree rooted at the tree node
                 step 2.1.1: the decendant rules get disabled only if they are not used elsewhere in the tree
                 step 2.1.2: update the ancestors and their records and rules regardless
+        step 3: update ALL the record scores after extraction since the graph changes.
         :return:
         """
+        # step 1: get best record
         best_record = self.get_best_record()
         best_rule = self.grammar[best_record.rule_id]
 
-        # compress the graph & update the tree
-        for subtree, boundary_edges, tnode in zip(best_record.subtree_list, best_record.boundary_edges_list,
-                                                  best_record.tnodes_list):
-            compress_graph(self.g, subtree=subtree, boundary_edges=boundary_edges)
+        # tqdm.write(f'{best_record.tnodes_list}, {best_record.subtree_list}, {best_rule}')
+
+        # step 2: compress graph, then update tree
+        for tnode, subtree, boundary_edges in zip(best_record.tnodes_list, best_record.subtree_list, best_record.boundary_edges_list):
+            subtree = set(subtree) & set(self.g.nodes())  # take only the subtree things that are in the graph
+            compress_graph(g=self.g, boundary_edges=None, subtree=subtree, permanent=True)
             self.update_tree(tnode=tnode)
 
+        # step 3: update all the data structures
+        if best_rule.lhs == 0:
+            assert self.g.order() == 1, 'Improper extraction, since the graph has > 1 nodes'
+        else:
+            # reset the data structures
+            self.rule_id_to_record = {}
+            self.tnode_to_rule = {}
+            self.grammar.reset()
+
+            self.update_subtree_scores(start_tnode=self.root)  # update all the subtree
+            self.update_all_record_scores()
         return best_rule
 
-    def get_best_record(self) -> Record:
-        if len(self.rule_id_to_record) == 0:  # TODO fix BUG
-            raise(Exception('Extraction Failed'))
-        return min(self.rule_id_to_record.values(), key=lambda rec: rec.score)
-
-    def set_record_score(self, record: Record, g_copy: LightMultiGraph, g_dl: float) -> Any:
+    def set_record_score(self, record: Record, g_dl: float) -> None:
         # compress the copied graph
+        g_rule_dl = 0
         for tnode, subtree, boundary_edges in zip(record.tnodes_list, record.subtree_list, record.boundary_edges_list):
-            compress_graph(g=g_copy, boundary_edges=boundary_edges, subtree=subtree)
-
-        # compute the dl of the compressed graph
-        g_rule_dl = graph_dl(g_copy)  # dl after compression
+            # try:
+            assert len(subtree) > 0, 'empty subtree'
+            g_rule_dl = compress_graph(g=self.g, subtree=subtree, boundary_edges=boundary_edges, permanent=False)
 
         # compute the score of the record
         rule = self.grammar[record.rule_id]
@@ -537,12 +527,11 @@ class GlobalExtractor(BaseExtractor):
         record.score = score
         return
 
-    def init_record_scores(self):
+    def update_all_record_scores(self) -> None:
         """
-        updates the scores of the record objects -
+        updates the scores of all the record objects -
         :return:
         """
-        g_copy = self.g.copy()
         g_dl = graph_dl(self.g)  # initial graph dl
 
         for record in self.rule_id_to_record.values():
@@ -554,7 +543,43 @@ class GlobalExtractor(BaseExtractor):
                 continue
 
             assert rule.frequency == record.frequency, 'the frequencies of the rule and record should match'
-
-            self.set_record_score(record, g_copy=g_copy, g_dl=g_dl)
+            self.set_record_score(record, g_dl=g_dl)
         return
 
+if __name__ == '__main__':
+    name = 'lesmis'
+    outdir = 'output'
+    # clustering = 'leiden'
+    clustering = 'cond'
+    type = 'mu_level'
+    mu = 3
+
+    g_ = nx.Graph()
+    g_.add_edges_from([(1, 2), (1, 3), (1, 5),
+                      (2, 4), (2, 5),
+                      (3, 4), (3, 5), (4, 5),
+                      (2, 7), (4, 9),
+                      (6, 7), (6, 8), (6, 9),
+                      (7, 8), (7, 9), (8, 9)])
+    g = LightMultiGraph()
+    g.add_edges_from(g_.edges())
+    root = pickle.load(open('../output/trees/sample/cond_tree.pkl', 'rb'))
+    print(root)
+
+    grammar = VRG(clustering=clustering, type=type, name=name, mu=mu)
+
+    # extractor = MuExtractor(g=g, type=type, mu=mu, grammar=grammar, root=root)
+    # extractor = LocalExtractor(g=g, type=type, mu=mu, grammar=grammar, root=root)
+    extractor = GlobalExtractor(g=g, type=type, mu=mu, grammar=grammar, root=root)
+
+    key2node = {}
+    s = [extractor.root]
+    while len(s) != 0:
+        tnode = s.pop()
+        key2node[tnode.key] = tnode
+        for kid in tnode.kids:
+            if not kid.is_leaf:
+                s.append(kid)
+
+    extractor.update_tree(tnode=key2node['f'])
+    print()

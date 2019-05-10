@@ -40,8 +40,9 @@ def leiden_one_level_old(g):
 
 
 def leiden_one_level(g: LightMultiGraph):
-    if g.size() < 3 and nx.is_connected(g):
-        return list(g.nodes())
+    # if g.size() < 3 and nx.is_connected(g):
+    #     clusters = [[[n] for n in g.nodes()]]
+    #     return clusters
 
     nx_g = nx.convert_node_labels_to_integers(g, label_attribute='old_label')
     old_label = nx.get_node_attributes(nx_g, 'old_label')
@@ -62,14 +63,16 @@ def leiden(g: LightMultiGraph):
     tree = []
 
     if g.order() < 2:
-        return [[n] for n in g.nodes()]
+        clusters = [[n] for n in g.nodes()]
+        return clusters
 
     clusters = leiden_one_level(g)
     if len(clusters) == 1:
-        return [[n] for n in list(clusters)[0]]
+        clusters = [[n] for n in list(clusters)[0]]
+        return clusters
 
     for cluster in clusters:
-        sg = g.subgraph(cluster)
+        sg = g.subgraph(cluster).copy()
         assert nx.is_connected(sg), "subgraph not connected"
         tree.append(leiden(sg))
 
@@ -117,6 +120,7 @@ def louvain(g: nx.Graph, randomize=False):
         assert nx.is_connected(sg), "subgraph not connected"
         tree.append(louvain(sg))
     return tree
+
 
 def approx_min_conductance_partitioning(g: LightMultiGraph, max_k=1):
     """
@@ -185,7 +189,6 @@ def approx_min_conductance_partitioning(g: LightMultiGraph, max_k=1):
 
     if iter_count > 2:
         print('it took {} iterations to stabilize'.format(iter_count))
-
 
     assert nx.is_connected(sg1) and nx.is_connected(sg2), "subgraphs are not connected in cond"
 
