@@ -9,7 +9,7 @@ class LightMultiGraph(nx.Graph):
         nx.Graph.__init__(self)
 
     def size(self, weight=None):
-        return super(LightMultiGraph, self).size(weight='weight')
+        return int(super(LightMultiGraph, self).size(weight='weight'))
 
     def add_edge(self, u, v, attr_dict=None, **attr):
         # print(f'inside add_edge {u}, {v}')
