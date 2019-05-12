@@ -3,8 +3,6 @@ VRG extraction
 """
 import abc
 import logging
-import random
-from collections import defaultdict
 from typing import List, Tuple, Dict, DefaultDict, Set, Any, Union, Optional
 import math
 from time import time
@@ -118,7 +116,6 @@ def compress_graph(g: LightMultiGraph, subtree: Set[int], boundary_edges: Any, p
             v = new_node
         g.add_edge(u, v)
 
-    # TODO: reverse this to reconstruct the original graph - keep track of the edges being added and the new node - this might be faster than copying
     if not permanent:  # if this flag is set, then return the graph dl of the compressed graph and undo the changes
         compressed_graph_dl = graph_dl(g)
         # print(f'In compress_graph, dl after change: {compressed_graph_dl:_g}')
@@ -273,7 +270,7 @@ class BaseExtractor(abc.ABC):
         num_nodes = self.g.order()
 
         is_global_extractor = hasattr(self, 'final_grammar')
-        logging.warning('Extracting grammar')
+        tqdm.write(f'Extracting grammar name:{self.grammar.name} mu:{self.grammar.mu} type:{self.grammar.type} clustering:{self.grammar.clustering}')
         with tqdm(total=100, bar_format='{l_bar}{bar}|[{elapsed}<{remaining}]', ncols=50) as pbar:
             while True:
                 rule = self.extract_rule()
@@ -293,9 +290,9 @@ class BaseExtractor(abc.ABC):
                     assert self.g.order() == 1, 'Graph not correctly compressed'
                     break
 
-        logging.warning(f'grammar generated in {round(time() - start_time, 3)} secs')
         if is_global_extractor:
             self.grammar = self.final_grammar
+        logging.warning(f'{self.grammar} generated in {round(time() - start_time, 3)} secs\n')
 
 
 class MuExtractor(BaseExtractor):
@@ -363,7 +360,7 @@ class MuExtractor(BaseExtractor):
         :return:
         """
         best_tnode, score = self.get_best_tnode_and_score()
-        logging.debug(f'best tnode: {best_tnode}, score: {score}')
+        logging.debug(f'\nbest tnode: {best_tnode}, score: {score}')
         subtree = best_tnode.leaves & set(self.g.nodes())
 
         rule, boundary_edges = create_rule(subtree=subtree, g=self.g, mode='part')
@@ -448,7 +445,8 @@ class GlobalExtractor(BaseExtractor):
     def __init__(self, g:LightMultiGraph, type: str, root: TreeNodeNew, grammar: VRG, mu: int):
         super().__init__(g=g, type=type, root=root, grammar=grammar, mu=mu)
         self.final_grammar = grammar.copy()
-        self.graph_dl: float = graph_dl(self.g)  # during extraction, compute it once for all the rules because the graph doesn't change
+        self.graph_dl: float = graph_dl(
+            self.g)  # during extraction, compute it once for all the rules because the graph doesn't change
         self.tnode_to_rule: Dict[TreeNodeNew, PartRule] = {}  # maps each tree node to a rule
         self.rule_id_to_record: Dict[int, Record] = {}  # maps each rule (via rule id) to a record object
 
@@ -460,8 +458,7 @@ class GlobalExtractor(BaseExtractor):
         return None  # there is no need for tnode score in this case
 
     def get_best_record(self) -> Record:
-        if len(self.rule_id_to_record) == 0:
-            raise(Exception('Extraction Failed'))
+        assert len(self.rule_id_to_record) > 0, 'Empty records, extraction failed'
         return min(self.rule_id_to_record.values(), key=lambda rec: rec.score)
 
     def update_tree(self, tnode: TreeNodeNew) -> None:

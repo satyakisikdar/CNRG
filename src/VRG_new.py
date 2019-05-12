@@ -57,6 +57,13 @@ class VRG:
     def __getitem__(self, item):
         return self.rule_list[item]
 
+    def reset(self):
+        # reset the grammar
+        self.rule_list = []
+        self.rule_dict = {}
+        self.cost = 0
+        self.num_rules = 0
+
     def add_rule(self, rule: PartRule) -> int:
         # adds to the grammar iff it's a new rule
         if rule.lhs not in self.rule_dict:
@@ -78,20 +85,19 @@ class VRG:
         self.rule_dict[rule.lhs].append(rule)
         return rule.id
 
-    def deactivate_rule(self, rule_id):
-        """
-        deletes the rule with rule_id from the grammar
-        :param rule_id:
-        :return:
-        """
-        # do not decrease num_rules
-        rule = self.rule_list[rule_id]
-        rule.deactivate()
-        # TODO check if rule deactivation propagates to the dictionary
-        # self.rule_dict[rule.lhs]
+    # def deactivate_rule(self, rule_id):
+    #     """
+    #     deletes the rule with rule_id from the grammar
+    #     :param rule_id:
+    #     :return:
+    #     """
+    #     # do not decrease num_rules
+    #     rule = self.rule_list[rule_id]
+    #     rule.deactivate()
+    #     # TODO check if rule deactivation propagates to the dictionary
+    #     # self.rule_dict[rule.lhs]
 
     def calculate_cost(self):
         for rule in self.rule_list:
-            if rule.is_active:  # only count if rules are active
-                rule.calculate_cost()
-                self.cost += rule.cost
+            rule.calculate_cost()
+            self.cost += rule.cost

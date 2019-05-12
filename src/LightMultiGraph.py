@@ -11,6 +11,9 @@ class LightMultiGraph(nx.Graph):
     def size(self, weight=None):
         return int(super(LightMultiGraph, self).size(weight='weight'))
 
+    def __repr__(self):
+        return f'n = {self.order():_d} m = {self.size():_d}'
+
     def add_edge(self, u, v, attr_dict=None, **attr):
         # print(f'inside add_edge {u}, {v}')
         if attr_dict is not None and 'weight' in attr_dict:

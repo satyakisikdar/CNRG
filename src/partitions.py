@@ -80,7 +80,7 @@ def leiden(g: LightMultiGraph):
 
 
 def get_random_partition(g: LightMultiGraph, seed=None):
-    nodes = g.nodes()
+    nodes = list(g.nodes())
     if seed is not None:
         random.seed(seed)
     random.shuffle(nodes)
@@ -116,7 +116,7 @@ def louvain(g: nx.Graph, randomize=False):
         return [[n] for n in clusters[0]]
 
     for cluster in clusters.values():
-        sg = g.subgraph(cluster)
+        sg = g.subgraph(cluster).copy()
         assert nx.is_connected(sg), "subgraph not connected"
         tree.append(louvain(sg))
     return tree

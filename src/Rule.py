@@ -8,7 +8,7 @@ class BaseRule:
     """
     Base class for Rule
     """
-    __slots__ = 'lhs', 'graph', 'level', 'cost', 'frequency', 'id', 'non_terminals', 'is_active'
+    __slots__ = 'lhs', 'graph', 'level', 'cost', 'frequency', 'id', 'non_terminals'
 
     def __init__(self, lhs, graph, level=0, cost=0, frequency=1):
         self.lhs = lhs  # the left hand side: the number of boundary edges
@@ -18,16 +18,16 @@ class BaseRule:
         self.frequency = frequency  # frequency of occurence
         self.id = None
         self.non_terminals = []  # list of non-terminals in the RHS graph
-        self.is_active = True
         for node, d in self.graph.nodes(data=True):
             if 'label' in d:
                 self.non_terminals.append(d['label'])
 
     def __str__(self):
-        if self.is_active:
-            st = ''
-        else:
-            st = '[x] '
+        # if self.is_active:
+        #     st = ''
+        # else:
+        #     st = '[x] '
+        st = ''
         st += '({}) {} -> (n = {}, m = {})'.format(self.id, self.lhs, self.graph.order(), self.graph.size())
         # print non-terminals if present
 
@@ -119,7 +119,7 @@ class FullRule(BaseRule):
         We have two types of nodes (internal and external) and one type of edge
         :return:
         """
-        self.cost = MDL.gamma_code(self.lhs + 1) + MDL.graph_dl(self.graph, l_u=4) + \
+        self.cost = MDL.gamma_code(self.lhs + 1) + MDL.graph_dl(self.graph) + \
                     MDL.gamma_code(self.frequency + 1)
 
     def generalize_rhs(self):
@@ -206,14 +206,13 @@ class PartRule(BaseRule):
         :return:
         """
         b_deg = nx.get_node_attributes(self.graph, 'b_deg')
-        if len(b_deg) == 0:
-            print('invalid b_deg')
+        assert len(b_deg) > 0, 'invalid b_deg'
         max_boundary_degree = max(b_deg.values())
         l_u = 2
         for node, data in self.graph.nodes(data=True):
             if 'label' in data:  # it's a non-terminal
                 l_u = 3
-        self.cost = MDL.gamma_code(self.lhs + 1) + MDL.graph_dl(self.graph, l_u=l_u) + \
+        self.cost = MDL.gamma_code(self.lhs + 1) + MDL.graph_dl(self.graph) + \
                     MDL.gamma_code(self.frequency + 1) + \
                     self.graph.order() * MDL.gamma_code(max_boundary_degree + 1)
 
@@ -231,5 +230,5 @@ class NoRule(PartRule):
         l_u = 2 (because we have one type of nodes and one type of edge)
         :return:
         """
-        self.cost = MDL.gamma_code(self.lhs + 1) + MDL.graph_dl(self.graph, l_u=2) + \
+        self.cost = MDL.gamma_code(self.lhs + 1) + MDL.graph_dl(self.graph) + \
                     MDL.gamma_code(self.frequency + 1)

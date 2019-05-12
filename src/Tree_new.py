@@ -1,4 +1,5 @@
 from typing import Tuple, List, Set, Union, Any
+from collections import deque
 
 class TreeNodeNew:
     """
@@ -62,6 +63,7 @@ class TreeNodeNew:
         self.children = set()
         self.kids = []
         self.is_leaf = True
+        self.key = new_key
 
     def get_num_leaves(self) -> int:
         return len(self.leaves)
@@ -109,5 +111,20 @@ def create_tree(lst: List[Any]) -> TreeNodeNew:
 
         return node.children, node.leaves
 
+    def relabel_tnodes(tnode):
+        q = deque()
+        q.append(tnode)
+        key = 'a'
+        while len(q) != 0:
+            tnode = q.popleft()
+            if tnode.is_leaf:
+                continue
+            tnode.key = key
+            key = chr(ord(key) + 1)
+            for kid in tnode.kids:
+                q.append(kid)
+
+    relabel_tnodes(root)
     update_info(node=root)
+
     return root
