@@ -1,5 +1,6 @@
-import numpy as np
+import networkx as nx
 import math
+from src.LightMultiGraph import LightMultiGraph
 
 def gamma_code(n):
     bits = math.log2(n)
@@ -16,21 +17,17 @@ def nbits(x):
     return math.log2(x)
 
 
-def graph_dl(g, l_u=2):
+def graph_dl(g):
     """
      Get DL for graphs using Gamma coding
      :param g:  a multigraph
-     :param l_u: number of unique labels in the graph - general graphs - 2, RHS graphs - 3 (2 types of nodes,
-     1 type of edge)
      :return: Length in bits to represent graph g in binary
     """
     n = g.order()
-    m = g.size()
+    m = len(g.edges()) # here we dont use size because it will throw the algorithm into a whack
 
-    for node, data in g.nodes(data=True):
-        if 'label' in data:
-            l_u = 3
-            break
+    # TODO: set l_u dynamically, l_u = 2 if the graph consists of just nts and edges
+    l_u = find_lu(g)
 
     # encoding the nodes
     dl_v = nbits(n) + n * nbits(l_u)
@@ -47,3 +44,14 @@ def graph_dl(g, l_u=2):
     dl_e = nbits(m) + nbits(l_u) * dl_edges # added the l_u factor
 
     return dl_v + dl_e
+
+def find_lu(g: LightMultiGraph) -> int:
+    l_u = 1  # for edges
+    node_types = set()
+    for n, d in g.nodes(data=True):
+        if 'label' in d:
+            node_types.add('nt')
+        else:
+            node_types.add('t')
+    l_u += len(node_types)
+    return l_u
