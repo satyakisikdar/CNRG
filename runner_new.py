@@ -118,7 +118,7 @@ def dump_grammar(name: str, clustering: str, grammar_type: str) -> None:
     outdir = 'dumps'
     make_dirs(outdir, name)  # make the directories if needed
 
-    mus = range(2, min(original_graph.order() // 2, 10))
+    mus = range(2, min(original_graph.order() // 2, 11))
 
     grammar_types = ('mu_random', 'mu_level', 'mu_dl', 'mu_level_dl', 'local_dl', 'global_dl')
     assert grammar_type in grammar_types, f'Invalid grammar type: {grammar_type}'
@@ -157,6 +157,8 @@ def dump_grammar(name: str, clustering: str, grammar_type: str) -> None:
 
 
 def get_grammar_parallel(name, clustering, grammar_type):
+    # TODO: dump stats and failures to a csv
+    # TODO: disconnected clusters should be flagged
     dump_grammar(name=name, clustering=clustering, grammar_type=grammar_type)
 
 def main():

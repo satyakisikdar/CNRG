@@ -73,7 +73,7 @@ def leiden(g: LightMultiGraph):
 
     for cluster in clusters:
         sg = g.subgraph(cluster).copy()
-        assert nx.is_connected(sg), "subgraph not connected"
+        # assert nx.is_connected(sg), "subgraph not connected"
         tree.append(leiden(sg))
 
     return tree
@@ -101,7 +101,6 @@ def random_partition(nodes):
 
 
 def louvain(g: nx.Graph, randomize=False):
-
     if g.order() < 2:
         return [[n] for n in g.nodes()]
 
@@ -117,7 +116,7 @@ def louvain(g: nx.Graph, randomize=False):
 
     for cluster in clusters.values():
         sg = g.subgraph(cluster).copy()
-        assert nx.is_connected(sg), "subgraph not connected"
+        # assert nx.is_connected(sg), "subgraph not connected"  # TODO: replace this with a return None
         tree.append(louvain(sg))
     return tree
 
@@ -226,7 +225,7 @@ def spectral_kmeans(g: LightMultiGraph, K):
     if K >= g.order() - 2:
         return spectral_kmeans(g, K - 1)
 
-    assert nx.is_connected(g), "g is not connected in cond"
+    assert nx.is_connected(g), "g is not connected in spectral kmeans"
 
     L = nx.laplacian_matrix(g)
 
