@@ -23,12 +23,7 @@ class BaseRule:
                 self.non_terminals.append(d['label'])
 
     def __str__(self):
-        # if self.is_active:
-        #     st = ''
-        # else:
-        #     st = '[x] '
-        st = ''
-        st += '({}) {} -> (n = {}, m = {})'.format(self.id, self.lhs, self.graph.order(), self.graph.size())
+        st = '({}) {} -> (n = {}, m = {})'.format(self.id, self.lhs, self.graph.order(), self.graph.size())
         # print non-terminals if present
 
         if len(self.non_terminals) != 0:  # if it has non-terminals, print the sizes
@@ -39,11 +34,7 @@ class BaseRule:
         return st
 
     def __repr__(self):
-        if self.is_active:
-            st = ''
-        else:
-            st = '[x] '
-        st += '{} -> ({}, {})'.format(self.lhs, self.graph.order(), self.graph.size())
+        st = '{} -> ({}, {})'.format(self.lhs, self.graph.order(), self.graph.size())
 
         if len(self.non_terminals) != 0:  # if it has non-terminals, print the sizes
             st += '{' + ','.join(map(str, self.non_terminals)) + '}'

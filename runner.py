@@ -6,14 +6,15 @@ import math
 import logging
 from joblib import Parallel, delayed
 from copy import deepcopy
+import csv
+from sys import argv
 
-from src.VRG_new import VRG
-from src.extract_new import MuExtractor, LocalExtractor, GlobalExtractor
-from src.Tree_new import create_tree, TreeNodeNew
+from src.VRG import VRG
+from src.extract import MuExtractor, LocalExtractor, GlobalExtractor
+from src.Tree import create_tree, TreeNode
 import src.partitions as partitions
 from src.LightMultiGraph import LightMultiGraph
 from src.MDL import graph_dl
-from src.generate import generate_graphs
 
 def get_graph(filename='sample') -> LightMultiGraph:
     start_time = time()
@@ -49,7 +50,7 @@ def get_graph(filename='sample') -> LightMultiGraph:
     return g_new
 
 
-def get_clustering(g, outdir, clustering) -> TreeNodeNew:
+def get_clustering(g, outdir, clustering) -> TreeNode:
     '''
     wrapper method for getting dendrogram. uses an existing pickle if it can.
     :param g: graph
@@ -97,12 +98,14 @@ def make_dirs(outdir: str, name: str) -> None:
     :param name:
     :return:
     """
-    subdirs = ('grammars', 'graphs', 'rule_orders', 'trees')
+    subdirs = ('grammars', 'graphs', 'rule_orders', 'trees', 'grammar_stats')
 
     for dir in subdirs:
         dir_path = f'./{outdir}/{dir}/'
         if not os.path.exists(dir_path):
             os.makedirs(dir_path)
+        if dir == 'grammar_stats':
+            continue
         dir_path += f'{name}'
         if not os.path.exists(dir_path):
             os.makedirs(dir_path)
@@ -125,74 +128,79 @@ def dump_grammar(name: str, clustering: str, grammar_type: str) -> None:
 
     g_copy = original_graph.copy()
 
-
     orig_root = get_clustering(g=g_copy, outdir=f'{outdir}/trees/{name}', clustering=clustering)
 
+    fieldnames = ('name', 'n', 'm', 'g_dl', 'type', 'mu', 'clustering', '#rules', 'grammar_dl', 'time')
+
+    g_dl = graph_dl(original_graph)
+
+    base_filename = f'{outdir}/grammars/{name}'
     for mu in mus:
         orig_grammar = VRG(clustering=clustering, type=grammar_type, name=name, mu=mu)
 
         grammar = orig_grammar.copy()
-        grammar_filename = f'{grammar.clustering}_{grammar.type}_{grammar.mu}.pkl'
+        grammar_filename = f'{base_filename}/{grammar.clustering}_{grammar.type}_{grammar.mu}.pkl'
 
-        if os.path.exists(f'{outdir}/grammars/{name}/{grammar_filename}'):
-            continue
+        if not os.path.exists(grammar_filename):  # the grammar does not exist
+            g = original_graph.copy()
+            root = deepcopy(orig_root)
 
-        g = original_graph.copy()
-        root = deepcopy(orig_root)
+            start_time = time()
+            if 'mu' in grammar_type:
+                extractor = MuExtractor(g=g, type=grammar.type, grammar=grammar, mu=mu, root=root)
 
-        if 'mu' in grammar_type:
-            extractor = MuExtractor(g=g, type=grammar.type, grammar=grammar, mu=mu, root=root)
+            elif 'local' in grammar_type:
+                extractor = LocalExtractor(g=g, type=grammar_type, grammar=grammar, mu=mu, root=root)
 
-        elif 'local' in grammar_type:
-            extractor = LocalExtractor(g=g, type=grammar_type, grammar=grammar, mu=mu, root=root)
+            else:
+                assert grammar_type == 'global_dl', f'improper grammar type {grammar_type}'
+                extractor = GlobalExtractor(g=g, type=grammar.type, grammar=grammar, mu=mu, root=root)
 
+            extractor.generate_grammar()
+            time_taken = round(time() - start_time, 3)
+
+            grammar = extractor.grammar
+            pickle.dump(grammar, open(grammar_filename, 'wb'))
         else:
-            assert grammar_type == 'global_dl', f'improper grammar type {grammar_type}'
-            extractor = GlobalExtractor(g=g, type=grammar.type, grammar=grammar, mu=mu, root=root)
+            grammar = pickle.load(open(grammar_filename, 'rb'))
+            time_taken = ''
 
-        extractor.generate_grammar()
-        pickle.dump(extractor.grammar, open(f'{outdir}/grammars/{name}/{grammar_filename}', 'wb'))
+        row = {'name': name, 'n': original_graph.order(), 'm': original_graph.size(), 'g_dl': g_dl,
+               'type': grammar_type, 'mu': mu, 'clustering': clustering, '#rules': len(grammar), 'grammar_dl': grammar.cost,
+               'time': time_taken}
 
+        with open(f'{outdir}/grammar_stats/{name}.csv', 'a') as csv_file:
+            writer = csv.DictWriter(csv_file, fieldnames=fieldnames)
+            writer.writerow(row)
     return
 
 
-def get_grammar_parallel(name, clustering, grammar_type):
-    # TODO: dump stats and failures to a csv
-    # TODO: disconnected clusters should be flagged
-    dump_grammar(name=name, clustering=clustering, grammar_type=grammar_type)
-
 def main():
-    name = 'eucore'
+    if len(argv) > 1:
+        name = argv[1]
+    else:
+        name = 'karate'
+
     grammar_types = ('mu_random', 'mu_level', 'mu_dl', 'mu_level_dl', 'local_dl', 'global_dl')
     clustering_algs = ('cond', 'leiden', 'louvain', 'spectral', 'random')
 
-    Parallel(n_jobs=10, verbose=1)(delayed(dump_grammar)(name=name, clustering=clustering, grammar_type=grammar_type)
+    # get_grammar_parallel(name, 'leiden', 'mu_random')
+
+    # gram = pickle.load(open('./dumps/grammars/karate/leiden_mu_random_3.pkl', 'rb'))
+    # print(gram.rule_list)
+    outdir = 'dumps'
+    fieldnames = ('name', 'n', 'm', 'g_dl', 'type', 'mu', 'clustering', '#rules', 'grammar_dl', 'time')
+
+    make_dirs(outdir, name)  # make the directories if needed
+
+    with open(f'{outdir}/grammar_stats/{name}.csv', 'w') as csv_file:
+        writer = csv.DictWriter(csv_file, fieldnames=fieldnames)
+        writer.writeheader()
+
+    Parallel(n_jobs=15, verbose=1)(delayed(dump_grammar)(name=name, clustering=clustering, grammar_type=grammar_type)
                                   for grammar_type in grammar_types
                                    for clustering in clustering_algs)
 
-
-    # dump_stats(name)
-
-    # name = 'football'
-    # outdir = 'output'/{name}
-    # # clustering = 'leiden'
-    # clustering = 'louvain'
-    # type = 'mu_level'
-    # mu = 5
-    #
-    # g = get_graph(name)
-    # print(f'Original Graph DL {graph_dl(g) :_g}')
-    #
-    # root = get_clustering(g=g, outdir=f'{outdir}/trees/{name}', clustering=clustering)
-    # grammar = VRG(clustering=clustering, type=type, name=name, mu=mu)
-    # #
-    # extractor = MuExtractor(g=g, type=type, mu=mu, grammar=grammar, root=root)
-    # # # extractor = LocalExtractor(g=g, type=type, mu=mu, grammar=grammar, root=root)
-    # # extractor = GlobalExtractor(g=g, type=type, mu=mu, grammar=grammar, root=root)
-    # extractor.generate_grammar()
-    # print(extractor.grammar)
-    # graphs, rule_orderings = generate_graphs(extractor.grammar, num_graphs=5)
-    # print('Generated graphs')
 
 if __name__ == '__main__':
     main()

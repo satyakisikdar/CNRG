@@ -16,21 +16,21 @@ from src.MDL import graph_dl
 from src.Rule import FullRule, NoRule, PartRule
 from src.globals import find_boundary_edges
 from src.part_info import set_boundary_degrees
-from src.Tree_new import TreeNodeNew
-from src.VRG_new import VRG
+from src.Tree import TreeNode
+from src.VRG import VRG
 
 class Record:
     __slots__ = 'tnodes_list', 'rule_id', 'frequency', 'boundary_edges_list', 'subtree_list', 'score'
 
     def __init__(self, rule_id: int):
-        self.tnodes_list: List[TreeNodeNew] = []
+        self.tnodes_list: List[TreeNode] = []
         self.rule_id: int = rule_id
         self.frequency: int = 0  # number of times we have seen this rule_id
         self.boundary_edges_list: List[Set[Tuple[int, int]]] = []
         self.subtree_list: List[Set[int]] = []
         self.score = None  # score of the rule
 
-    def update(self, boundary_edges: Any, subtree: Set[int], tnode: TreeNodeNew):
+    def update(self, boundary_edges: Any, subtree: Set[int], tnode: TreeNode):
         self.frequency += 1
         self.boundary_edges_list.append(tuple(boundary_edges))
         self.subtree_list.append(tuple(subtree))
@@ -140,12 +140,12 @@ def compress_graph(g: LightMultiGraph, subtree: Set[int], boundary_edges: Any, p
 class BaseExtractor(abc.ABC):
     # __slots__ = 'type', 'g', 'root', 'tnode_to_score', 'grammar', 'mu'
 
-    def __init__(self, g:LightMultiGraph, type: str, root: TreeNodeNew, grammar: VRG, mu: int) -> None:
+    def __init__(self, g:LightMultiGraph, type: str, root: TreeNode, grammar: VRG, mu: int) -> None:
         assert type in ('local_dl', 'global_dl', 'mu_random', 'mu_level', 'mu_dl', 'mu_level_dl'), f'Invalid mode: {type}'
         self.type = type
         self.g = g  # the graph
         self.root = root
-        self.tnode_to_score: Dict[TreeNodeNew, Any] = {}
+        self.tnode_to_score: Dict[TreeNode, Any] = {}
         self.grammar = grammar
         self.mu = mu
 
@@ -167,14 +167,14 @@ class BaseExtractor(abc.ABC):
         """
         return min(self.tnode_to_score.items(), key=lambda kv: kv[1])  # use the value as the key
 
-    def update_subtree_scores(self, start_tnode: TreeNodeNew) -> Any:
+    def update_subtree_scores(self, start_tnode: TreeNode) -> Any:
         """
         updates scores of the tnodes of the subtree rooted at start_tnode depending on the extraction type
         :param start_tnode: starting tnode. for the entire tree, use self.root
         :return:
         """
         active_nodes = set(self.g.nodes())
-        stack: List[TreeNodeNew] = [start_tnode]
+        stack: List[TreeNode] = [start_tnode]
         nodes_visited = 0
         total_tree_nodes = len([child for child in start_tnode.children if isinstance(child, str)]) + 1 # +1 for root
         is_global_extractor = hasattr(self, 'rule_id_to_record')
@@ -209,7 +209,7 @@ class BaseExtractor(abc.ABC):
                 # pbar.update(progress)
         return
 
-    def update_ancestor_scores(self, tnode: TreeNodeNew):
+    def update_ancestor_scores(self, tnode: TreeNode):
         """
         updates the scores of the ancestors
         :param tnode:
@@ -237,7 +237,7 @@ class BaseExtractor(abc.ABC):
         return
 
     @abc.abstractmethod
-    def update_tree(self, tnode: TreeNodeNew) -> None:
+    def update_tree(self, tnode: TreeNode) -> None:
         """
         update the tree as needed - ancestors and descendants
         :param tnode:
@@ -246,7 +246,7 @@ class BaseExtractor(abc.ABC):
         pass
 
     @abc.abstractmethod
-    def tnode_score(self, tnode: TreeNodeNew, subtree: Set[int]) -> Any:
+    def tnode_score(self, tnode: TreeNode, subtree: Set[int]) -> Any:
         """
         computes the score of a subtree
         :param subtree:
@@ -296,11 +296,11 @@ class BaseExtractor(abc.ABC):
 
 
 class MuExtractor(BaseExtractor):
-    def __init__(self, g:LightMultiGraph, type: str, root: TreeNodeNew, grammar: VRG, mu: int):
+    def __init__(self, g:LightMultiGraph, type: str, root: TreeNode, grammar: VRG, mu: int):
         super().__init__(g=g, type=type, root=root, grammar=grammar, mu=mu)
         self.update_subtree_scores(start_tnode=self.root)  # initializes the scores
 
-    def tnode_score(self, tnode: TreeNodeNew, subtree: Set[int]) -> Union[float, Tuple[float, int], Tuple[float, int, float]]:
+    def tnode_score(self, tnode: TreeNode, subtree: Set[int]) -> Union[float, Tuple[float, int], Tuple[float, int, float]]:
         """
         returns infinity for rules > mu
         :param tnode:
@@ -337,7 +337,7 @@ class MuExtractor(BaseExtractor):
         assert score is not None, 'score is None'
         return score
 
-    def update_tree(self, tnode: TreeNodeNew) -> None:
+    def update_tree(self, tnode: TreeNode) -> None:
         """
         In this case, only update ancestors and their scores
         :param tnode:
@@ -377,12 +377,12 @@ class LocalExtractor(BaseExtractor):
     """
     # __slots__ = ('__dict__', 'graph_dl', )
 
-    def __init__(self, g:LightMultiGraph, type: str, root: TreeNodeNew, grammar: VRG, mu: int):
+    def __init__(self, g:LightMultiGraph, type: str, root: TreeNode, grammar: VRG, mu: int):
         super().__init__(g=g, type=type, root=root, grammar=grammar, mu=mu)
         self.graph_dl = graph_dl(self.g)  # during extraction, compute it once for all the rules because the graph doesn't change
         self.update_subtree_scores(start_tnode=self.root)
 
-    def tnode_score(self, tnode: TreeNodeNew, subtree: Set[int]) -> None:
+    def tnode_score(self, tnode: TreeNode, subtree: Set[int]) -> None:
         """
         scores a tnode based on DL
         for the extractor, lower scores are better - so we use the inverse of the score ,i.e.,
@@ -405,7 +405,7 @@ class LocalExtractor(BaseExtractor):
             score = (g_rule_dl + rule_dl) / self.graph_dl
         return score
 
-    def update_tree(self, tnode: TreeNodeNew) -> None:
+    def update_tree(self, tnode: TreeNode) -> None:
         """
         In this case, only update ancestors and their scores
         :param tnode:
@@ -442,26 +442,26 @@ class LocalExtractor(BaseExtractor):
 
 
 class GlobalExtractor(BaseExtractor):
-    def __init__(self, g:LightMultiGraph, type: str, root: TreeNodeNew, grammar: VRG, mu: int):
+    def __init__(self, g:LightMultiGraph, type: str, root: TreeNode, grammar: VRG, mu: int):
         super().__init__(g=g, type=type, root=root, grammar=grammar, mu=mu)
         self.final_grammar = grammar.copy()
         self.graph_dl: float = graph_dl(
             self.g)  # during extraction, compute it once for all the rules because the graph doesn't change
-        self.tnode_to_rule: Dict[TreeNodeNew, PartRule] = {}  # maps each tree node to a rule
+        self.tnode_to_rule: Dict[TreeNode, PartRule] = {}  # maps each tree node to a rule
         self.rule_id_to_record: Dict[int, Record] = {}  # maps each rule (via rule id) to a record object
 
         self.update_subtree_scores(start_tnode=self.root)
         self.update_all_record_scores()  # this updates the scores of the records
         logging.debug('Grammar initialized')
 
-    def tnode_score(self, tnode: TreeNodeNew, subtree: Set[int]) -> Any:
+    def tnode_score(self, tnode: TreeNode, subtree: Set[int]) -> Any:
         return None  # there is no need for tnode score in this case
 
     def get_best_record(self) -> Record:
         assert len(self.rule_id_to_record) > 0, 'Empty records, extraction failed'
         return min(self.rule_id_to_record.values(), key=lambda rec: rec.score)
 
-    def update_tree(self, tnode: TreeNodeNew) -> None:
+    def update_tree(self, tnode: TreeNode) -> None:
         """
         update the tnode and the corresponding rule_id_to_record and tnode_to_rule data structures
         :param tnode:

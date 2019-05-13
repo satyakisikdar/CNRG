@@ -1,7 +1,7 @@
 from typing import Tuple, List, Set, Union, Any
 from collections import deque
 
-class TreeNodeNew:
+class TreeNode:
     """
     Node class for trees
     """
@@ -14,8 +14,8 @@ class TreeNodeNew:
         self.children: Set[Union[int, str]] = set()  # set of node labels of nodes in the subtree rooted at the node
         self.leaves: Set[int] = set()  # set of children that are leaf nodes
 
-        self.parent: Union[TreeNodeNew, None] = None  # pointer to parent
-        self.kids: List[TreeNodeNew] = []  # pointers to the children
+        self.parent: Union[TreeNode, None] = None  # pointer to parent
+        self.kids: List[TreeNode] = []  # pointers to the children
 
         self.is_leaf = is_leaf  # True if it's a child, False otherwise
 
@@ -34,7 +34,7 @@ class TreeNodeNew:
         return f'{self.key} ({len(self.leaves)})'
 
     def __copy__(self):
-        node_copy = TreeNodeNew(key=self.key)
+        node_copy = TreeNode(key=self.key)
 
         node_copy.parent = self.parent
         node_copy.kids = self.kids
@@ -69,7 +69,7 @@ class TreeNodeNew:
         return len(self.leaves)
 
 
-def create_tree(lst: List[Any]) -> TreeNodeNew:
+def create_tree(lst: List[Any]) -> TreeNode:
     """
     Creates a Tree from the list of lists
     :param lst: nested list of lists
@@ -81,8 +81,8 @@ def create_tree(lst: List[Any]) -> TreeNodeNew:
         nonlocal key
 
         if len(lst) == 1 and isinstance(lst[0], int):  # detect leaf
-            return TreeNodeNew(key=lst[0], is_leaf=True)
-        node = TreeNodeNew(key=key)
+            return TreeNode(key=lst[0], is_leaf=True)
+        node = TreeNode(key=key)
         key = chr(ord(key) + 1)
 
         for item in lst:
