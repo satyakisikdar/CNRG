@@ -1,7 +1,7 @@
-import numpy as np
 import random
+
+import numpy as np
 import pandas as pd
-import networkx as nx
 from gensim.models import Word2Vec
 
 

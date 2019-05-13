@@ -4,24 +4,27 @@ Contains the different partition methods
 2. Node2vec hierarchical partition
 """
 
-import  networkx as nx
-from scipy.cluster.hierarchy import linkage, to_tree, cophenet
-from scipy.spatial.distance import pdist
-import scipy.sparse.linalg
-from sklearn.cluster import KMeans
 import random
-import sklearn.preprocessing
 import subprocess
 from collections import defaultdict
+
+import community as cmt
 import igraph as ig
 import leidenalg as la
+import networkx as nx
+import scipy.sparse.linalg
+import sklearn.preprocessing
+
+from scipy.cluster.hierarchy import linkage, to_tree, cophenet
+from scipy.spatial.distance import pdist
+from sklearn.cluster import KMeans
 
 import src.node2vec as n2v
-from src.louvain import get_louvain_clusters
+from src.LightMultiGraph import LightMultiGraph
 
 def leiden_one_level_old(g):
     if g.size() < 3 and nx.is_connected(g):
-        return list(g.nodes_iter())
+        return list(g.nodes())
     g = nx.convert_node_labels_to_integers(g, label_attribute='old_label')
     nx.write_edgelist(g, './src/leiden/graph.g', delimiter='\t', data=False)
 
@@ -36,16 +39,17 @@ def leiden_one_level_old(g):
     return clusters.values()
 
 
-def leiden_one_level(g):
-    if g.size() < 3 and nx.is_connected(g):
-        return list(g.nodes_iter())
+def leiden_one_level(g: LightMultiGraph):
+    # if g.size() < 3 and nx.is_connected(g):
+    #     clusters = [[[n] for n in g.nodes()]]
+    #     return clusters
 
     nx_g = nx.convert_node_labels_to_integers(g, label_attribute='old_label')
     old_label = nx.get_node_attributes(nx_g, 'old_label')
 
     ig_g = ig.Graph(directed=False)
     ig_g.add_vertices(nx_g.order())
-    ig_g.add_edges(nx_g.edges_iter())
+    ig_g.add_edges(nx_g.edges())
     partition = la.find_partition(ig_g, partition_type=la.ModularityVertexPartition)
     cover = tuple(partition.as_cover())
 
@@ -55,27 +59,28 @@ def leiden_one_level(g):
     return cover
 
 
-def leiden(g):
+def leiden(g: LightMultiGraph):
     tree = []
 
     if g.order() < 2:
-        return [[n] for n in g.nodes_iter()]
+        clusters = [[n] for n in g.nodes()]
+        return clusters
 
     clusters = leiden_one_level(g)
     if len(clusters) == 1:
-        return [[n] for n in list(clusters)[0]]
+        clusters = [[n] for n in list(clusters)[0]]
+        return clusters
 
     for cluster in clusters:
-        sg = g.subgraph(cluster)
-        assert nx.is_connected(sg), "subgraph not connected"
+        sg = g.subgraph(cluster).copy()
+        # assert nx.is_connected(sg), "subgraph not connected"
         tree.append(leiden(sg))
 
     return tree
 
 
-
-def get_random_partition(g, seed=None):
-    nodes = g.nodes()
+def get_random_partition(g: LightMultiGraph, seed=None):
+    nodes = list(g.nodes())
     if seed is not None:
         random.seed(seed)
     random.shuffle(nodes)
@@ -92,15 +97,31 @@ def random_partition(nodes):
 
     tree.append(random_partition(left))
     tree.append(random_partition(right))
-
     return tree
 
 
-def louvain(g, randomize=False):
-    return get_louvain_clusters(g, randomize=randomize)
+def louvain(g: nx.Graph, randomize=False):
+    if g.order() < 2:
+        return [[n] for n in g.nodes()]
+
+    tree = []
+    partition = cmt.best_partition(g)
+
+    clusters = defaultdict(list)
+    for node, cluster_id in partition.items():
+        clusters[cluster_id].append(node)
+
+    if len(clusters) == 1:
+        return [[n] for n in clusters[0]]
+
+    for cluster in clusters.values():
+        sg = g.subgraph(cluster).copy()
+        # assert nx.is_connected(sg), "subgraph not connected"  # TODO: replace this with a return None
+        tree.append(louvain(sg))
+    return tree
 
 
-def approx_min_conductance_partitioning(g, max_k=1):
+def approx_min_conductance_partitioning(g: LightMultiGraph, max_k=1):
     """
     Approximate minimum conductance partinioning. I'm using the median method as referenced here:
     http://www.ieor.berkeley.edu/~goldberg/pubs/krishnan-recsys-final2.pdf
@@ -109,7 +130,7 @@ def approx_min_conductance_partitioning(g, max_k=1):
     :return: a dendrogram
     """
     lvl = []
-    node_list = g.nodes()
+    node_list = list(g.nodes())
     if len(node_list) <= max_k:
         assert len(node_list) > 0
         return node_list
@@ -151,23 +172,22 @@ def approx_min_conductance_partitioning(g, max_k=1):
         # Hack to check and fix non connected subgraphs
         if not nx.is_connected(sg1):
             for sg in sorted(nx.connected_component_subgraphs(sg1), key=len, reverse=True)[1: ]:
-                p2.update(sg.nodes_iter())
-                for n in sg.nodes_iter():
+                p2.update(sg.nodes())
+                for n in sg.nodes():
                     p1.remove(n)
 
             sg2 = g.subgraph(p2)  # updating sg2 since p2 has changed
 
         if not nx.is_connected(sg2):
             for sg in sorted(nx.connected_component_subgraphs(sg2), key=len, reverse=True)[1: ]:
-                p1.update(sg.nodes_iter())
-                for n in sg.nodes_iter():
+                p1.update(sg.nodes())
+                for n in sg.nodes():
                     p2.remove(n)
 
         iter_count += 1
 
     if iter_count > 2:
         print('it took {} iterations to stabilize'.format(iter_count))
-
 
     assert nx.is_connected(sg1) and nx.is_connected(sg2), "subgraphs are not connected in cond"
 
@@ -178,7 +198,7 @@ def approx_min_conductance_partitioning(g, max_k=1):
     return lvl
 
 
-def spectral_kmeans(g, K):
+def spectral_kmeans(g: LightMultiGraph, K):
     """
     k-way ncut spectral clustering Ng et al. 2002 KNSC1
     :param g: graph g
@@ -188,7 +208,7 @@ def spectral_kmeans(g, K):
     tree = []
 
     if g.order() <= K:   # not more than k nodes, return the list of nodes
-        return [[n] for n in g.nodes_iter()]
+        return [[n] for n in g.nodes()]
 
     if K == 2:  # if K is two, use approx min partitioning
         return approx_min_conductance_partitioning(g)
@@ -205,7 +225,7 @@ def spectral_kmeans(g, K):
     if K >= g.order() - 2:
         return spectral_kmeans(g, K - 1)
 
-    assert nx.is_connected(g), "g is not connected in cond"
+    assert nx.is_connected(g), "g is not connected in spectral kmeans"
 
     L = nx.laplacian_matrix(g)
 
@@ -221,7 +241,7 @@ def spectral_kmeans(g, K):
     cluster_labels = kmeans.labels_
     clusters = [[] for _ in range(max(cluster_labels) + 1)]
 
-    for u, clu_u in zip(g.nodes_iter(), cluster_labels):
+    for u, clu_u in zip(g.nodes(), cluster_labels):
         clusters[clu_u].append(u)
 
     for cluster in clusters:

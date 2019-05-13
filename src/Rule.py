@@ -1,32 +1,34 @@
 import networkx as nx
-import src.MDL as MDL
 import networkx.algorithms.isomorphism as iso
+
+import src.MDL as MDL
 
 
 class BaseRule:
     """
     Base class for Rule
     """
+    __slots__ = 'lhs', 'graph', 'level', 'cost', 'frequency', 'id', 'non_terminals'
+
     def __init__(self, lhs, graph, level=0, cost=0, frequency=1):
         self.lhs = lhs  # the left hand side: the number of boundary edges
         self.graph = graph  # the right hand side subgraph
         self.level = level  # level of discovery in the tree (the root is at 0)
         self.cost = cost  # the cost of encoding the rule using MDL (in bits)
         self.frequency = frequency  # frequency of occurence
-        self.id = -1
+        self.id = None
         self.non_terminals = []  # list of non-terminals in the RHS graph
-        self.is_active = True
-        for node, d in self.graph.nodes_iter(data=True):
+        for node, d in self.graph.nodes(data=True):
             if 'label' in d:
                 self.non_terminals.append(d['label'])
 
-
     def __str__(self):
-        if self.is_active:
-            st = ''
-        else:
-            st = '[x] '
-        st += '{} -> (n = {}, m = {})'.format(self.lhs, self.graph.order(), self.graph.size())
+        # if self.is_active:
+        #     st = ''
+        # else:
+        #     st = '[x] '
+        st = ''
+        st += '({}) {} -> (n = {}, m = {})'.format(self.id, self.lhs, self.graph.order(), self.graph.size())
         # print non-terminals if present
 
         if len(self.non_terminals) != 0:  # if it has non-terminals, print the sizes
@@ -57,7 +59,6 @@ class BaseRule:
                and nx.is_isomorphic(g1, g2, edge_match=iso.numerical_edge_match('weight', 1.0),
                                     node_match=iso.categorical_node_match('label', ''))
 
-
     def __hash__(self):
         g = nx.freeze(self.graph)
         return hash((self.lhs, g))
@@ -76,13 +77,13 @@ class BaseRule:
         flattened_graph = nx.Graph(self.graph)
 
         dot = Graph(engine='dot')
-        for node, d in self.graph.nodes_iter(data=True):
+        for node, d in self.graph.nodes(data=True):
             if 'label' in d:
                 dot.node(str(node), str(d['label']), shape='square', height='0.20')
             else:
                 dot.node(str(node), '', height='0.12', shape='circle')
 
-        for u, v in flattened_graph.edges_iter():
+        for u, v in flattened_graph.edges():
             w = self.graph.number_of_edges(u, v)
             if w > 1:
                 dot.edge(str(u), str(v), label=str(w))
@@ -100,6 +101,8 @@ class FullRule(BaseRule):
     """
     Rule object for full-info option
     """
+    __slots__ = 'internal_nodes', 'edges_covered'
+
     def __init__(self, lhs, graph, internal_nodes, level=0, cost=0, frequency=1,
                  edges_covered = None):
         super().__init__(lhs=lhs, graph=graph, level=level, cost=cost, frequency=frequency)
@@ -116,7 +119,7 @@ class FullRule(BaseRule):
         We have two types of nodes (internal and external) and one type of edge
         :return:
         """
-        self.cost = MDL.gamma_code(self.lhs + 1) + MDL.graph_mdl(self.graph, l_u=4) + \
+        self.cost = MDL.gamma_code(self.lhs + 1) + MDL.graph_dl(self.graph) + \
                     MDL.gamma_code(self.frequency + 1)
 
     def generalize_rhs(self):
@@ -135,7 +138,7 @@ class FullRule(BaseRule):
             mapping[n] = internal_node_counter
             internal_node_counter = chr(ord(internal_node_counter) + 1)
 
-        for n in [x for x in self.graph.nodes_iter() if x not in self.internal_nodes]:
+        for n in [x for x in self.graph.nodes() if x not in self.internal_nodes]:
             mapping[n] = boundary_node_counter
             boundary_node_counter += 1
         self.graph = nx.relabel_nodes(self.graph, mapping=mapping)
@@ -147,7 +150,7 @@ class FullRule(BaseRule):
         Contracts the RHS such that all boundary nodes with degree 1 are replaced by a special boundary isolated node I
         """
         iso_nodes = set()
-        for node in self.graph.nodes_iter():
+        for node in self.graph.nodes():
             if node not in self.internal_nodes and self.graph.degree(node) == 1:  # identifying the isolated nodes
                 iso_nodes.add(node)
 
@@ -158,7 +161,7 @@ class FullRule(BaseRule):
         rhs_copy = nx.Graph(self.graph)
 
         for iso_node in iso_nodes:
-            for u in rhs_copy.neighbors_iter(iso_node):
+            for u in rhs_copy.neighbors(iso_node):
                 self.graph.add_edge(u, 'Iso', attr_dict={'b': True})
 
         assert self.graph.has_node('Iso'), 'No Iso node after contractions'
@@ -186,15 +189,14 @@ class PartRule(BaseRule):
         :param self: RHS subgraph
         :return:
         """
-        return
-        # mapping = {}
-        # internal_node_counter = 'a'
-        #
-        # for n in self.graph.nodes_iter():
-        #     mapping[n] = internal_node_counter
-        #     internal_node_counter = chr(ord(internal_node_counter) + 1)
-        #
-        # nx.relabel_nodes(self.graph, mapping=mapping, copy=False)
+        mapping = {}
+        internal_node_counter = 'a'
+
+        for n in self.graph.nodes():
+            mapping[n] = internal_node_counter
+            internal_node_counter = chr(ord(internal_node_counter) + 1)
+
+        nx.relabel_nodes(self.graph, mapping=mapping, copy=False)
 
 
     def calculate_cost(self):
@@ -204,13 +206,14 @@ class PartRule(BaseRule):
         :return:
         """
         b_deg = nx.get_node_attributes(self.graph, 'b_deg')
+        assert len(b_deg) > 0, 'invalid b_deg'
         max_boundary_degree = max(b_deg.values())
         l_u = 2
-        for node, data in self.graph.nodes_iter(data=True):
+        for node, data in self.graph.nodes(data=True):
             if 'label' in data:  # it's a non-terminal
                 l_u = 3
-        self.cost = MDL.gamma_code(self.lhs + 1) + MDL.graph_mdl(self.graph, l_u=l_u) + \
-                    MDL.gamma_code(self.frequency + 1) +\
+        self.cost = MDL.gamma_code(self.lhs + 1) + MDL.graph_dl(self.graph) + \
+                    MDL.gamma_code(self.frequency + 1) + \
                     self.graph.order() * MDL.gamma_code(max_boundary_degree + 1)
 
 
@@ -227,5 +230,5 @@ class NoRule(PartRule):
         l_u = 2 (because we have one type of nodes and one type of edge)
         :return:
         """
-        self.cost = MDL.gamma_code(self.lhs + 1) + MDL.graph_mdl(self.graph, l_u=2) + \
+        self.cost = MDL.gamma_code(self.lhs + 1) + MDL.graph_dl(self.graph) + \
                     MDL.gamma_code(self.frequency + 1)

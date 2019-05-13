@@ -1,11 +1,12 @@
-import networkx as nx
-import os
 import platform
 import subprocess
-import pandas as pd
-import scipy.stats
-import scipy.spatial
+
+import networkx as nx
 import numpy as np
+import pandas as pd
+import scipy.spatial
+import scipy.stats
+
 
 def GCD(h1, h2, mode='orca'):
     if mode == 'rage':

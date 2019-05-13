@@ -4,13 +4,11 @@ Full info extraction and generation
 Uses explicit boundary information containing node level info on boundary nodes and edges
 """
 
-import networkx as nx
 import random
-import numpy as np
-from copy import deepcopy
 
-import src.globals as globals
-from src.Rule import FullRule as Rule
+import networkx as nx
+import numpy as np
+
 from src.globals import find_boundary_edges
 
 

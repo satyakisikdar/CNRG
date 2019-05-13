@@ -8,27 +8,26 @@ Runner script for VRGs
 5. Analyzes the final network
 """
 
-from time import time
-import networkx as nx
-from copy import deepcopy
-import os
-import sys
-import numpy as np
-import math
-import pickle
 import argparse
 import glob
 import logging
+import math
+import os
+import sys
+import pickle
+from time import time
+from copy import deepcopy
+import networkx as nx
+import numpy as np
 
 sys.path.extend([os.getcwd(), os.path.dirname(os.getcwd()), './src'])
 import src.partitions as partitions
-from src.extract import extract_original, extract_local, extract_global
 from src.Tree import create_tree
 from src.LightMultiGraph import LightMultiGraph
+from src.extract import extract_global, extract_local, extract_original
 
+assert '2' in nx.__version__, 'Please update networkx. You are on the NetworkX 2.x branch'
 
-logging.basicConfig(level=logging.DEBUG,
-                    format="%(message)s")
 
 def get_graph(filename='sample'):
     if filename == 'sample':
@@ -55,7 +54,7 @@ def get_graph(filename='sample'):
         g.name = name
 
     g_new = LightMultiGraph()
-    g_new.add_edges_from(g.edges_iter())
+    g_new.add_edges_from(g.edges())
     return g_new
 
 
@@ -118,7 +117,7 @@ def get_clustering(g, name, outdir, clustering):
         end_time = time() - start_time
 
         pickle.dump(root, open(tree_pickle, 'wb'))
-        print('{} clustering ran in {} secs. Pickled as a Tree object.\n'.format(clustering, round(end_time, 3)))
+        print(f'{clustering} clustering ran in {round(end_time, 3)} secs.')
     return root
 
 
@@ -135,9 +134,9 @@ def get_grammar(g, name, outdir, clustering, selection, lamb, mode, root):
     :param root: root of the dendrogram
     :return: VRG object
     '''
-    # grammar_pickle = f'./{outdir}/{clustering}_{mode}_{selection}_{lamb}.pkl'
-    # if not os.path.exists(f'./{outdir}'):
-    #     os.makedirs(f'./{outdir}')
+    grammar_pickle = f'./{outdir}/{clustering}_{mode}_{selection}_{lamb}.pkl'
+    if not os.path.exists(f'./{outdir}'):
+        os.makedirs(f'./{outdir}')
     #
     # if os.path.exists(grammar_pickle):
     #     print('Using existing pickle for grammar: lambda: {}, boundary info: {}, selection: {}.\n'.format(lamb, mode, selection))
@@ -145,16 +144,19 @@ def get_grammar(g, name, outdir, clustering, selection, lamb, mode, root):
     # else:
     print('Starting grammar induction: lambda: {}, boundary info: {}, selection: {}...'.format(lamb, mode, selection), end='\r')
     start_time = time()
-    # grammar = extract_original(g=deepcopy(g), root=deepcopy(root), lamb=lamb, selection=selection, mode=mode,
+    # grammar = extract_original(g=g.copy(), root=deepcopy(root), lamb=lamb, selection=selection, mode=mode,
     #                            clustering=clustering, name=name)
 
-    grammar = extract_local(g=g.copy(), root=root, mode=mode, selection=selection, clustering=clustering, name=name)
-    # grammar = extract_global(g=g.copy(), clustering=clustering, mode=mode, name=name, root=root, selection=selection)
+    # grammar = extract_local(g=g.copy(), root=root, mode=mode, selection=selection, clustering=clustering, name=name)
+    grammar = extract_global(g=g.copy(), clustering=clustering, mode=mode, name=name, root=root, selection=selection)
 
     end_time = time() - start_time
-    # pickle.dump(grammar, open(grammar_pickle, 'wb'))
+    pickle.dump(grammar, open(grammar_pickle, 'wb'))
     print(f'Grammar: {grammar}. Generated in {round(end_time, 3)} secs. Pickled as a VRG object.\n')
     return grammar
+
+logging.basicConfig(level=logging.DEBUG,
+                    format="%(message)s")
 
 def main():
     """
@@ -171,8 +173,11 @@ def main():
 
     start_time = time()
     # g = get_graph('./src/tmp/{}.g'.format(name))
-    name = 'eucore'
-    clustering = 'leiden'
+    # name = 'ba_500_3'
+    name = 'karate'
+    # name = 'eucore'
+    # clustering = 'leiden'
+    clustering = 'cond'
     selection = 'random'
     lamb = 5
 
@@ -203,3 +208,5 @@ def main():
 if __name__ == '__main__':
     np.seterr(all='ignore')
     main()
+    # g = nx.barabasi_albert_graph(500, 3, seed=42)
+    # nx.write_edgelist(g, f'./src/tmp/ba_{500}_3.g', data=False)

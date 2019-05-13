@@ -1,14 +1,15 @@
+import itertools
+import math
+import os
+import pickle
+import random
+import subprocess
+from time import time
+
 import networkx as nx
 import networkx.algorithms.bipartite
-from networkx.generators.classic import empty_graph
-import itertools
-import random
-import math
 import numpy as np
-import subprocess
-from time import time 
-import pickle
-import os 
+from networkx.generators.classic import empty_graph
 
 
 def hrg_wrapper(g, n=5):

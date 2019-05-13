@@ -1,40 +1,40 @@
-class TreeNode:
+from typing import Tuple, List, Set, Union, Any
+from collections import deque
+
+class TreeNodeNew:
     """
     Node class for trees
     """
-    def __init__(self, key, is_leaf=False):
+    __slots__ = 'key', 'level', 'children', 'leaves', 'parent', 'kids', 'is_leaf'
+
+    def __init__(self, key: str, is_leaf: bool=False) -> None:
         self.key = key   # key of the node, each node has an unique key
         self.level = 0  # level of the node
 
-        self.children = set()  # set of node labels of nodes in the subtree rooted at the node
-        self.leaves = set()  # set of children that are leaf nodes
+        self.children: Set[Union[int, str]] = set()  # set of node labels of nodes in the subtree rooted at the node
+        self.leaves: Set[int] = set()  # set of children that are leaf nodes
 
-
-        self.parent = None  # pointer to parent
-        self.kids = []  # pointers to the children
+        self.parent: Union[TreeNodeNew, None] = None  # pointer to parent
+        self.kids: List[TreeNodeNew] = []  # pointers to the children
 
         self.is_leaf = is_leaf  # True if it's a child, False otherwise
-        self.nleaf = 0   # number of leaves
 
-    def __eq__(self, other):
+    def __eq__(self, other) -> bool:
         return self.key == other
 
-    def __str__(self):
+    def __str__(self) -> str:
         if self.parent is None:
             parent = None
         else:
             parent = self.parent.key
 
-        return '{} ({}) p: {}'.format(self.key, self.nleaf, parent)
+        return f'{self.key} ({len(self.leaves)}) p: {parent}'
 
-    def __repr__(self):
-        return '{} ({})'.format(self.key, self.nleaf)
-
-    def __lt__(self, other):
-        return self.nleaf < other.nleaf
+    def __repr__(self) -> str:
+        return f'{self.key} ({len(self.leaves)})'
 
     def __copy__(self):
-        node_copy = TreeNode(key=self.key)
+        node_copy = TreeNodeNew(key=self.key)
 
         node_copy.parent = self.parent
         node_copy.kids = self.kids
@@ -44,7 +44,6 @@ class TreeNode:
 
         node_copy.level = self.level
         node_copy.is_leaf = self.is_leaf
-        node_copy.nleaf = self.nleaf
 
         return node_copy
 
@@ -54,22 +53,23 @@ class TreeNode:
     def copy(self):
         return self.__copy__()
 
-    def make_leaf(self, new_key):
+    def make_leaf(self, new_key) -> None:
         """
         converts the internal tree node into a leaf
         :param new_key: new key of the node
         :return:
         """
-        self.key = new_key  # the best node's key is now the key of the new_node
         self.leaves = {self.key}  # update the leaves
         self.children = set()
-
         self.kids = []
         self.is_leaf = True
-        self.nleaf = 1
+        self.key = new_key
+
+    def get_num_leaves(self) -> int:
+        return len(self.leaves)
 
 
-def create_tree(lst):
+def create_tree(lst: List[Any]) -> TreeNodeNew:
     """
     Creates a Tree from the list of lists
     :param lst: nested list of lists
@@ -81,8 +81,8 @@ def create_tree(lst):
         nonlocal key
 
         if len(lst) == 1 and isinstance(lst[0], int):  # detect leaf
-            return TreeNode(key=lst[0], is_leaf=True)
-        node = TreeNode(key=key)
+            return TreeNodeNew(key=lst[0], is_leaf=True)
+        node = TreeNodeNew(key=key)
         key = chr(ord(key) + 1)
 
         for item in lst:
@@ -92,7 +92,7 @@ def create_tree(lst):
 
     root = create(lst)
 
-    def update_info(node):
+    def update_info(node) -> Tuple[Set[Union[int, str]], int]:
         """
         updates the parent pointers, payloads, and the number of leaf nodes
         :param node:
@@ -100,18 +100,31 @@ def create_tree(lst):
         """
         if node.is_leaf:
             node.make_leaf(new_key=node.key)  # the key doesn't change
-
         else:
             for kid in node.kids:
                 kid.parent = node
-                nleaf, children, leaves = update_info(kid)
-                node.nleaf += nleaf
+                kid.level = node.level + 1
+                children, leaves = update_info(kid)
                 node.children.add(kid.key)
                 node.children.update(children)
                 node.leaves.update(leaves)
 
-        return node.nleaf, node.children, node.leaves
+        return node.children, node.leaves
 
+    def relabel_tnodes(tnode):
+        q = deque()
+        q.append(tnode)
+        key = 'a'
+        while len(q) != 0:
+            tnode = q.popleft()
+            if tnode.is_leaf:
+                continue
+            tnode.key = key
+            key = chr(ord(key) + 1)
+            for kid in tnode.kids:
+                q.append(kid)
+
+    relabel_tnodes(root)
     update_info(node=root)
 
     return root
