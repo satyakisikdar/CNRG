@@ -7,7 +7,10 @@ import logging
 from joblib import Parallel, delayed
 from copy import deepcopy
 import csv
-from sys import argv
+import sys
+from shutil import copyfile
+
+sys.setrecursionlimit(1_000_000)
 
 from src.VRG import VRG
 from src.extract import MuExtractor, LocalExtractor, GlobalExtractor
@@ -50,7 +53,7 @@ def get_graph(filename='sample') -> LightMultiGraph:
     return g_new
 
 
-def get_clustering(g, outdir, clustering) -> TreeNode:
+def get_clustering(g, outdir, clustering):
     '''
     wrapper method for getting dendrogram. uses an existing pickle if it can.
     :param g: graph
@@ -58,17 +61,17 @@ def get_clustering(g, outdir, clustering) -> TreeNode:
     :param clustering: name of clustering method
     :return: root node of the dendrogram
     '''
-    tree_pickle = f'./{outdir}/{clustering}_tree.pkl'
+    list_of_list_pickle = f'./{outdir}/{clustering}_list.pkl'
+    # tree_pickle = f'./{outdir}/{clustering}_tree.pkl'
+    # if os.path.exists()
     if not os.path.exists(f'./{outdir}'):
         os.makedirs(f'./{outdir}')
 
-    if os.path.exists(tree_pickle):
+    if os.path.exists(list_of_list_pickle):
         print('Using existing pickle for {} clustering\n'.format(clustering))
-        root = pickle.load(open(tree_pickle, 'rb'))
+        list_of_list_clusters = pickle.load(open(list_of_list_pickle, 'rb'))
     else:
-        print('Running {} clustering...'.format(clustering), end='\r')
-
-        start_time = time()
+        print('Running {} clustering...'.format(clustering))
         if clustering == 'random':
             list_of_list_clusters = partitions.get_random_partition(g)
         elif clustering == 'leiden':
@@ -81,13 +84,8 @@ def get_clustering(g, outdir, clustering) -> TreeNode:
             list_of_list_clusters = partitions.spectral_kmeans(g, K=int(math.sqrt(g.order() // 2)))
         else:
             list_of_list_clusters = partitions.get_node2vec(g)
-
-        root = create_tree(list_of_list_clusters)
-        end_time = time() - start_time
-
-        pickle.dump(root, open(tree_pickle, 'wb'))
-        print(f'{clustering} clustering ran in {round(end_time, 3)} secs.')
-    return root
+        pickle.dump(list_of_list_clusters, open(list_of_list_pickle, 'wb'))
+    return list_of_list_clusters
 
 logging.basicConfig(level=logging.WARNING, format="%(message)s")
 
@@ -121,14 +119,14 @@ def dump_grammar(name: str, clustering: str, grammar_type: str) -> None:
     outdir = 'dumps'
     make_dirs(outdir, name)  # make the directories if needed
 
-    mus = range(2, min(original_graph.order() // 2, 11))
+    mus = range(2, min(original_graph.order(), 11))
 
     grammar_types = ('mu_random', 'mu_level', 'mu_dl', 'mu_level_dl', 'local_dl', 'global_dl')
     assert grammar_type in grammar_types, f'Invalid grammar type: {grammar_type}'
 
     g_copy = original_graph.copy()
 
-    orig_root = get_clustering(g=g_copy, outdir=f'{outdir}/trees/{name}', clustering=clustering)
+    list_of_list_clusters = get_clustering(g=g_copy, outdir=f'{outdir}/trees/{name}', clustering=clustering)
 
     fieldnames = ('name', 'n', 'm', 'g_dl', 'type', 'mu', 'clustering', '#rules', 'grammar_dl', 'time')
 
@@ -143,8 +141,8 @@ def dump_grammar(name: str, clustering: str, grammar_type: str) -> None:
 
         if not os.path.exists(grammar_filename):  # the grammar does not exist
             g = original_graph.copy()
-            root = deepcopy(orig_root)
-
+            list_of_list_clusters_copy = list_of_list_clusters[: ]
+            root = create_tree(list_of_list_clusters_copy)
             start_time = time()
             if 'mu' in grammar_type:
                 extractor = MuExtractor(g=g, type=grammar.type, grammar=grammar, mu=mu, root=root)
@@ -176,10 +174,10 @@ def dump_grammar(name: str, clustering: str, grammar_type: str) -> None:
 
 
 def main():
-    if len(argv) > 1:
-        name = argv[1]
+    if len(sys.argv) > 1:
+        name = sys.argv[1]
     else:
-        name = 'karate'
+        name = 'sample'
 
     grammar_types = ('mu_random', 'mu_level', 'mu_dl', 'mu_level_dl', 'local_dl', 'global_dl')
     clustering_algs = ('cond', 'leiden', 'louvain', 'spectral', 'random')
@@ -193,9 +191,15 @@ def main():
 
     make_dirs(outdir, name)  # make the directories if needed
 
-    with open(f'{outdir}/grammar_stats/{name}.csv', 'w') as csv_file:
-        writer = csv.DictWriter(csv_file, fieldnames=fieldnames)
-        writer.writeheader()
+    stats_path = f'{outdir}/grammar_stats/{name}.csv'
+    mode = 'w'
+    if os.path.exists(stats_path):
+        mode = 'a'
+
+    if mode == 'w':
+        with open(stats_path, mode) as csv_file:
+            writer = csv.DictWriter(csv_file, fieldnames=fieldnames)
+            writer.writeheader()
 
     Parallel(n_jobs=15, verbose=1)(delayed(dump_grammar)(name=name, clustering=clustering, grammar_type=grammar_type)
                                   for grammar_type in grammar_types
