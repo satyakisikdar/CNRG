@@ -5,16 +5,12 @@ from time import time
 import math
 import logging
 from joblib import Parallel, delayed
-from copy import deepcopy
 import csv
 import sys
-from shutil import copyfile
-
-sys.setrecursionlimit(1_000_000)
+from typing import *
 
 from src.VRG import VRG
-from src.extract import MuExtractor, LocalExtractor, GlobalExtractor
-from src.Tree import create_tree, TreeNode
+from src.generate import generate_graph
 import src.partitions as partitions
 from src.LightMultiGraph import LightMultiGraph
 from src.MDL import graph_dl
@@ -96,7 +92,7 @@ def make_dirs(outdir: str, name: str) -> None:
     :param name:
     :return:
     """
-    subdirs = ('grammars', 'graphs', 'rule_orders', 'trees', 'grammar_stats')
+    subdirs = ('grammars', 'graphs', 'rule_orders', 'trees', 'grammar_stats', 'gen_stats')
 
     for dir in subdirs:
         dir_path = f'./{outdir}/{dir}/'
@@ -110,7 +106,7 @@ def make_dirs(outdir: str, name: str) -> None:
     return
 
 
-def dump_grammar(name: str, clustering: str, grammar_type: str) -> None:
+def dump_graphs(name: str, clustering: str, grammar_type: str) -> None:
     """
     Dump the stats
     :return:
@@ -124,54 +120,61 @@ def dump_grammar(name: str, clustering: str, grammar_type: str) -> None:
     grammar_types = ('mu_random', 'mu_level', 'mu_dl', 'mu_level_dl', 'local_dl', 'global_dl')
     assert grammar_type in grammar_types, f'Invalid grammar type: {grammar_type}'
 
-    g_copy = original_graph.copy()
+    # g_copy = original_graph.copy()
 
-    list_of_list_clusters = get_clustering(g=g_copy, outdir=f'{outdir}/trees/{name}', clustering=clustering)
-
-    fieldnames = ('name', 'n', 'm', 'g_dl', 'type', 'mu', 'clustering', '#rules', 'grammar_dl', 'time')
-
-    g_dl = graph_dl(original_graph)
+    num_graphs = 10
+    # fieldnames = ('name', 'n', 'm', 'g_dl', 'type', 'mu', 'clustering', '#rules', 'grammar_dl', 'time')
 
     base_filename = f'{outdir}/grammars/{name}'
     for mu in mus:
-        orig_grammar = VRG(clustering=clustering, type=grammar_type, name=name, mu=mu)
+        grammar_filename = f'{base_filename}/{clustering}_{grammar_type}_{mu}.pkl'
+        graphs_filename = f'{outdir}/graphs/{name}/{clustering}_{grammar_type}_{mu}_graphs.pkl'
+        rule_orders_filename = f'{outdir}/rule_orders/{name}/{clustering}_{grammar_type}_{mu}_orders.pkl'
 
-        grammar = orig_grammar.copy()
-        grammar_filename = f'{base_filename}/{grammar.clustering}_{grammar.type}_{grammar.mu}.pkl'
+        if not os.path.exists(grammar_filename):
+            print('Grammar not found:', grammar_filename)
+            continue
 
-        if not os.path.exists(grammar_filename):  # the grammar does not exist
-            g = original_graph.copy()
-            list_of_list_clusters_copy = list_of_list_clusters[: ]
-            root = create_tree(list_of_list_clusters_copy)
-            start_time = time()
-            if 'mu' in grammar_type:
-                extractor = MuExtractor(g=g, type=grammar.type, grammar=grammar, mu=mu, root=root)
+        if os.path.exists(graphs_filename):
+            print('Graphs already generated')
+            continue
 
-            elif 'local' in grammar_type:
-                extractor = LocalExtractor(g=g, type=grammar_type, grammar=grammar, mu=mu, root=root)
+        grammar = pickle.load(open(grammar_filename, 'rb'))
 
-            else:
-                assert grammar_type == 'global_dl', f'improper grammar type {grammar_type}'
-                extractor = GlobalExtractor(g=g, type=grammar.type, grammar=grammar, mu=mu, root=root)
+        graphs: List[LightMultiGraph] = []
+        rule_orderings: List[List[int]] = []
 
-            extractor.generate_grammar()
-            time_taken = round(time() - start_time, 3)
+        for i in range(num_graphs):
+            rule_dict = dict(grammar.rule_dict)
+            new_graph, rule_ordering = generate_graph(rule_dict)
+            print(f'{name} {grammar_type}: {i+1}, n = {new_graph.order():_d} m = {new_graph.size():_d}')
+            graphs.append(new_graph)
+            rule_orderings.append(rule_ordering)
 
-            grammar = extractor.grammar
-            pickle.dump(grammar, open(grammar_filename, 'wb'))
-        else:
-            grammar = pickle.load(open(grammar_filename, 'rb'))
-            time_taken = ''
 
-        row = {'name': name, 'n': original_graph.order(), 'm': original_graph.size(), 'g_dl': g_dl,
-               'type': grammar_type, 'mu': mu, 'clustering': clustering, '#rules': len(grammar), 'grammar_dl': grammar.cost,
-               'time': time_taken}
-
-        with open(f'{outdir}/grammar_stats/{name}.csv', 'a') as csv_file:
-            writer = csv.DictWriter(csv_file, fieldnames=fieldnames)
-            writer.writerow(row)
+        pickle.dump(graphs, open(graphs_filename, 'wb'))
+        pickle.dump(rule_orderings, open(rule_orders_filename, 'wb'))
     return
 
+
+def generate_graphs(grammar: VRG, num_graphs=10):
+    """
+
+    :param grammar: VRG grammar object
+    :param num_graphs: number of graphs
+    :return: list of generated graphs and the rule orderings for each of the graphs
+    """
+    graphs: List[LightMultiGraph] = []
+    rule_orderings: List[List[int]] = []
+
+    for _ in range(num_graphs):
+        rule_dict = dict(grammar.rule_dict)
+        new_graph, rule_ordering = generate_graph(rule_dict)
+        graphs.append(new_graph)
+        rule_orderings.append(rule_ordering)
+        # print(f'graph #{_ + 1} n = {new_graph.order()} m = {new_graph.size()} {rule_ordering}')
+
+    return graphs, rule_orderings
 
 def main():
     if len(sys.argv) > 1:
@@ -186,27 +189,25 @@ def main():
 
     # gram = pickle.load(open('./dumps/grammars/karate/leiden_mu_random_3.pkl', 'rb'))
     # print(gram.rule_list)
-    outdir = 'dumps'
-    fieldnames = ('name', 'n', 'm', 'g_dl', 'type', 'mu', 'clustering', '#rules', 'grammar_dl', 'time')
+    # outdir = 'dumps'
+    # fieldnames = ('name', 'n', 'm', 'g_dl', 'type', 'mu', 'clustering', '#rules', 'grammar_dl', 'time')
+    #
+    # make_dirs(outdir, name)  # make the directories if needed
 
-    make_dirs(outdir, name)  # make the directories if needed
+    # stats_path = f'{outdir}/gen_stats/{name}.csv'
+    # mode = 'w'
+    # if os.path.exists(stats_path):
+    #     mode = 'a'
+    #
+    # if mode == 'w':
+    #     with open(stats_path, mode) as csv_file:
+    #         writer = csv.DictWriter(csv_file, fieldnames=fieldnames)
+    #         writer.writeheader()
 
-    stats_path = f'{outdir}/grammar_stats/{name}.csv'
-    mode = 'w'
-    if os.path.exists(stats_path):
-        print('stats file exists')
-        mode = 'a'
-
-    if mode == 'w':
-        with open(stats_path, mode) as csv_file:
-            writer = csv.DictWriter(csv_file, fieldnames=fieldnames)
-            writer.writeheader()
-
-    Parallel(n_jobs=15, verbose=1)(delayed(dump_grammar)(name=name, clustering=clustering, grammar_type=grammar_type)
+    Parallel(n_jobs=15, verbose=1)(delayed(dump_graphs)(name=name, clustering=clustering, grammar_type=grammar_type)
                                   for grammar_type in grammar_types
                                    for clustering in clustering_algs)
 
 
 if __name__ == '__main__':
     main()
-    # par_main()
