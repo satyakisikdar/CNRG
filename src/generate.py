@@ -5,7 +5,6 @@ import numpy as np
 import logging
 
 from src.LightMultiGraph import LightMultiGraph
-from src.VRG_new import VRG
 from src.Rule import PartRule
 from src.globals import find_boundary_edges
 
@@ -93,21 +92,3 @@ def generate_graph(rule_dict: Dict[int, List[PartRule]]) -> Tuple[LightMultiGrap
 
     return new_g, rule_ordering
 
-def generate_graphs(grammar: VRG, num_graphs=10) -> Tuple[List[LightMultiGraph], List[List[int]]]:
-    """
-
-    :param grammar: VRG grammar object
-    :param num_graphs: number of graphs
-    :return: list of generated graphs and the rule orderings for each of the graphs
-    """
-    graphs: List[LightMultiGraph] = []
-    rule_orderings: List[List[int]] = []
-
-    for _ in range(num_graphs):
-        rule_dict = dict(grammar.rule_dict)
-        new_graph, rule_ordering = generate_graph(rule_dict)
-        graphs.append(new_graph)
-        rule_orderings.append(rule_ordering)
-        print(f'graph #{_ + 1} n = {new_graph.order()} m = {new_graph.size()} {rule_ordering}')
-
-    return graphs, rule_orderings

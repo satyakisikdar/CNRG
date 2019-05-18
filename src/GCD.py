@@ -7,6 +7,8 @@ import pandas as pd
 import scipy.spatial
 import scipy.stats
 
+np.seterr(all='ignore')
+
 
 def GCD(h1, h2, mode='orca'):
     if mode == 'rage':
@@ -23,7 +25,7 @@ def GCD(h1, h2, mode='orca'):
     return round(gcd, 3)
 
 
-def external_orca(g, gname):
+def external_orca(g: nx.Graph, gname: str):
     g = nx.Graph(g)  # convert it into a simple graph
     g = max(nx.connected_component_subgraphs(g), key=len)
     selfloops = g.selfloop_edges()
@@ -31,26 +33,26 @@ def external_orca(g, gname):
 
     g = nx.convert_node_labels_to_integers(g, first_label=0)
 
-    file_dir = 'tmp'
-    with open('./{}/{}.in'.format(file_dir, gname), 'w') as f:
-        f.write('{} {}\n'.format(g.order(), g.size()))
-        for u, v in g.edges_iter():
-            f.write('{} {}\n'.format(u, v))
+    file_dir = 'src/tmp'
+    with open(f'./{file_dir}/{gname}.in', 'w') as f:
+        f.write(f'{g.order()} {g.size()}\n')
+        for u, v in g.edges():
+            f.write(f'{u} {v}\n')
 
-    args = ['./orca', '4', './{}/{}.in'.format(file_dir, gname), './{}/{}.out'.format(file_dir, gname)]
+    args = ['', '4', f'./{file_dir}/{gname}.in', f'./{file_dir}/{gname}.out']
 
     if 'Windows' in platform.platform():
-        args[0] = './orca.exe'
+        args[0] = './src/orca.exe'
     elif 'Linux' in platform.platform():
-        args[0] = './orca_linux'
+        args[0] = './src/orca_linux'
     else:
-        args[0] = './orca_mac'
+        args[0] = './src/orca_mac'
 
     process = subprocess.run(' '.join(args), shell=True, stdout=subprocess.DEVNULL)
     if process.returncode != 0:
         print('Error in ORCA')
 
-    df = pd.read_csv('./{}/{}.out'.format(file_dir, gname), sep=' ', header=None)
+    df = pd.read_csv(f'./{file_dir}/{gname}.out', sep=' ', header=None)
     return df
 
 
