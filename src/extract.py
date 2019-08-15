@@ -270,7 +270,7 @@ class BaseExtractor(abc.ABC):
         num_nodes = self.g.order()
 
         is_global_extractor = hasattr(self, 'final_grammar')
-        tqdm.write(f'Extracting grammar name:{self.grammar.name} mu:{self.grammar.mu} type:{self.grammar.type} clustering:{self.grammar.clustering}')
+        # tqdm.write(f'Extracting grammar name:{self.grammar.name} mu:{self.grammar.mu} type:{self.grammar.type} clustering:{self.grammar.clustering}')
         with tqdm(total=100, bar_format='{l_bar}{bar}|[{elapsed}<{remaining}]', ncols=50) as pbar:
             while True:
                 rule = self.extract_rule()

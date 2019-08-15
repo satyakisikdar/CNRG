@@ -6,8 +6,11 @@ import math
 import logging
 from joblib import Parallel, delayed
 from copy import deepcopy
+import argparse
 import csv
 import sys
+import glob
+from tqdm import tqdm
 from shutil import copyfile
 
 sys.setrecursionlimit(1_000_000)
@@ -61,30 +64,30 @@ def get_clustering(g, outdir, clustering):
     :param clustering: name of clustering method
     :return: root node of the dendrogram
     '''
-    list_of_list_pickle = f'./{outdir}/{clustering}_list.pkl'
-    # tree_pickle = f'./{outdir}/{clustering}_tree.pkl'
-    # if os.path.exists()
-    if not os.path.exists(f'./{outdir}'):
-        os.makedirs(f'./{outdir}')
-
-    if os.path.exists(list_of_list_pickle):
-        print('Using existing pickle for {} clustering\n'.format(clustering))
-        list_of_list_clusters = pickle.load(open(list_of_list_pickle, 'rb'))
+    # list_of_list_pickle = f'./{outdir}/{clustering}_list.pkl'
+    # # tree_pickle = f'./{outdir}/{clustering}_tree.pkl'
+    # # if os.path.exists()
+    # if not os.path.exists(f'./{outdir}'):
+    #     os.makedirs(f'./{outdir}')
+    #
+    # if os.path.exists(list_of_list_pickle):
+    #     print('Using existing pickle for {} clustering\n'.format(clustering))
+    #     list_of_list_clusters = pickle.load(open(list_of_list_pickle, 'rb'))
+    # else:
+    tqdm.write('Running {} clustering...'.format(clustering))
+    if clustering == 'random':
+        list_of_list_clusters = partitions.get_random_partition(g)
+    elif clustering == 'leiden':
+        list_of_list_clusters = partitions.leiden(g)
+    elif clustering == 'louvain':
+        list_of_list_clusters = partitions.louvain(g)
+    elif clustering == 'cond':
+        list_of_list_clusters = partitions.approx_min_conductance_partitioning(g)
+    elif clustering == 'spectral':
+        list_of_list_clusters = partitions.spectral_kmeans(g, K=int(math.sqrt(g.order() // 2)))
     else:
-        print('Running {} clustering...'.format(clustering))
-        if clustering == 'random':
-            list_of_list_clusters = partitions.get_random_partition(g)
-        elif clustering == 'leiden':
-            list_of_list_clusters = partitions.leiden(g)
-        elif clustering == 'louvain':
-            list_of_list_clusters = partitions.louvain(g)
-        elif clustering == 'cond':
-            list_of_list_clusters = partitions.approx_min_conductance_partitioning(g)
-        elif clustering == 'spectral':
-            list_of_list_clusters = partitions.spectral_kmeans(g, K=int(math.sqrt(g.order() // 2)))
-        else:
-            list_of_list_clusters = partitions.get_node2vec(g)
-        pickle.dump(list_of_list_clusters, open(list_of_list_pickle, 'wb'))
+        list_of_list_clusters = partitions.get_node2vec(g)
+        # pickle.dump(list_of_list_clusters, open(list_of_list_pickle, 'wb'))
     return list_of_list_clusters
 
 logging.basicConfig(level=logging.WARNING, format="%(message)s")
@@ -110,7 +113,7 @@ def make_dirs(outdir: str, name: str) -> None:
     return
 
 
-def dump_grammar(name: str, clustering: str, grammar_type: str) -> None:
+def dump_grammar(name: str, clustering: str, grammar_type: str, mu: int) -> None:
     """
     Dump the stats
     :return:
@@ -119,8 +122,6 @@ def dump_grammar(name: str, clustering: str, grammar_type: str) -> None:
     outdir = 'dumps'
     make_dirs(outdir, name)  # make the directories if needed
 
-    mus = range(2, min(original_graph.order(), 11))
-
     grammar_types = ('mu_random', 'mu_level', 'mu_dl', 'mu_level_dl', 'local_dl', 'global_dl')
     assert grammar_type in grammar_types, f'Invalid grammar type: {grammar_type}'
 
@@ -128,52 +129,40 @@ def dump_grammar(name: str, clustering: str, grammar_type: str) -> None:
 
     list_of_list_clusters = get_clustering(g=g_copy, outdir=f'{outdir}/trees/{name}', clustering=clustering)
 
-    fieldnames = ('name', 'n', 'm', 'g_dl', 'type', 'mu', 'clustering', '#rules', 'grammar_dl', 'time')
-
     g_dl = graph_dl(original_graph)
 
-    base_filename = f'{outdir}/grammars/{name}'
-    for mu in mus:
-        orig_grammar = VRG(clustering=clustering, type=grammar_type, name=name, mu=mu)
+    grammar = VRG(clustering=clustering, type=grammar_type, name=name, mu=mu)
 
-        grammar = orig_grammar.copy()
-        grammar_filename = f'{base_filename}/{grammar.clustering}_{grammar.type}_{grammar.mu}.pkl'
+    g = original_graph.copy()
+    list_of_list_clusters_copy = list_of_list_clusters[: ]
+    root = create_tree(list_of_list_clusters_copy)
+    start_time = time()
+    if 'mu' in grammar_type:
+        extractor = MuExtractor(g=g, type=grammar.type, grammar=grammar, mu=mu, root=root)
 
-        if not os.path.exists(grammar_filename):  # the grammar does not exist
-            g = original_graph.copy()
-            list_of_list_clusters_copy = list_of_list_clusters[: ]
-            root = create_tree(list_of_list_clusters_copy)
-            start_time = time()
-            if 'mu' in grammar_type:
-                extractor = MuExtractor(g=g, type=grammar.type, grammar=grammar, mu=mu, root=root)
+    elif 'local' in grammar_type:
+        extractor = LocalExtractor(g=g, type=grammar_type, grammar=grammar, mu=mu, root=root)
 
-            elif 'local' in grammar_type:
-                extractor = LocalExtractor(g=g, type=grammar_type, grammar=grammar, mu=mu, root=root)
+    else:
+        assert grammar_type == 'global_dl', f'improper grammar type {grammar_type}'
+        extractor = GlobalExtractor(g=g, type=grammar.type, grammar=grammar, mu=mu, root=root)
 
-            else:
-                assert grammar_type == 'global_dl', f'improper grammar type {grammar_type}'
-                extractor = GlobalExtractor(g=g, type=grammar.type, grammar=grammar, mu=mu, root=root)
+    extractor.generate_grammar()
+    time_taken = round(time() - start_time, 4)
 
-            extractor.generate_grammar()
-            time_taken = round(time() - start_time, 3)
+    grammar = extractor.grammar
 
-            grammar = extractor.grammar
-            pickle.dump(grammar, open(grammar_filename, 'wb'))
-        else:
-            grammar = pickle.load(open(grammar_filename, 'rb'))
-            time_taken = ''
+    row = {'name': name, 'n': original_graph.order(), 'm': original_graph.size(), 'g_dl': round(g_dl, 3),
+           'type': grammar_type, 'mu': mu, 'clustering': clustering, '#rules': len(grammar), 'grammar_dl': round(grammar.cost, 3),
+           'time': time_taken, 'compression': round(grammar.cost / g_dl, 3)}
 
-        row = {'name': name, 'n': original_graph.order(), 'm': original_graph.size(), 'g_dl': g_dl,
-               'type': grammar_type, 'mu': mu, 'clustering': clustering, '#rules': len(grammar), 'grammar_dl': grammar.cost,
-               'time': time_taken}
-
-        with open(f'{outdir}/grammar_stats/{name}.csv', 'a') as csv_file:
-            writer = csv.DictWriter(csv_file, fieldnames=fieldnames)
-            writer.writerow(row)
+    # tqdm.write(f"name: {name}, n: {row['n']}, m: {row['m']}, mu: {row['mu']}, graph_dl: {g_dl}, grammar_dl: {grammar.cost},"
+    #            f"compression: {row['compression']}, time: {time_taken}s")
+    tqdm.write(f"name: {name}, original: {g_dl}, grammar: {grammar.cost}, time: {time_taken}")
     return
 
 
-def main():
+def old_main():
     if len(sys.argv) > 1:
         name = sys.argv[1]
     else:
@@ -207,6 +196,42 @@ def main():
                                    for clustering in clustering_algs)
 
 
+def parse_args():
+    graph_names = [fname[: fname.find('.g')].split('/')[-1]
+                   for fname in glob.glob('./src/tmp/*.g')]
+    clustering_algs = ['leiden', 'louvain', 'spectral', 'cond', 'node2vec', 'random']
+    grammar_types = ('mu_random', 'mu_level', 'mu_dl', 'mu_level_dl', 'local_dl', 'global_dl')
+
+    parser = argparse.ArgumentParser(
+        formatter_class=argparse.ArgumentDefaultsHelpFormatter)  # formatter class shows defaults in help
+
+    # using choices we can control the inputs. metavar='' prevents printing the choices in the help preventing clutter
+    parser.add_argument('-g', '--graph', help='Name of the graph', default='karate', choices=graph_names,
+                        metavar='')
+
+    parser.add_argument('-c', '--clustering', help='Clustering method to use', default='leiden',
+                        choices=clustering_algs, metavar='')
+
+    parser.add_argument('-b', '--boundary', help='Degree of boundary information to store', default='part',
+                        choices=['full', 'part', 'no'])
+
+    parser.add_argument('-m', '--mu', help='Size of RHS (mu)', default=4, type=int)
+
+    parser.add_argument('-t', '--type', help='Grammar type', default='mu_level_dl', choices=grammar_types, metavar='')
+
+    parser.add_argument('-o', '--outdir', help='Name of the output directory', default='output')
+
+    parser.add_argument('-n', help='Number of graphs to generate', default=5, type=int)
+    return parser.parse_args()
+
+
+def main():
+    args = parse_args()
+    name, clustering, mode, mu, type, outdir = args.graph, args.clustering, args.boundary, args.mu, \
+                                                   args.type, args.outdir
+
+    dump_grammar(name=name, grammar_type=type, clustering=clustering, mu=mu)
+
+
 if __name__ == '__main__':
     main()
-    # par_main()
