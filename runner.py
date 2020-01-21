@@ -1,26 +1,25 @@
-import networkx as nx
-import os
-import pickle
-from time import time
-import math
-import logging
-from joblib import Parallel, delayed
-from copy import deepcopy
 import argparse
-import csv
-import sys
 import glob
+import logging
+import math
+import os
+import sys
+from time import time
+from typing import Tuple
+
+import networkx as nx
 from tqdm import tqdm
-from shutil import copyfile
 
 sys.setrecursionlimit(1_000_000)
 
 from src.VRG import VRG
 from src.extract import MuExtractor, LocalExtractor, GlobalExtractor
-from src.Tree import create_tree, TreeNode
+from src.Tree import create_tree
 import src.partitions as partitions
 from src.LightMultiGraph import LightMultiGraph
 from src.MDL import graph_dl
+from src.generate import generate_graph
+
 
 def get_graph(filename='sample') -> LightMultiGraph:
     start_time = time()
@@ -40,6 +39,7 @@ def get_graph(filename='sample') -> LightMultiGraph:
         g = nx.Graph()
     else:
         g = nx.read_edgelist(f'./src/tmp/{filename}.g', nodetype=int, create_using=nx.Graph())
+        g.name = filename
         # g = nx.MultiGraph(g)
         if not nx.is_connected(g):
             g = max(nx.connected_component_subgraphs(g), key=len)
@@ -65,8 +65,7 @@ def get_clustering(g, outdir, clustering):
     :return: root node of the dendrogram
     '''
     # list_of_list_pickle = f'./{outdir}/{clustering}_list.pkl'
-    # # tree_pickle = f'./{outdir}/{clustering}_tree.pkl'
-    # # if os.path.exists()
+    #
     # if not os.path.exists(f'./{outdir}'):
     #     os.makedirs(f'./{outdir}')
     #
@@ -90,7 +89,9 @@ def get_clustering(g, outdir, clustering):
         # pickle.dump(list_of_list_clusters, open(list_of_list_pickle, 'wb'))
     return list_of_list_clusters
 
+
 logging.basicConfig(level=logging.WARNING, format="%(message)s")
+
 
 def make_dirs(outdir: str, name: str) -> None:
     """
@@ -113,7 +114,7 @@ def make_dirs(outdir: str, name: str) -> None:
     return
 
 
-def dump_grammar(name: str, clustering: str, grammar_type: str, mu: int) -> None:
+def get_grammar(name: str, clustering: str, grammar_type: str, mu: int) -> Tuple[VRG, int]:
     """
     Dump the stats
     :return:
@@ -128,14 +129,13 @@ def dump_grammar(name: str, clustering: str, grammar_type: str, mu: int) -> None
     g_copy = original_graph.copy()
 
     list_of_list_clusters = get_clustering(g=g_copy, outdir=f'{outdir}/trees/{name}', clustering=clustering)
+    root = create_tree(list_of_list_clusters)
 
     g_dl = graph_dl(original_graph)
-
     grammar = VRG(clustering=clustering, type=grammar_type, name=name, mu=mu)
 
     g = original_graph.copy()
-    list_of_list_clusters_copy = list_of_list_clusters[: ]
-    root = create_tree(list_of_list_clusters_copy)
+
     start_time = time()
     if 'mu' in grammar_type:
         extractor = MuExtractor(g=g, type=grammar.type, grammar=grammar, mu=mu, root=root)
@@ -152,48 +152,8 @@ def dump_grammar(name: str, clustering: str, grammar_type: str, mu: int) -> None
 
     grammar = extractor.grammar
 
-    row = {'name': name, 'n': original_graph.order(), 'm': original_graph.size(), 'g_dl': round(g_dl, 3),
-           'type': grammar_type, 'mu': mu, 'clustering': clustering, '#rules': len(grammar), 'grammar_dl': round(grammar.cost, 3),
-           'time': time_taken, 'compression': round(grammar.cost / g_dl, 3)}
-
-    # tqdm.write(f"name: {name}, n: {row['n']}, m: {row['m']}, mu: {row['mu']}, graph_dl: {g_dl}, grammar_dl: {grammar.cost},"
-    #            f"compression: {row['compression']}, time: {time_taken}s")
     tqdm.write(f"name: {name}, original: {g_dl}, grammar: {grammar.cost}, time: {time_taken}")
-    return
-
-
-def old_main():
-    if len(sys.argv) > 1:
-        name = sys.argv[1]
-    else:
-        name = 'sample'
-
-    grammar_types = ('mu_random', 'mu_level', 'mu_dl', 'mu_level_dl', 'local_dl', 'global_dl')
-    clustering_algs = ('cond', 'leiden', 'louvain', 'spectral', 'random')
-
-    # get_grammar_parallel(name, 'leiden', 'mu_random')
-
-    # gram = pickle.load(open('./dumps/grammars/karate/leiden_mu_random_3.pkl', 'rb'))
-    # print(gram.rule_list)
-    outdir = 'dumps'
-    fieldnames = ('name', 'n', 'm', 'g_dl', 'type', 'mu', 'clustering', '#rules', 'grammar_dl', 'time')
-
-    make_dirs(outdir, name)  # make the directories if needed
-
-    stats_path = f'{outdir}/grammar_stats/{name}.csv'
-    mode = 'w'
-    if os.path.exists(stats_path):
-        print('stats file exists')
-        mode = 'a'
-
-    if mode == 'w':
-        with open(stats_path, mode) as csv_file:
-            writer = csv.DictWriter(csv_file, fieldnames=fieldnames)
-            writer.writeheader()
-
-    Parallel(n_jobs=15, verbose=1)(delayed(dump_grammar)(name=name, clustering=clustering, grammar_type=grammar_type)
-                                  for grammar_type in grammar_types
-                                   for clustering in clustering_algs)
+    return grammar, original_graph.order()
 
 
 def parse_args():
@@ -228,9 +188,10 @@ def parse_args():
 def main():
     args = parse_args()
     name, clustering, mode, mu, type, outdir = args.graph, args.clustering, args.boundary, args.mu, \
-                                                   args.type, args.outdir
+                                               args.type, args.outdir
 
-    dump_grammar(name=name, grammar_type=type, clustering=clustering, mu=mu)
+    grammar, orig_n = get_grammar(name=name, grammar_type=type, clustering=clustering, mu=mu)
+    g = generate_graph(rule_dict=grammar.rule_dict, target_n=orig_n)
 
 
 if __name__ == '__main__':
