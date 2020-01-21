@@ -1,14 +1,42 @@
-import networkx as nx
-from typing import List, Dict, Tuple
-import random
-import numpy as np
 import logging
+import random
+from typing import List, Dict, Tuple
+
+import numpy as np
 
 from src.LightMultiGraph import LightMultiGraph
 from src.Rule import PartRule
 from src.globals import find_boundary_edges
 
-def generate_graph(rule_dict: Dict[int, List[PartRule]]) -> Tuple[LightMultiGraph, List[int]]:
+
+def generate_graph(target_n: int, rule_dict: Dict, tolerance_bounds: float = 0.10) -> Tuple[LightMultiGraph, List[int]]:
+    """
+    Generates graphs
+    :param target_n: number of nodes to target
+    :param tolerance_bounds: bounds of tolerance - accept graphs with target_n . (1 +- tolerance)
+    :param rule_dict: dictionary of rules
+    :return:
+    """
+    lower_bound = int(target_n * (1 - tolerance_bounds))
+    upper_bound = int(target_n * (1 + tolerance_bounds))
+
+    num_trials = 0
+    while True:
+        g, rule_ordering = _generate_graph(rule_dict=rule_dict)
+
+        if lower_bound <= g.order() <= upper_bound:  # if the number of nodes falls in bounds,
+            break
+
+        num_trials += 1
+
+    if num_trials > 1:
+        print(f'Graph generated in {num_trials}')
+    print(f'Generated graph: {g.order(), g.size()}')
+
+    return g, rule_ordering
+
+
+def _generate_graph(rule_dict: Dict[int, List[PartRule]]) -> Tuple[LightMultiGraph, List[int]]:
     """
     Create a new graph from the VRG at random
     :return: newly generated graph
@@ -21,7 +49,7 @@ def generate_graph(rule_dict: Dict[int, List[PartRule]]) -> Tuple[LightMultiGrap
     non_terminals = {0}
     rule_ordering = []  # list of rule ids in the order they were fired
 
-    while len(non_terminals) > 0:      # continue until no more non-terminal nodes
+    while len(non_terminals) > 0:  # continue until no more non-terminal nodes
         node_sample = random.sample(non_terminals, 1)[0]  # choose a non terminal node at random
         lhs = new_g.nodes[node_sample]['label']
 
@@ -31,7 +59,7 @@ def generate_graph(rule_dict: Dict[int, List[PartRule]]) -> Tuple[LightMultiGrap
             rhs = rhs_candidates[0]
         else:
             weights = np.array([rule.frequency for rule in rhs_candidates])
-            weights = weights / np.sum(weights)   # normalize into probabilities
+            weights = weights / np.sum(weights)  # normalize into probabilities
             idx = int(np.random.choice(range(len(rhs_candidates)), size=1, p=weights))  # pick based on probability
             rhs = rhs_candidates[idx]
 
@@ -46,7 +74,7 @@ def generate_graph(rule_dict: Dict[int, List[PartRule]]) -> Tuple[LightMultiGrap
 
         nodes = {}
 
-        for n, d in rhs.graph.nodes(data=True):   # all the nodes are internal
+        for n, d in rhs.graph.nodes(data=True):  # all the nodes are internal
             new_node = node_counter
             nodes[n] = new_node
 
@@ -61,7 +89,6 @@ def generate_graph(rule_dict: Dict[int, List[PartRule]]) -> Tuple[LightMultiGrap
                 new_g.add_node(new_node, b_deg=d['b_deg'], label=label)
             node_counter += 1
 
-
         # randomly assign broken edges to boundary edges
         random.shuffle(broken_edges)
 
@@ -73,8 +100,8 @@ def generate_graph(rule_dict: Dict[int, List[PartRule]]) -> Tuple[LightMultiGrap
 
             assert len(broken_edges) >= num_boundary_edges
 
-            edge_candidates = broken_edges[: num_boundary_edges]   # picking the first num_broken edges
-            broken_edges = broken_edges[num_boundary_edges: ]    # removing them from future consideration
+            edge_candidates = broken_edges[: num_boundary_edges]  # picking the first num_broken edges
+            broken_edges = broken_edges[num_boundary_edges:]  # removing them from future consideration
 
             for u, v in edge_candidates:  # each edge is either (node_sample, v) or (u, node_sample)
                 if u == node_sample:
@@ -91,4 +118,3 @@ def generate_graph(rule_dict: Dict[int, List[PartRule]]) -> Tuple[LightMultiGrap
             logging.debug(f'adding RHS internal edge ({nodes[u]}, {nodes[v]}) wt: {edge_multiplicity}')
 
     return new_g, rule_ordering
-
