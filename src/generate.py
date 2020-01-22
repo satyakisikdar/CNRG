@@ -1,6 +1,6 @@
 import logging
 import random
-from typing import List, Dict, Tuple
+from typing import List, Dict, Tuple, Any
 
 import numpy as np
 
@@ -9,7 +9,7 @@ from src.Rule import PartRule
 from src.globals import find_boundary_edges
 
 
-def generate_graph(target_n: int, rule_dict: Dict, tolerance_bounds: float = 0.10) -> Tuple[LightMultiGraph, List[int]]:
+def generate_graph(target_n: int, rule_dict: Dict, tolerance_bounds: float = 0.05) -> Tuple[LightMultiGraph, List[int]]:
     """
     Generates graphs
     :param target_n: number of nodes to target
@@ -22,8 +22,9 @@ def generate_graph(target_n: int, rule_dict: Dict, tolerance_bounds: float = 0.1
 
     num_trials = 0
     while True:
-        g, rule_ordering = _generate_graph(rule_dict=rule_dict)
-
+        g, rule_ordering = _generate_graph(rule_dict=rule_dict, upper_bound=upper_bound)
+        if g is None:  # early termination
+            continue
         if lower_bound <= g.order() <= upper_bound:  # if the number of nodes falls in bounds,
             break
 
@@ -36,9 +37,10 @@ def generate_graph(target_n: int, rule_dict: Dict, tolerance_bounds: float = 0.1
     return g, rule_ordering
 
 
-def _generate_graph(rule_dict: Dict[int, List[PartRule]]) -> Tuple[LightMultiGraph, List[int]]:
+def _generate_graph(rule_dict: Dict[int, List[PartRule]], upper_bound: int) -> Any:
     """
     Create a new graph from the VRG at random
+    Returns None if the nodes in generated graph exceeds upper_bound
     :return: newly generated graph
     """
     node_counter = 1
@@ -50,6 +52,9 @@ def _generate_graph(rule_dict: Dict[int, List[PartRule]]) -> Tuple[LightMultiGra
     rule_ordering = []  # list of rule ids in the order they were fired
 
     while len(non_terminals) > 0:  # continue until no more non-terminal nodes
+        if new_g.order() > upper_bound:  # early stopping
+            return None, None
+
         node_sample = random.sample(non_terminals, 1)[0]  # choose a non terminal node at random
         lhs = new_g.nodes[node_sample]['label']
 
