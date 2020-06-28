@@ -9,3 +9,4 @@ graphviz == 0.10.1
 tqdm == 4.31.1
 python-igraph
 leidenalg
+community
