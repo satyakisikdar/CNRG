@@ -121,7 +121,7 @@ def get_grammar(name: str, clustering: str, grammar_type: str, mu: int) -> Tuple
     """
     original_graph = get_graph(name)
     outdir = 'dumps'
-    #make_dirs(outdir, name)  # make the directories if needed
+    make_dirs(outdir, name)  # make the directories if needed
 
     grammar_types = ('mu_random', 'mu_level', 'mu_dl', 'mu_level_dl', 'local_dl', 'global_dl')
     assert grammar_type in grammar_types, f'Invalid grammar type: {grammar_type}'
