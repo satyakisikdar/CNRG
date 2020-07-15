@@ -31,7 +31,7 @@ def generate_graph(target_n: int, rule_dict: Dict, tolerance_bounds: float = 0.0
         num_trials += 1
 
     if num_trials > 1:
-        print(f'Graph generated in {num_trials}')
+        print(f'Graph generated in {num_trials} iterations')
     print(f'Generated graph: {g.order(), g.size()}')
 
     return g, rule_ordering

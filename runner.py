@@ -191,7 +191,8 @@ def main():
                                                args.type, args.outdir
 
     grammar, orig_n = get_grammar(name=name, grammar_type=type, clustering=clustering, mu=mu)
-    g = generate_graph(rule_dict=grammar.rule_dict, target_n=orig_n)
+    g, rule_ordering = generate_graph(rule_dict=grammar.rule_dict, target_n=orig_n)
+    nx.write_edgelist(g, f'{args.outdir}/{name}_CNRG.g', data=False)
 
 
 if __name__ == '__main__':
