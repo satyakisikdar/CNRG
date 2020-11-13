@@ -19,9 +19,12 @@ def generate_graph(target_n: int, rule_dict: Dict, tolerance_bounds: float = 0.0
     """
     lower_bound = int(target_n * (1 - tolerance_bounds))
     upper_bound = int(target_n * (1 + tolerance_bounds))
-
+    max_trials = 1_000
     num_trials = 0
     while True:
+        if num_trials > max_trials:
+            raise TimeoutError(f'Generation failed in {max_trials} steps')
+
         g, rule_ordering = _generate_graph(rule_dict=rule_dict, upper_bound=upper_bound)
         if g is None:  # early termination
             continue
